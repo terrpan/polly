@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # opa:
+  #   image: openpolicyagent/opa:latest
+  #   container_name: opa-server
+  #   ports:
+  #     - "8181:8181"
+  #   command: ["run", "--server", "--addr", "0.0.0.0:8181"]
+  #   restart: unless-stopped
+
+  otel-collector:
+    container_name: otel-collector_polly
+    image: otel/opentelemetry-collector:0.117.0
+    volumes:
+      - ./otelcol.yaml:/etc/otelcol/config.yaml
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    ports:
+      - 4318:4318
+
+  jaeger:
+    container_name: jaeger_polly
+    image: jaegertracing/all-in-one:latest
+    environment:
+      JAEGER_PROPAGATION: w3c
+    ports:
+      - 16686:16686
+    healthcheck:
+      test: [ CMD, wget, -q, -S, -O, "-", "localhost:14269" ]
