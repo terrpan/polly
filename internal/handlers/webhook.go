@@ -645,11 +645,11 @@ func (h *WebhookHandler) processVulnerabilityPayloads(ctx context.Context, paylo
 
 		// Post single comment with all vulnerabilities
 		if len(vulnComments) > 0 {
-			fullComment := fmt.Sprintf("🚨 **Security Alert - %d vulnerabilities found**\n\n%s",
+			fullComment := fmt.Sprintf("🚨 **Vulnerability Alert - %d high/critical vulnerabilities found**\n\n<details>\n<summary>Click to view vulnerability details</summary>\n\n%s\n\n</details>",
 				len(vulnComments), strings.Join(vulnComments, "\n\n---\n\n"))
 
 			if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), fullComment); err != nil {
-				h.logger.ErrorContext(ctx, "Failed to post security comment", "error", err)
+				h.logger.ErrorContext(ctx, "Failed to post vulnerability comment", "error", err)
 			}
 		}
 	}
