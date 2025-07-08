@@ -369,7 +369,7 @@ func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github
 func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event github.WorkflowRunPayload, owner, repo, sha string, workflowRunID int64) error {
 	// Only process successful workflows
 	if event.WorkflowRun.Conclusion != "success" {
-		h.logger.DebugContext(ctx, "Ignoring workflow run event with non-success conclusion",
+		h.logger.DebugContext(ctx, "Handling workflow run event with non-success conclusion as a failed workflow",
 			"conclusion", event.WorkflowRun.Conclusion,
 		)
 
