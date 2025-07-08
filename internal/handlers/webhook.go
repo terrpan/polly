@@ -28,6 +28,7 @@ type WebhookHandler struct {
 	prContextStore          map[string]int64 // sha -> pr_number
 	vulnerabilityCheckStore map[string]int64 // sha -> vulnerability_check_id
 	prContextMutex          sync.RWMutex     // RWMutex to protect the context store
+	vulnerabilityCheckMutex sync.RWMutex     // RWMutex to protect the vulnerability check store
 
 }
 
@@ -345,7 +346,7 @@ func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github
 
 	// Mark it as pending (waiting for workflow to complete)
 	if err := h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRun.GetID()); err != nil {
-		h.logger.ErrorContext(ctx, "Failed to start security check",
+		h.logger.ErrorContext(ctx, "Failed to start vulnerability check",
 			"error", err,
 			"check_run_id", checkRun.GetID(),
 		)
@@ -353,11 +354,11 @@ func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github
 	}
 
 	// Store the security check run ID for later retrieval
-	h.prContextMutex.Lock()
+	h.vulnerabilityCheckMutex.Lock()
 	h.vulnerabilityCheckStore[sha] = checkRun.GetID()
-	h.prContextMutex.Unlock()
+	h.vulnerabilityCheckMutex.Unlock()
 
-	h.logger.InfoContext(ctx, "Created pending security check run",
+	h.logger.InfoContext(ctx, "Created pending vulnerability check run",
 		"check_run_id", checkRun.GetID(),
 		"pr_number", prNumber,
 	)
@@ -373,8 +374,8 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 			"conclusion", event.WorkflowRun.Conclusion,
 		)
 
-		// If workflow failed, we should complete any pending security checks as "neutral"
-		return h.handleFailedWorkflow(ctx, owner, repo, sha, workflowRunID)
+		// If workflow failed, we should complete any pending vulnerability checks as "neutral"
+		return h.completeVulnerabilityCheckAsNeutral(ctx, owner, repo, sha)
 	}
 
 	if event.WorkflowRun.ArtifactsURL == "" {
@@ -448,28 +449,28 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 }
 
 // handleFailedWorkflow completes security checks as neutral when workflows fail
-func (h *WebhookHandler) handleFailedWorkflow(ctx context.Context, owner, repo, sha string, workflowRunID int64) error {
-	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
-	if err != nil {
-		h.logger.ErrorContext(ctx, "Failed to find security check run for failed workflow",
-			"error", err,
-			"sha", sha,
-		)
-		return nil // Don't fail if we can't find the check run
-	}
+// func (h *WebhookHandler) handleFailedWorkflow(ctx context.Context, owner, repo, sha string, workflowRunID int64) error {
+// 	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
+// 	if err != nil {
+// 		h.logger.ErrorContext(ctx, "Failed to find security check run for failed workflow",
+// 			"error", err,
+// 			"sha", sha,
+// 		)
+// 		return nil // Don't fail if we can't find the check run
+// 	}
 
-	if checkRunID == 0 {
-		return nil // No security check run to complete
-	}
+// 	if checkRunID == 0 {
+// 		return nil // No security check run to complete
+// 	}
 
-	result := services.CheckRunResult{
-		Title:   "Vulnerability Check - Skipped",
-		Summary: "Workflow failed - vulnerability scan not completed",
-		Text:    "The workflow failed before vulnerability artifacts could be processed.",
-	}
+// 	result := services.CheckRunResult{
+// 		Title:   "Vulnerability Check - Skipped",
+// 		Summary: "Workflow failed - vulnerability scan not completed",
+// 		Text:    "The workflow failed before vulnerability artifacts could be processed.",
+// 	}
 
-	return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, services.ConclusionNeutral, result)
-}
+// 	return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, services.ConclusionNeutral, result)
+// }
 
 // completeVulnerabilityCheckAsNeutral completes vulnerability checks as neutral when no artifacts are found
 func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(ctx context.Context, owner, repo, sha string) error {
@@ -491,9 +492,9 @@ func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(ctx context.Context
 
 // findVulnerabilityCheckRun finds an existing vulnerability check run for the given SHA
 func (h *WebhookHandler) findVulnerabilityCheckRun(ctx context.Context, owner, repo, sha string) (int64, error) {
-	h.prContextMutex.RLock()
+	h.vulnerabilityCheckMutex.RLock()
 	checkRunID, exists := h.vulnerabilityCheckStore[sha]
-	h.prContextMutex.RUnlock()
+	h.vulnerabilityCheckMutex.RUnlock()
 
 	if !exists {
 		h.logger.DebugContext(ctx, "No security check run found for SHA",
