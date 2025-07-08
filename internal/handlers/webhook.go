@@ -448,30 +448,6 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 	return h.processVulnerabilityPayloads(ctx, payloads, owner, repo, sha, prNumber, checkRunID)
 }
 
-// handleFailedWorkflow completes security checks as neutral when workflows fail
-// func (h *WebhookHandler) handleFailedWorkflow(ctx context.Context, owner, repo, sha string, workflowRunID int64) error {
-// 	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
-// 	if err != nil {
-// 		h.logger.ErrorContext(ctx, "Failed to find security check run for failed workflow",
-// 			"error", err,
-// 			"sha", sha,
-// 		)
-// 		return nil // Don't fail if we can't find the check run
-// 	}
-
-// 	if checkRunID == 0 {
-// 		return nil // No security check run to complete
-// 	}
-
-// 	result := services.CheckRunResult{
-// 		Title:   "Vulnerability Check - Skipped",
-// 		Summary: "Workflow failed - vulnerability scan not completed",
-// 		Text:    "The workflow failed before vulnerability artifacts could be processed.",
-// 	}
-
-// 	return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, services.ConclusionNeutral, result)
-// }
-
 // completeVulnerabilityCheckAsNeutral completes vulnerability checks as neutral when no artifacts are found
 func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(ctx context.Context, owner, repo, sha string) error {
 	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
