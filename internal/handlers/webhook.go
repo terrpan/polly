@@ -382,7 +382,7 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 		h.logger.DebugContext(ctx, "Ignoring workflow run event with no artifacts URL",
 			"artifacts_url", event.WorkflowRun.ArtifactsURL,
 		)
-		return nil
+		return h.completeVulnerabilityCheckAsNeutral(ctx, owner, repo, sha)
 	}
 
 	h.logger.InfoContext(ctx, "Processing workflow security artifacts",
