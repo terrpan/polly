@@ -589,6 +589,8 @@ func (h *WebhookHandler) completePolicyCheckWithResult(ctx context.Context, owne
 func (h *WebhookHandler) processVulnerabilityPayloads(ctx context.Context, payloads []*services.VulnerabilityPayload, owner, repo, sha string, prNumber int64, checkRunID int64) error {
 	allPassed := true
 	var failureDetails []string
+	var allNonCompliantVulns []services.VulnerabilityPolicyVuln
+
 	for _, payload := range payloads {
 		h.logger.DebugContext(ctx, "Processing vulnerability payload",
 			"owner", owner,
@@ -597,37 +599,37 @@ func (h *WebhookHandler) processVulnerabilityPayloads(ctx context.Context, paylo
 			"payload_summary", payload.Summary,
 		)
 
-		// TODO: Replace with actual OPA evaluation
-		// For now, fail if we have CRITICAL or HIGH severity vulnerabilities
-		if payload.Summary.Critical > 0 || payload.Summary.High > 0 {
+		// Use the full payload as input to OPA policy for richer context
+		policyResult, err := h.policyService.CheckVulnerabilityPolicy(ctx, payload)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "Failed to evaluate vulnerability policy", "error", err)
+			// Fall back to simple logic if OPA fails
+			if payload.Summary.Critical > 0 || payload.Summary.High > 0 {
+				allPassed = false
+				failureDetails = append(failureDetails,
+					fmt.Sprintf("Found %d critical and %d high severity vulnerabilities (policy evaluation failed)",
+						payload.Summary.Critical, payload.Summary.High))
+			}
+			continue
+		}
+
+		// Use OPA policy result
+		if !policyResult.Compliant {
 			allPassed = false
 			failureDetails = append(failureDetails,
-				fmt.Sprintf("Found %d critical and %d high severity vulnerabilities",
-					payload.Summary.Critical, payload.Summary.High))
+				fmt.Sprintf("Policy violation: %d non-compliant vulnerabilities out of %d total",
+					policyResult.NonCompliantCount, policyResult.TotalVulnerabilities))
+
+			// Collect non-compliant vulnerabilities for comments
+			allNonCompliantVulns = append(allNonCompliantVulns, policyResult.NonCompliantVulnerabilities...)
 		}
+	}
 
-		// Collect high/critical vulnerabilities for a single comment
-		var vulnComments []string
-		for _, vuln := range payload.Vulnerabilities {
-			if vuln.Severity == "CRITICAL" || vuln.Severity == "HIGH" {
-				comment := fmt.Sprintf("**Package:** `%s@%s`\n**Vulnerability:** %s\n**Severity:** %s\n**Description:** %s\n**File:** `%s`",
-					vuln.Package.Name, vuln.Package.Version, vuln.ID, vuln.Severity, vuln.Description, vuln.Location.File)
-
-				if vuln.FixedVersion != "" {
-					comment += fmt.Sprintf("\n**Fixed Version:** %s", vuln.FixedVersion)
-				}
-				vulnComments = append(vulnComments, comment)
-			}
-		}
-
-		// Post single comment with all vulnerabilities
-		if len(vulnComments) > 0 {
-			fullComment := fmt.Sprintf("🚨 **Vulnerability Alert - %d high/critical vulnerabilities found**\n\n<details>\n<summary>Click to view vulnerability details</summary>\n\n%s\n\n</details>",
-				len(vulnComments), strings.Join(vulnComments, "\n\n---\n\n"))
-
-			if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), fullComment); err != nil {
-				h.logger.ErrorContext(ctx, "Failed to post vulnerability comment", "error", err)
-			}
+	// Post comment with policy violations if any
+	if len(allNonCompliantVulns) > 0 {
+		fullComment := h.buildVulnerabilityViolationComment(allNonCompliantVulns)
+		if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), fullComment); err != nil {
+			h.logger.ErrorContext(ctx, "Failed to post vulnerability comment", "error", err)
 		}
 	}
 
@@ -648,6 +650,22 @@ func (h *WebhookHandler) processVulnerabilityPayloads(ctx context.Context, paylo
 		}
 	}
 	return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, conclusion, result)
+}
+
+// buildVulnerabilityViolationComment generates a markdown comment for vulnerability policy violations.
+func (h *WebhookHandler) buildVulnerabilityViolationComment(vulns []services.VulnerabilityPolicyVuln) string {
+	vulnComments := make([]string, 0, len(vulns))
+	for _, vuln := range vulns {
+		comment := fmt.Sprintf("**Package:** `%s@%s`\n**Vulnerability:** %s\n**Severity:** %s",
+			vuln.Package, vuln.Version, vuln.ID, vuln.Severity)
+
+		if vuln.Score > 0 {
+			comment += fmt.Sprintf("\n**CVSS Score:** %.1f", vuln.Score)
+		}
+		vulnComments = append(vulnComments, comment)
+	}
+	return fmt.Sprintf("🚨 **Vulnerability Policy Violation - %d vulnerabilities blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
+		len(vulnComments), strings.Join(vulnComments, "\n\n---\n\n"))
 }
 
 // getEventInfo extracts common event information for logging using generics
