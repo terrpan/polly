@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/go-playground/webhooks/v6/github"
@@ -24,8 +25,10 @@ type WebhookHandler struct {
 	securityService *services.SecurityService
 
 	// In-memory cache for PR context store
-	prContextStore map[string]int64 // sha -> pr_number
-	prContextMutex sync.RWMutex     // RWMutex to protect the context store
+	prContextStore          map[string]int64 // sha -> pr_number
+	vulnerabilityCheckStore map[string]int64 // sha -> vulnerability_check_id
+	prContextMutex          sync.RWMutex     // RWMutex to protect the context store
+
 }
 
 // Setups a new WebhookHandler with the provided logger and initializes the GitHub webhook.
@@ -39,13 +42,15 @@ func NewWebhookHandler(logger *slog.Logger, commentService *services.CommentServ
 		return nil, err
 	}
 	return &WebhookHandler{
-		logger:          logger,
-		hook:            hook,
-		commentService:  commentService,
-		checkService:    checkService,
-		policyService:   policyService,
-		securityService: securityService,
-		prContextStore:  make(map[string]int64), // Initialize the PR context store
+		logger:                  logger,
+		hook:                    hook,
+		commentService:          commentService,
+		checkService:            checkService,
+		policyService:           policyService,
+		securityService:         securityService,
+		prContextStore:          make(map[string]int64), // Initialize the PR context store
+		vulnerabilityCheckStore: make(map[string]int64), // Initialize the vulnerability check store
+
 	}, nil
 }
 
@@ -274,29 +279,6 @@ func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event githu
 		"workflow_run_id", event.WorkflowRun.ID,
 	)
 
-	// only handle "completed" workflows
-	if event.Action != "completed" {
-		span.SetAttributes(attribute.String("result", "skipped"))
-		return nil
-	}
-
-	// Only process successful workflows
-	if event.WorkflowRun.Conclusion != "success" {
-		span.SetAttributes(attribute.String("result", "skipped"))
-		h.logger.DebugContext(ctx, "Ignoring workflow run event with non-success conclusion",
-			"conclusion", event.WorkflowRun.Conclusion,
-		)
-		return nil
-	}
-
-	if event.WorkflowRun.ArtifactsURL == "" {
-		h.logger.DebugContext(ctx, "Ignoring workflow run event with no artifacts URL",
-			"artifacts_url", event.WorkflowRun.ArtifactsURL,
-		)
-		span.SetAttributes(attribute.String("result", "skipped_no_artifacts"))
-		return nil
-	}
-
 	owner, repo, sha, workflowRunID := getEventInfo(event)
 	span.SetAttributes(
 		attribute.String("github.owner", owner),
@@ -304,6 +286,103 @@ func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event githu
 		attribute.String("github.sha", sha),
 		attribute.Int64("github.workflow_run_id", workflowRunID),
 	)
+
+	// Handle workflow start - create a pending security check run
+	if event.Action == "requested" || event.Action == "in_progress" {
+		return h.handleWorkflowStarted(ctx, event, owner, repo, sha, workflowRunID)
+	}
+
+	// Handle workflow completion - process security artifacts
+	if event.Action == "completed" {
+		return h.handleWorkflowCompleted(ctx, event, owner, repo, sha, workflowRunID)
+	}
+
+	// Ignore other actions
+	span.SetAttributes(attribute.String("result", "skipped"))
+	h.logger.DebugContext(ctx, "Ignoring workflow run event with unsupported action",
+		"action", event.Action,
+	)
+	return nil
+}
+
+// handleWorkflowStarted creates a pending security check when a workflow starts
+func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github.WorkflowRunPayload, owner, repo, sha string, workflowRunID int64) error {
+	h.logger.InfoContext(ctx, "Workflow started - creating pending security check",
+		"owner", owner,
+		"repo", repo,
+		"workflow_name", event.Workflow.Name,
+		"workflow_run_id", workflowRunID,
+	)
+
+	// Get PR number from stored context
+	h.prContextMutex.RLock()
+	prNumber, exists := h.prContextStore[sha]
+	h.prContextMutex.RUnlock()
+
+	if !exists {
+		h.logger.DebugContext(ctx, "No PR context found for SHA - skipping security check creation",
+			"sha", sha,
+		)
+		return nil
+	}
+
+	h.logger.InfoContext(ctx, "Found PR context for security check",
+		"sha", sha,
+		"pr_number", prNumber,
+	)
+
+	// Create security check run in pending state
+	checkRun, err := h.checkService.CreateVulnerabilityCheck(ctx, owner, repo, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to create security check run",
+			"error", err,
+			"owner", owner,
+			"repo", repo,
+			"sha", sha,
+		)
+		return err
+	}
+
+	// Mark it as pending (waiting for workflow to complete)
+	if err := h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRun.GetID()); err != nil {
+		h.logger.ErrorContext(ctx, "Failed to start security check",
+			"error", err,
+			"check_run_id", checkRun.GetID(),
+		)
+		return err
+	}
+
+	// Store the security check run ID for later retrieval
+	h.prContextMutex.Lock()
+	h.vulnerabilityCheckStore[sha] = checkRun.GetID()
+	h.prContextMutex.Unlock()
+
+	h.logger.InfoContext(ctx, "Created pending security check run",
+		"check_run_id", checkRun.GetID(),
+		"pr_number", prNumber,
+	)
+
+	return nil
+}
+
+// handleWorkflowCompleted processes security artifacts when a workflow completes
+func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event github.WorkflowRunPayload, owner, repo, sha string, workflowRunID int64) error {
+	// Only process successful workflows
+	if event.WorkflowRun.Conclusion != "success" {
+		h.logger.DebugContext(ctx, "Ignoring workflow run event with non-success conclusion",
+			"conclusion", event.WorkflowRun.Conclusion,
+		)
+
+		// If workflow failed, we should complete any pending security checks as "neutral"
+		return h.handleFailedWorkflow(ctx, owner, repo, sha, workflowRunID)
+	}
+
+	if event.WorkflowRun.ArtifactsURL == "" {
+		h.logger.DebugContext(ctx, "Ignoring workflow run event with no artifacts URL",
+			"artifacts_url", event.WorkflowRun.ArtifactsURL,
+		)
+		return nil
+	}
 
 	h.logger.InfoContext(ctx, "Processing workflow security artifacts",
 		"owner", owner,
@@ -321,7 +400,6 @@ func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event githu
 			"repo", repo,
 			"workflow_run_id", workflowRunID,
 		)
-		span.SetAttributes(attribute.String("result", "error"))
 		return fmt.Errorf("failed to process security artifacts: %w", err)
 	}
 
@@ -331,8 +409,9 @@ func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event githu
 			"repo", repo,
 			"workflow_run_id", workflowRunID,
 		)
-		span.SetAttributes(attribute.String("result", "success"))
-		return nil
+
+		// Complete any pending security checks as "neutral" (no security artifacts to evaluate)
+		return h.completeVulnerabilityCheckAsNeutral(ctx, owner, repo, sha)
 	}
 
 	// Get PR number from stored context
@@ -344,60 +423,92 @@ func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event githu
 		h.logger.DebugContext(ctx, "No PR context found for SHA",
 			"sha", sha,
 		)
-		span.SetAttributes(attribute.String("result", "skipped_no_pr_context"))
 		return nil
 	}
 
-	h.logger.InfoContext(ctx, "Found PR context for security check",
-		"sha", sha,
-		"pr_number", prNumber,
-	)
-
-	// Create security check run
-	checkRun, err := h.checkService.CreateSecurityCheck(ctx, owner, repo, sha)
+	// Find the existing security check run for this SHA
+	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
 	if err != nil {
-		h.logger.ErrorContext(ctx, "Failed to create security check run",
+		h.logger.ErrorContext(ctx, "Failed to find security check run",
 			"error", err,
-			"owner", owner,
-			"repo", repo,
 			"sha", sha,
 		)
 		return err
 	}
 
-	// Start the security check
-	if err := h.checkService.StartSecurityCheck(ctx, owner, repo, checkRun.GetID()); err != nil {
-		h.logger.ErrorContext(ctx, "Failed to start security check",
-			"error", err,
-			"check_run_id", checkRun.GetID(),
+	if checkRunID == 0 {
+		h.logger.WarnContext(ctx, "No security check run found for SHA",
+			"sha", sha,
 		)
-		return err
+		return nil
 	}
 
-	// Process and evaluate security payloads
-	return h.processSecurityPayloads(ctx, payloads, owner, repo, sha, prNumber, checkRun.GetID())
-
-	// // Process each payload
-	// for _, payload := range payloads {
-	// 	h.logger.DebugContext(ctx, "Processing security payload",
-	// 		"owner", owner,
-	// 		"repo", repo,
-	// 		"workflow_run_id", workflowRunID,
-	// 		"payload", payload,
-	// 	)
-	// TODO: Here you would typically send the payload to OPA or kick off a check run via policyService
-	// }
-
-	// span.SetAttributes(attribute.String("result", "success"))
-	// h.logger.InfoContext(ctx, "Successfully processed workflow security artifacts",
-	// 	"owner", owner,
-	// 	"repo", repo,
-	// 	"workflow_run_id", workflowRunID,
-	// )
-
-	// return nil
+	// Process and evaluate vulnerability payloads
+	return h.processVulnerabilityPayloads(ctx, payloads, owner, repo, sha, prNumber, checkRunID)
 }
 
+// handleFailedWorkflow completes security checks as neutral when workflows fail
+func (h *WebhookHandler) handleFailedWorkflow(ctx context.Context, owner, repo, sha string, workflowRunID int64) error {
+	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to find security check run for failed workflow",
+			"error", err,
+			"sha", sha,
+		)
+		return nil // Don't fail if we can't find the check run
+	}
+
+	if checkRunID == 0 {
+		return nil // No security check run to complete
+	}
+
+	result := services.CheckRunResult{
+		Title:   "Vulnerability Check - Skipped",
+		Summary: "Workflow failed - vulnerability scan not completed",
+		Text:    "The workflow failed before vulnerability artifacts could be processed.",
+	}
+
+	return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, services.ConclusionNeutral, result)
+}
+
+// completeVulnerabilityCheckAsNeutral completes vulnerability checks as neutral when no artifacts are found
+func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(ctx context.Context, owner, repo, sha string) error {
+	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to find security check run",
+			"error", err,
+			"sha", sha,
+		)
+		return nil // Don't fail if we can't find the check run
+	}
+
+	if checkRunID == 0 {
+		return nil // No security check run to complete
+	}
+
+	return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+}
+
+// findVulnerabilityCheckRun finds an existing vulnerability check run for the given SHA
+func (h *WebhookHandler) findVulnerabilityCheckRun(ctx context.Context, owner, repo, sha string) (int64, error) {
+	h.prContextMutex.RLock()
+	checkRunID, exists := h.vulnerabilityCheckStore[sha]
+	h.prContextMutex.RUnlock()
+
+	if !exists {
+		h.logger.DebugContext(ctx, "No security check run found for SHA",
+			"sha", sha,
+		)
+		return 0, nil
+	}
+
+	h.logger.DebugContext(ctx, "Found security check run for SHA",
+		"sha", sha,
+		"check_run_id", checkRunID,
+	)
+
+	return checkRunID, nil
+}
 
 // createCheckRun is a helper function to create a check run for the pull request.
 func (h *WebhookHandler) createCheckRun(ctx context.Context, event github.PullRequestPayload) (*gogithub.CheckRun, error) {
@@ -495,6 +606,71 @@ func (h *WebhookHandler) completePolicyCheckWithResult(ctx context.Context, owne
 		"result", result,
 	)
 	return nil
+}
+
+// processVulnerabilityPayloads evaluates vulnerability payloads and completes the check run
+func (h *WebhookHandler) processVulnerabilityPayloads(ctx context.Context, payloads []*services.VulnerabilityPayload, owner, repo, sha string, prNumber int64, checkRunID int64) error {
+	allPassed := true
+	var failureDetails []string
+	for _, payload := range payloads {
+		h.logger.DebugContext(ctx, "Processing vulnerability payload",
+			"owner", owner,
+			"repo", repo,
+			"sha", sha,
+			"payload_summary", payload.Summary,
+		)
+
+		// TODO: Replace with actual OPA evaluation
+		// For now, fail if we have CRITICAL or HIGH severity vulnerabilities
+		if payload.Summary.Critical > 0 || payload.Summary.High > 0 {
+			allPassed = false
+			failureDetails = append(failureDetails,
+				fmt.Sprintf("Found %d critical and %d high severity vulnerabilities",
+					payload.Summary.Critical, payload.Summary.High))
+		}
+
+		// Collect high/critical vulnerabilities for a single comment
+		var vulnComments []string
+		for _, vuln := range payload.Vulnerabilities {
+			if vuln.Severity == "CRITICAL" || vuln.Severity == "HIGH" {
+				comment := fmt.Sprintf("**Package:** `%s@%s`\n**Vulnerability:** %s\n**Severity:** %s\n**Description:** %s\n**File:** `%s`",
+					vuln.Package.Name, vuln.Package.Version, vuln.ID, vuln.Severity, vuln.Description, vuln.Location.File)
+
+				if vuln.FixedVersion != "" {
+					comment += fmt.Sprintf("\n**Fixed Version:** %s", vuln.FixedVersion)
+				}
+				vulnComments = append(vulnComments, comment)
+			}
+		}
+
+		// Post single comment with all vulnerabilities
+		if len(vulnComments) > 0 {
+			fullComment := fmt.Sprintf("🚨 **Security Alert - %d vulnerabilities found**\n\n%s",
+				len(vulnComments), strings.Join(vulnComments, "\n\n---\n\n"))
+
+			if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), fullComment); err != nil {
+				h.logger.ErrorContext(ctx, "Failed to post security comment", "error", err)
+			}
+		}
+	}
+
+	// Complete the vulnerability check run
+	conclusion := services.ConclusionSuccess
+	result := services.CheckRunResult{
+		Title:   "Vulnerability Check - Passed",
+		Summary: fmt.Sprintf("Processed %d vulnerability findings", len(payloads)),
+		Text:    "All vulnerability policies passed.",
+	}
+
+	if !allPassed {
+		conclusion = services.ConclusionFailure
+		result = services.CheckRunResult{
+			Title:   "Vulnerability Check - Failed",
+			Summary: fmt.Sprintf("Found vulnerability violations in %d scan results", len(failureDetails)),
+			Text:    fmt.Sprintf("Vulnerability violations found:\n\n%s", strings.Join(failureDetails, "\n")),
+		}
+	}
+	return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, conclusion, result)
 }
 
 // getEventInfo extracts common event information for logging using generics
