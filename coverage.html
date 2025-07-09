@@ -1,0 +1,3175 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>server: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/terrpan/polly/cmd/server/main.go (3.2%)</option>
+				
+				<option value="file1">github.com/terrpan/polly/internal/app/container.go (7.7%)</option>
+				
+				<option value="file2">github.com/terrpan/polly/internal/app/middleware.go (100.0%)</option>
+				
+				<option value="file3">github.com/terrpan/polly/internal/app/routes.go (0.0%)</option>
+				
+				<option value="file4">github.com/terrpan/polly/internal/app/server.go (0.0%)</option>
+				
+				<option value="file5">github.com/terrpan/polly/internal/clients/github.go (64.6%)</option>
+				
+				<option value="file6">github.com/terrpan/polly/internal/clients/opa.go (64.3%)</option>
+				
+				<option value="file7">github.com/terrpan/polly/internal/config/config.go (87.5%)</option>
+				
+				<option value="file8">github.com/terrpan/polly/internal/config/logger.go (0.0%)</option>
+				
+				<option value="file9">github.com/terrpan/polly/internal/handlers/health.go (63.6%)</option>
+				
+				<option value="file10">github.com/terrpan/polly/internal/handlers/webhook.go (16.7%)</option>
+				
+				<option value="file11">github.com/terrpan/polly/internal/otel/otel.go (0.0%)</option>
+				
+				<option value="file12">github.com/terrpan/polly/internal/services/checks.go (41.1%)</option>
+				
+				<option value="file13">github.com/terrpan/polly/internal/services/comment.go (84.6%)</option>
+				
+				<option value="file14">github.com/terrpan/polly/internal/services/health.go (67.4%)</option>
+				
+				<option value="file15">github.com/terrpan/polly/internal/services/policy.go (58.9%)</option>
+				
+				<option value="file16">github.com/terrpan/polly/internal/services/security.go (31.6%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "log"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "github.com/terrpan/polly/internal/app"
+        "github.com/terrpan/polly/internal/config"
+        "github.com/terrpan/polly/internal/otel"
+)
+
+func init() <span class="cov8" title="1">{
+        // initialize the config package
+        if err := config.InitConfig(); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to initialize config: %v", err)
+        }</span>
+
+}
+
+func main() <span class="cov0" title="0">{
+
+        ctx := context.Background()
+
+        // Setup OpenTelemetry
+        if config.AppConfig.OTLP.EnableOTLP </span><span class="cov0" title="0">{
+                ctx := context.Background()
+                shutdown, err := otel.SetupOTelSDK(ctx, "polly")
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Fatalf("Failed to setup OpenTelemetry: %v", err)
+                }</span>
+                <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                        if err := shutdown(ctx); err != nil </span><span class="cov0" title="0">{
+                                log.Printf("Error shutting down OpenTelemetry: %v", err)
+                        }</span>
+                }()
+        }
+
+        // Initialize the application container
+        <span class="cov0" title="0">container, err := app.NewContainer(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to initialize application container: %v", err)
+        }</span>
+
+        // Log application version and build info
+        <span class="cov0" title="0">container.Logger.Info("Starting polly server",
+                "version", config.AppConfig.Version,
+                "commit", config.AppConfig.Commit,
+                "build_time", config.AppConfig.BuildTime,
+                "port", config.AppConfig.Port,
+        )
+
+        // Set up HTTP server
+        server := app.NewServer(container)
+
+        // Start the server in a goroutine so it doesn't block
+        go func() </span><span class="cov0" title="0">{
+                if err := server.Start(); err != nil </span><span class="cov0" title="0">{
+                        container.Logger.Error("Failed to start server", "error", err)
+                        os.Exit(1)
+                }</span>
+        }()
+
+        // Wait for interrupt signal to gracefully shutdown
+        <span class="cov0" title="0">quit := make(chan os.Signal, 1)
+        signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+        &lt;-quit
+        container.Logger.Info("Shutting down server...")
+
+        // Shutdown the server gracefully
+        shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+        defer cancel()
+
+        // Shutdown server
+        if err := server.Shutdown(shutdownCtx); err != nil </span><span class="cov0" title="0">{
+                container.Logger.Error("Server forced to shutdown", "error", err)
+
+        }</span>
+
+        // Shutdown application container
+        <span class="cov0" title="0">if err := container.Shutdown(shutdownCtx); err != nil </span><span class="cov0" title="0">{
+                container.Logger.Error("Failed to shutdown container", "error", err)
+        }</span>
+
+        <span class="cov0" title="0">container.Logger.Info("Server exited")</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package app
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+
+        "github.com/terrpan/polly/internal/clients"
+        "github.com/terrpan/polly/internal/config"
+        "github.com/terrpan/polly/internal/handlers"
+        "github.com/terrpan/polly/internal/services"
+)
+
+// Container holds all application dependencies
+type Container struct {
+        Logger *slog.Logger
+
+        // Clients
+        GitHubClient *clients.GitHubClient
+        OpaClient    *clients.OPAClient
+
+        // Services
+        CommentService  *services.CommentService
+        HealthService   *services.HealthService
+        CheckService    *services.CheckService
+        PolicyService   *services.PolicyService
+        SecurityService *services.SecurityService
+
+        // Handlers
+        WebhookHandler *handlers.WebhookHandler
+        HealthHandler  *handlers.HealthHandler
+}
+
+// NewContainer initializes a new Container with all dependencies
+func NewContainer(ctx context.Context) (*Container, error) <span class="cov0" title="0">{
+        c := &amp;Container{}
+
+        c.Logger = config.NewLogger()
+        c.Logger.Info("Initializing application container")
+
+        // Initialize clients
+        var err error
+        if config.IsGitHubAppConfigured() </span><span class="cov0" title="0">{
+                c.Logger.Info("Using GitHub App authentication")
+                githubConfig, err := config.LoadGitHubAppConfig()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to load GitHub App config: %w", err)
+                }</span>
+
+                <span class="cov0" title="0">c.GitHubClient, err = clients.NewGitHubAppClient(ctx, *githubConfig)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to create GitHub App client: %w", err)
+                }</span>
+        } else<span class="cov0" title="0"> if config.AppConfig.GitHubToken != "" </span><span class="cov0" title="0">{
+                c.Logger.Info("Using Personal Access Token authentication")
+                c.GitHubClient = clients.NewGitHubClient(ctx)
+                if err := c.GitHubClient.Authenticate(ctx, config.AppConfig.GitHubToken); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to authenticate GitHub client: %w", err)
+                }</span>
+        } else<span class="cov0" title="0"> {
+                return nil, fmt.Errorf("no GitHub authentication configured (need either GitHub App or PAT)")
+        }</span>
+
+        <span class="cov0" title="0">c.Logger.Info("GitHub client initialized")
+
+        // Initialize OPA client
+        c.OpaClient, err = clients.NewOPAClient(config.AppConfig.Opa.ServerURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create OPA client: %w", err)
+        }</span>
+        <span class="cov0" title="0">c.Logger.Info("OPA client initialized")
+
+        // Initialize services
+        c.CommentService = services.NewCommentService(c.GitHubClient, c.Logger)
+        c.HealthService = services.NewHealthService(c.Logger, c.OpaClient)
+        c.CheckService = services.NewCheckService(c.GitHubClient, c.Logger)
+        c.PolicyService = services.NewPolicyService(c.OpaClient, c.Logger)
+        c.SecurityService = services.NewSecurityService(c.GitHubClient, c.Logger)
+        c.Logger.Info("Services initialized",
+                "comment_service", c.CommentService,
+                "health_service", c.HealthService,
+                "check_service", c.CheckService,
+                "policy_service", c.PolicyService,
+                "security_service", c.SecurityService,
+        )
+
+        // Initialize handlers
+        c.WebhookHandler, err = handlers.NewWebhookHandler(
+                c.Logger,
+                c.CommentService,
+                c.CheckService,
+                c.PolicyService,
+                c.SecurityService,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                c.Logger.Error("Failed to create webhook handler", "error", err)
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">c.HealthHandler = handlers.NewHealthHandler(c.Logger, c.HealthService)
+        c.Logger.Info("Handlers initialized", "webhook_handler", c.WebhookHandler, "health_handler", c.HealthHandler)
+        return c, nil</span>
+}
+
+// Shutdown gracefully stops the container and its dependencies
+func (c *Container) Shutdown(ctx context.Context) error <span class="cov8" title="1">{
+        c.Logger.Info("Shutting down application container")
+
+        // Perform any necessary cleanup for services or clients here
+        // For example, if the GitHub client has a close method, call it
+
+        c.Logger.Info("Application container shutdown complete")
+        return nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package app
+
+import "net/http"
+
+// jsonContentType is a constant for the Content-Type header value used in the middleware
+const jsonContent = "application/json"
+
+// jsonContentMiddleware is a middleware that sets the Content-Type header to application/json
+func jsonContentTypeMiddleware(next http.HandlerFunc) http.HandlerFunc <span class="cov8" title="1">{
+        return func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                w.Header().Set("Content-Type", jsonContent)
+                next.ServeHTTP(w, r)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package app
+
+import "net/http"
+
+// setupRoutes configures all HTTP routes for the application.
+func setupRoutes(mux *http.ServeMux, container *Container) <span class="cov0" title="0">{
+        // Register the webhook handler
+        mux.HandleFunc("/webhook", jsonContentTypeMiddleware(container.WebhookHandler.HandleWebhook))
+
+        // Register the health check handler
+        mux.HandleFunc("/health", jsonContentTypeMiddleware(container.HealthHandler.HandleHealthCheck))
+        // Add any additional routes here as needed
+        // e.g., mux.HandleFunc("/api/v1/resource", jsonContentTypeMiddleware(container.ResourceHandler.HandleResource))
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package app
+
+import (
+        "context"
+        "fmt"
+        "net/http"
+        "time"
+
+        "github.com/terrpan/polly/internal/config"
+        "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+)
+
+// Server wraps the HTTP server with our container
+type Server struct {
+        httpServer *http.Server
+        container  *Container
+}
+
+// NewServer creates a new HTTP server with all routes configured
+func NewServer(container *Container) *Server <span class="cov0" title="0">{
+        mux := http.NewServeMux()
+
+        // Setup all routes
+        setupRoutes(mux, container)
+
+        httpServer := &amp;http.Server{
+                Addr: fmt.Sprintf(":%d", config.AppConfig.Port),
+                // Handler:      mux,
+                Handler:      otelhttp.NewHandler(mux, "polly-server"), // Auto-instrumentation
+                ReadTimeout:  15 * time.Second,
+                WriteTimeout: 15 * time.Second,
+                IdleTimeout:  60 * time.Second,
+        }
+
+        return &amp;Server{
+                httpServer: httpServer,
+                container:  container,
+        }
+}</span>
+
+// Start runs the HTTP server
+func (s *Server) Start() error <span class="cov0" title="0">{
+        s.container.Logger.Info("Starting server", "port", config.AppConfig.Port)
+        if err := s.httpServer.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
+                s.container.Logger.Error("Failed to start server", "error", err)
+                return err
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Shutdown gracefully shuts down the HTTP server
+func (s *Server) Shutdown(ctx context.Context) error <span class="cov0" title="0">{
+        s.container.Logger.Info("Stopping server")
+        if err := s.httpServer.Shutdown(ctx); err != nil </span><span class="cov0" title="0">{
+                s.container.Logger.Error("Failed to shut down server", "error", err)
+                return err
+        }</span>
+        <span class="cov0" title="0">s.container.Logger.Info("Server shut down successfully")
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package clients
+
+import (
+        "context"
+        "fmt"
+        "io"
+        "net/http"
+        "time"
+
+        "github.com/bradleyfalzon/ghinstallation/v2"
+        "github.com/google/go-github/v72/github"
+        "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+)
+
+type GitHubClient struct {
+        client *github.Client
+        // httpClient *http.Client
+}
+
+// GitHubAppConfig holds the configuration for GitHub App authentication
+type GitHubAppConfig struct {
+        AppID          int64
+        InstallationID int64
+        PrivateKey     []byte
+}
+
+// NewGitHubClient initializes a new GitHub client.
+func NewGitHubClient(ctx context.Context) *GitHubClient <span class="cov8" title="1">{
+        client := github.NewClient(nil) // Use nil for unauthenticated requests; replace with an authenticated client if needed.
+        return &amp;GitHubClient{
+                client: client,
+        }
+}</span>
+
+// NewGitHubAppClient initializes a new GitHub client for GitHub App authentication.
+func NewGitHubAppClient(ctx context.Context, config GitHubAppConfig) (*GitHubClient, error) <span class="cov8" title="1">{
+        // Create a GitHub app transport
+        transport, err := ghinstallation.New(
+                otelhttp.NewTransport(http.DefaultTransport), // Wrap the default transport with OpenTelemetry instrumentation
+                // http.DefaultTransport,
+                config.AppID,
+                config.InstallationID,
+                config.PrivateKey,
+        )
+
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to create GitHub app transport: %w", err)
+        }</span>
+        // Create a new GitHub client with the app transport
+        <span class="cov0" title="0">httpClient := &amp;http.Client{Transport: transport}
+        client := github.NewClient(httpClient)
+        return &amp;GitHubClient{
+                client: client,
+                // httpClient: httpClient,
+        }, nil</span>
+}
+
+// Authenticate authenticates the GitHub client using a personal access token.
+func (c *GitHubClient) Authenticate(ctx context.Context, token string) error <span class="cov8" title="1">{
+        if token == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("authentication token is required")
+        }</span>
+
+        <span class="cov8" title="1">c.client = github.NewTokenClient(ctx, token)
+        return nil</span>
+}
+
+// GetPullRequest retrieves a pull request by its number from the specified repository.
+func (c *GitHubClient) GetPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, error) <span class="cov8" title="1">{
+        pr, _, err := c.client.PullRequests.Get(ctx, owner, repo, number)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return pr, nil</span>
+}
+
+// WriteComment writes a comment on a pull request.
+func (c *GitHubClient) WriteComment(ctx context.Context, owner, repo string, number int, comment string) error <span class="cov8" title="1">{
+        _, _, err := c.client.Issues.CreateComment(ctx, owner, repo, number, &amp;github.IssueComment{Body: &amp;comment})
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to write comment: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// CreateCheckRun creates a check run for a given commit SHA in a repository.
+func (c *GitHubClient) CreateCheckRun(ctx context.Context, owner, repo, sha, name string) (*github.CheckRun, error) <span class="cov8" title="1">{
+        opts := github.CreateCheckRunOptions{
+                Name:    name,
+                HeadSHA: sha,
+                Status:  github.Ptr("queued"),
+                StartedAt: &amp;github.Timestamp{
+                        Time: time.Now(),
+                },
+        }
+
+        checkRun, _, err := c.client.Checks.CreateCheckRun(ctx, owner, repo, opts)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to create check run: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return checkRun, nil</span>
+}
+
+// UpdateCheckRun updates an existing check run with the given ID.
+func (c *GitHubClient) UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, name, status string, conclusion *string, output *github.CheckRunOutput) error <span class="cov8" title="1">{
+        opts := github.UpdateCheckRunOptions{
+                Name:   name,
+                Status: github.Ptr(status),
+        }
+
+        // Only set conclusion and completed_at for completed checks
+        if conclusion != nil </span><span class="cov8" title="1">{
+                opts.Conclusion = conclusion
+                opts.CompletedAt = &amp;github.Timestamp{
+                        Time: time.Now(),
+                }
+        }</span>
+
+        // Add detailed output if provided
+        <span class="cov8" title="1">if output != nil </span><span class="cov0" title="0">{
+                opts.Output = output
+        }</span>
+
+        <span class="cov8" title="1">_, _, err := c.client.Checks.UpdateCheckRun(ctx, owner, repo, checkRunID, opts)
+        if err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("failed to update check run: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetCheckRun retrieves a check run by its ID from the specified repository.
+func (c *GitHubClient) GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*github.CheckRun, error) <span class="cov8" title="1">{
+        checkRun, _, err := c.client.Checks.GetCheckRun(ctx, owner, repo, checkRunID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get check run: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return checkRun, nil</span>
+}
+
+// ListCheckRuns lists all check runs for a given commit SHA in a repository.
+func (c *GitHubClient) ListCheckRuns(ctx context.Context, owner, repo, sha string) ([]*github.CheckRun, error) <span class="cov8" title="1">{
+        checkRuns, _, err := c.client.Checks.ListCheckRunsForRef(ctx, owner, repo, sha, nil)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list check runs: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return checkRuns.CheckRuns, nil</span>
+}
+
+// ListWorkflowArtifacts lists all artifacts for a given workflow run in a repository.
+func (c *GitHubClient) ListWorkflowArtifacts(ctx context.Context, owner, repo string, workflowID int64) ([]*github.Artifact, error) <span class="cov8" title="1">{
+        var allArtifacts []*github.Artifact
+
+        opts := &amp;github.ListOptions{
+                Page:    1,
+                PerPage: 100, // Adjust as needed
+        }
+
+        for </span><span class="cov8" title="1">{
+                artifacts, resp, err := c.client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, workflowID, opts)
+                if err != nil </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("failed to list workflow artifacts: %w", err)
+                }</span>
+
+                <span class="cov8" title="1">allArtifacts = append(allArtifacts, artifacts.Artifacts...)
+
+                if resp.NextPage == 0 </span><span class="cov8" title="1">{
+                        break</span>
+                }
+                <span class="cov0" title="0">opts.Page = resp.NextPage</span>
+        }
+
+        <span class="cov8" title="1">return allArtifacts, nil</span>
+}
+
+// DownloadArtifact downloads a specific artifact by its ID from a workflow run.
+func (c *GitHubClient) DownloadArtifact(ctx context.Context, owner, repo string, artifactID int64) ([]byte, error) <span class="cov0" title="0">{
+        const maxArtifactSize = 100 * 1024 * 1024 // 100 MB limit
+
+        // Get artifact metadata to check size
+        artifact, _, err := c.client.Actions.GetArtifact(ctx, owner, repo, artifactID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get artifact metadata: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if artifact.GetSizeInBytes() &gt; maxArtifactSize </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("artifact size exceeds maximum limit of %d bytes", maxArtifactSize)
+        }</span>
+
+        // Download the artifact
+        <span class="cov0" title="0">url, _, err := c.client.Actions.DownloadArtifact(ctx, owner, repo, artifactID, 2)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to download artifact: %w", err)
+        }</span>
+
+        // Use a clean HTTP client for downloading (Azure blob storage doesn't need GitHub auth)
+        <span class="cov0" title="0">httpClient := &amp;http.Client{
+                Timeout: 60 * time.Second,
+        }
+
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create download request: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">resp, err := httpClient.Do(req) // Use a clean HTTP client for downloading
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to perform download request: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to download artifact: received status code %d", resp.StatusCode)
+        }</span>
+
+        // Limit reader to prevent excessive memory usage
+        <span class="cov0" title="0">limitedReader := io.LimitReader(resp.Body, maxArtifactSize)
+        content, err := io.ReadAll(limitedReader)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read artifact content: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return content, nil</span>
+}
+
+// GetArtifact gets metadata about a specific artifact
+func (c *GitHubClient) GetArtifact(ctx context.Context, owner, repo string, artifactID int64) (*github.Artifact, error) <span class="cov8" title="1">{
+        artifact, _, err := c.client.Actions.GetArtifact(ctx, owner, repo, artifactID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to get artifact: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return artifact, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package clients
+
+import (
+        "bytes"
+        "context"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "time"
+
+        "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+)
+
+type OPAClient struct {
+        BaseURL    string
+        HTTPClient *http.Client
+}
+
+// NewOPAClient initializes a new OPA client with the provided base URL and HTTP client.
+func NewOPAClient(baseURL string) (*OPAClient, error) <span class="cov8" title="1">{
+        if baseURL == "" </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("base URL cannot be empty")
+        }</span>
+        <span class="cov8" title="1">return &amp;OPAClient{
+                BaseURL: baseURL,
+                HTTPClient: &amp;http.Client{
+                        Transport: otelhttp.NewTransport(http.DefaultTransport),
+                        Timeout:   30 * time.Second, // Set a timeout for HTTP requests
+                },
+        }, nil</span>
+}
+
+// Do performs an HTTP request with the specified method and URL.
+func (c *OPAClient) Do(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) <span class="cov8" title="1">{
+        req, err := http.NewRequestWithContext(ctx, method, url, body)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return c.HTTPClient.Do(req)</span>
+}
+
+func (c *OPAClient) GetOpaHealth(ctx context.Context) (*http.Response, error) <span class="cov8" title="1">{
+        // Construct the health check URL
+        url := c.BaseURL + "/health"
+
+        // Make a GET request to the OPA health endpoint
+        return c.Do(ctx, http.MethodGet, url, nil)
+}</span>
+
+// evaluatePolicy evaluates a policy with the given input.
+func (c *OPAClient) EvaluatePolicy(ctx context.Context, policyPath string, payload interface{}) (*http.Response, error) <span class="cov0" title="0">{
+        // Construct the policy evaluation URL
+        url := c.BaseURL + policyPath
+
+        // Convert input to JSON
+        body, err := json.Marshal(payload)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to marshal input: %w", err)
+        }</span>
+
+        // Make a POST request to evaluate the policy
+        <span class="cov0" title="0">return c.Do(ctx, http.MethodPost, url, bytes.NewReader(body))</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package config
+
+import (
+        "fmt"
+        "os"
+        "reflect"
+        "strings"
+
+        "github.com/spf13/viper"
+        "github.com/terrpan/polly/internal/clients"
+)
+
+const (
+        envPrefix = "polly" // Prefix for application name used for environment variables
+)
+
+// Config represents the configuration of the application. Each field corresponds to a configuration option
+type Config struct {
+        Port int `mapstructure:"port"`
+
+        // GitHub App configuration
+        GitHubApp GitHubAppConfig `mapstructure:"github"`
+
+        // GitHub token for authentication used for development or testing
+        GitHubToken string `mapstructure:"github_token"`
+
+        // Build information
+        // These fields can be set at build time using -ldflags
+        Version   string
+        Commit    string
+        BuildTime string
+
+        Logger LoggerConfig `mapstructure:"logger"`
+
+        // OPA configuration
+        Opa OpaConfig `mapstructure:"opa"`
+
+        // OTLP configuration for OpenTelemetry
+        OTLP OTLPConfig `mapstructure:"otlp"`
+}
+
+// GitHubAppConfig represents the configuration for a GitHub App
+type GitHubAppConfig struct {
+        AppID          int64  `mapstructure:"app_id"`
+        InstallationID int64  `mapstructure:"installation_id"`
+        PrivateKeyPath string `mapstructure:"private_key_path"`
+        PrivateKey     string `mapstructure:"private_key"` // Direct PEM content
+}
+
+// LoggerConfig represents the configuration for the logger
+type LoggerConfig struct {
+        Level      string `mapstructure:"level"`
+        JSONOutput bool   `mapstructure:"json_output"`
+        AddSource  bool   `mapstructure:"add_source"`
+}
+
+type OpaConfig struct {
+        // OPA server URL
+        ServerURL string `mapstructure:"server_url"`
+        // OPA policy path
+        PolicyPath string `mapstructure:"policy_path"`
+        // OPA bundle path
+        BundlePath string `mapstructure:"bundle_path"`
+        // OPA bundle refresh interval
+        BundleRefreshInterval string `mapstructure:"bundle_refresh_interval"`
+}
+
+// OTLPConfig represents the configuration for OpenTelemetry
+type OTLPConfig struct {
+        EnableOTLP         bool `mapstructure:"enable_otlp"`
+        EnableOTLPExporter bool `mapstructure:"enable_otlp_exporter"` // TODO: Implement this
+        OTLPStdOut         bool `mapstructure:"otlp_stdout"`
+}
+
+var (
+        Version   = "v0.0.1"  // Default version, can be overridden by build flags
+        Commit    = "unknown" // Default commit hash, can be overridden by build flags
+        BuildTime = "unknown" // Default build time, can be overridden by build flags
+)
+
+var (
+        // AppConfig is the globally accessible config
+        AppConfig *Config
+        // defaultConfig holds the built-in defaults
+        defaultConfig = Config{
+                Version: "v0.0.1",
+                Port:    8080,
+                Logger: LoggerConfig{
+                        Level:      "debug",
+                        JSONOutput: true,
+                        AddSource:  false,
+                },
+                Opa: OpaConfig{
+                        ServerURL:             "http://localhost:8181",
+                        PolicyPath:            "/v1/policies",
+                        BundlePath:            "/v1/bundles",
+                        BundleRefreshInterval: "5m",
+                },
+                OTLP: OTLPConfig{
+                        EnableOTLP: true,
+                        OTLPStdOut: false,
+                },
+        }
+)
+
+// InitConfig initializes the configuration
+func InitConfig() error <span class="cov8" title="1">{
+        viper.SetEnvPrefix(envPrefix)
+        viper.AutomaticEnv()
+
+        // Configure Viper to handle nested structs
+        viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+        // Dynamically bind nested environment variables
+        bindNestedEnvVars()
+
+        // Dynamically set defaults from defaultConfig
+        tmp := defaultConfig
+        setDefaultsViaReflection(&amp;tmp)
+
+        AppConfig = &amp;Config{}
+        if err := viper.Unmarshal(AppConfig); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to unmarshal config: %w", err)
+        }</span>
+
+        // Set build info from ldflags variables
+        <span class="cov8" title="1">AppConfig.Version = Version
+        AppConfig.Commit = Commit
+        AppConfig.BuildTime = BuildTime
+
+        return nil</span>
+}
+
+// setDefaultsViaReflection reads each struct field's mapstructure tag
+// and calls viper.SetDefault(tag, value) for that field.
+func setDefaultsViaReflection(cfg interface{}) <span class="cov8" title="1">{
+        setDefaultsRecursive(reflect.ValueOf(cfg).Elem(), reflect.TypeOf(cfg).Elem(), "")
+}</span>
+
+// setDefaultsRecursive recursively sets defaults for nested structs
+func setDefaultsRecursive(val reflect.Value, typ reflect.Type, keyPrefix string) <span class="cov8" title="1">{
+        for i := 0; i &lt; val.NumField(); i++ </span><span class="cov8" title="1">{
+                fieldVal := val.Field(i)
+                fieldType := typ.Field(i)
+
+                // Skip unexported fields
+                if !fieldType.IsExported() </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">tag := fieldType.Tag.Get("mapstructure")
+                if tag == "" || tag == "-" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                // Build the viper key
+                <span class="cov8" title="1">var viperKey string
+                if keyPrefix == "" </span><span class="cov8" title="1">{
+                        viperKey = tag
+                }</span> else<span class="cov8" title="1"> {
+                        viperKey = keyPrefix + "." + tag
+                }</span>
+
+                // Handle nested structs
+                <span class="cov8" title="1">if fieldVal.Kind() == reflect.Struct </span><span class="cov8" title="1">{
+                        setDefaultsRecursive(fieldVal, fieldVal.Type(), viperKey)
+                }</span> else<span class="cov8" title="1"> {
+                        // Set the default value
+                        viper.SetDefault(viperKey, fieldVal.Interface())
+                }</span>
+        }
+}
+
+// GetDefaultConfig returns the default configuration. This is useful for testing or debugging.
+func GetDefaultConfig() *Config <span class="cov8" title="1">{
+        return &amp;defaultConfig
+}</span>
+
+// GetBuildInfo returns build information
+func GetBuildInfo() (version, commit, buildTime string) <span class="cov8" title="1">{
+        return Version, Commit, BuildTime
+}</span>
+
+// LoadGitHubAppConfig loads GitHub App configuration and returns a client config
+func LoadGitHubAppConfig() (*clients.GitHubAppConfig, error) <span class="cov8" title="1">{
+        appConfig := AppConfig.GitHubApp
+
+        if appConfig.AppID == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("GITHUB_APP_ID is required")
+        }</span>
+
+        <span class="cov8" title="1">if appConfig.InstallationID == 0 </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("GITHUB_INSTALLATION_ID is required")
+        }</span>
+
+        <span class="cov8" title="1">var privateKey []byte
+        var err error
+
+        // Try to load private key from direct content first
+        if appConfig.PrivateKey != "" </span><span class="cov0" title="0">{
+                privateKey = []byte(appConfig.PrivateKey)
+        }</span> else<span class="cov8" title="1"> if appConfig.PrivateKeyPath != "" </span><span class="cov0" title="0">{
+                // Load from file path
+                privateKey, err = os.ReadFile(appConfig.PrivateKeyPath)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to read private key file: %w", err)
+                }</span>
+        } else<span class="cov8" title="1"> {
+                return nil, fmt.Errorf("either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required")
+        }</span>
+
+        <span class="cov0" title="0">return &amp;clients.GitHubAppConfig{
+                AppID:          appConfig.AppID,
+                InstallationID: appConfig.InstallationID,
+                PrivateKey:     privateKey,
+        }, nil</span>
+}
+
+// IsGitHubAppConfigured checks if GitHub App configuration is available
+func IsGitHubAppConfigured() bool <span class="cov8" title="1">{
+        return AppConfig.GitHubApp.AppID != 0 &amp;&amp;
+                AppConfig.GitHubApp.InstallationID != 0 &amp;&amp;
+                (AppConfig.GitHubApp.PrivateKey != "" || AppConfig.GitHubApp.PrivateKeyPath != "")
+}</span>
+
+// bindNestedEnvVars dynamically binds nested environment variables to Viper keys using reflection
+func bindNestedEnvVars() <span class="cov8" title="1">{
+        bindStructEnvVars(reflect.TypeOf(Config{}), "", envPrefix)
+}</span>
+
+// bindStructEnvVars recursively binds struct fields to environment variables
+func bindStructEnvVars(structType reflect.Type, keyPrefix, envPrefix string) <span class="cov8" title="1">{
+        for i := 0; i &lt; structType.NumField(); i++ </span><span class="cov8" title="1">{
+                field := structType.Field(i)
+
+                // Skip unexported fields
+                if !field.IsExported() </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                // Get the mapstructure tag
+                <span class="cov8" title="1">tag := field.Tag.Get("mapstructure")
+                if tag == "" || tag == "-" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                // Build the viper key (dot-separated)
+                <span class="cov8" title="1">var viperKey string
+                if keyPrefix == "" </span><span class="cov8" title="1">{
+                        viperKey = tag
+                }</span> else<span class="cov8" title="1"> {
+                        viperKey = keyPrefix + "." + tag
+                }</span>
+
+                // Build the environment variable name (underscore-separated, uppercase)
+                <span class="cov8" title="1">envKey := envPrefix + "_" + strings.ToUpper(strings.ReplaceAll(viperKey, ".", "_"))
+
+                // Check if this field is a struct (nested configuration)
+                fieldType := field.Type
+                if fieldType.Kind() == reflect.Struct </span><span class="cov8" title="1">{
+                        // Recursively handle nested structs
+                        bindStructEnvVars(fieldType, viperKey, envPrefix)
+                }</span> else<span class="cov8" title="1"> {
+                        // Bind the environment variable to the viper key
+                        viper.BindEnv(viperKey, envKey)
+                }</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package config
+
+import (
+        "log/slog"
+        "os"
+)
+
+// NewLogger creates a new slog.Logger based on the application configuration.
+func NewLogger() *slog.Logger <span class="cov0" title="0">{
+        level := parseLogLevel(AppConfig.Logger.Level)
+
+        opts := &amp;slog.HandlerOptions{
+                Level:     level,
+                AddSource: AppConfig.Logger.AddSource,
+        }
+        var handler slog.Handler
+        if AppConfig.Logger.JSONOutput </span><span class="cov0" title="0">{
+                handler = slog.NewJSONHandler(os.Stdout, opts)
+        }</span> else<span class="cov0" title="0"> {
+                handler = slog.NewTextHandler(os.Stdout, opts)
+        }</span>
+        <span class="cov0" title="0">return slog.New(handler)</span>
+
+}
+
+// parseLogLevel parses the log level from a string and returns the corresponding slog.Level.
+// It supports "debug", "warn", "error", and defaults to "info" if the level is not recognized.
+func parseLogLevel(level string) slog.Level <span class="cov0" title="0">{
+        switch level </span>{
+        case "debug":<span class="cov0" title="0">
+                return slog.LevelDebug</span>
+        case "warn":<span class="cov0" title="0">
+                return slog.LevelWarn</span>
+        case "error":<span class="cov0" title="0">
+                return slog.LevelError</span>
+        default:<span class="cov0" title="0">
+                return slog.LevelInfo</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package handlers
+
+import (
+        "encoding/json"
+        "log/slog"
+        "net/http"
+
+        "github.com/terrpan/polly/internal/services"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+)
+
+type HealthHandler struct {
+        logger        *slog.Logger
+        healthService *services.HealthService
+}
+
+// NewHealthHandler initializes a new HealthHandler with the provided logger and health service.
+func NewHealthHandler(logger *slog.Logger, healthService *services.HealthService) *HealthHandler <span class="cov8" title="1">{
+        return &amp;HealthHandler{
+                logger:        logger,
+                healthService: healthService,
+        }
+}</span>
+
+// HandleHealthCheck processes health check requests and returns the health status.
+func (h *HealthHandler) HandleHealthCheck(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        ctx := r.Context()
+        tracer := otel.Tracer("polly/handlers")
+        ctx, span := tracer.Start(ctx, "health.handle")
+        defer span.End()
+
+        h.logger.InfoContext(ctx, "Received health check request")
+
+        response := h.healthService.CheckHealth(ctx)
+        if response == nil </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("error", "health check failed"))
+                h.logger.ErrorContext(ctx, "Health check failed")
+                http.Error(w, "Health check failed", http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">span.SetAttributes(
+                attribute.String("health.status", response.Status),
+                attribute.String("service.name", response.ServiceName),
+                attribute.String("service.version", response.Version),
+        )
+
+        if response.Status != "healthy" </span><span class="cov8" title="1">{
+                h.logger.WarnContext(ctx, "Health check indicates issues", "status", response.Status)
+                w.WriteHeader(http.StatusServiceUnavailable)
+        }</span> else<span class="cov0" title="0"> {
+                h.logger.InfoContext(ctx, "Health check successful", "status", response.Status)
+        }</span>
+
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                h.logger.ErrorContext(ctx, "Failed to encode health response", "error", err)
+                http.Error(w, "Failed to encode health response", http.StatusInternalServerError)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package handlers
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "net/http"
+        "strings"
+        "sync"
+
+        "github.com/go-playground/webhooks/v6/github"
+        gogithub "github.com/google/go-github/v72/github"
+        "github.com/terrpan/polly/internal/services"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+)
+
+// WebhookHandler handles incoming GitHub webhooks.
+type WebhookHandler struct {
+        logger          *slog.Logger
+        hook            *github.Webhook
+        commentService  *services.CommentService
+        checkService    *services.CheckService
+        policyService   *services.PolicyService
+        securityService *services.SecurityService
+
+        // In-memory cache for PR context store
+        prContextStore          map[string]int64 // sha -&gt; pr_number
+        vulnerabilityCheckStore map[string]int64 // sha -&gt; vulnerability_check_id
+        prContextMutex          sync.RWMutex     // RWMutex to protect the context store
+        vulnerabilityCheckMutex sync.RWMutex     // RWMutex to protect the vulnerability check store
+
+}
+
+// Setups a new WebhookHandler with the provided logger and initializes the GitHub webhook.
+// It currently does not support secret verification, but this can be added later.
+// It returns an error if the webhook cannot be initialized.
+func NewWebhookHandler(logger *slog.Logger, commentService *services.CommentService, checkService *services.CheckService, policyService *services.PolicyService, securityService *services.SecurityService) (*WebhookHandler, error) <span class="cov8" title="1">{
+        // TODO: Add support for secret verification
+        hook, err := github.New()
+
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return &amp;WebhookHandler{
+                logger:                  logger,
+                hook:                    hook,
+                commentService:          commentService,
+                checkService:            checkService,
+                policyService:           policyService,
+                securityService:         securityService,
+                prContextStore:          make(map[string]int64), // Initialize the PR context store
+                vulnerabilityCheckStore: make(map[string]int64), // Initialize the vulnerability check store
+
+        }, nil</span>
+}
+
+// HandleWebhook processes incoming GitHub webhook events.
+func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        ctx := r.Context()
+        tracer := otel.Tracer("polly/handlers")
+        ctx, span := tracer.Start(ctx, "webhook.handle")
+        defer span.End()
+
+        payload, err := h.hook.Parse(r, github.PullRequestEvent, github.CheckRunEvent, github.WorkflowRunEvent)
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                h.logger.Error("Failed to parse webhook", "error", err)
+                http.Error(w, "Failed to parse webhook", http.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov0" title="0">eventType := r.Header.Get("X-GitHub-Event")
+        h.logger.InfoContext(ctx, "Received webhook event", "event_type", eventType)
+
+        switch event := payload.(type) </span>{
+        case github.PullRequestPayload:<span class="cov0" title="0">
+                span.SetAttributes(attribute.String("event.type", eventType))
+                if err := h.handlePullRequestEvent(ctx, event); err != nil </span><span class="cov0" title="0">{
+                        span.SetAttributes(attribute.String("error", err.Error()))
+                        h.logger.Error("Failed to handle pull request event", "error", err)
+                        http.Error(w, "Failed to handle pull request event", http.StatusInternalServerError)
+                        return
+                }</span>
+
+        case github.CheckRunPayload:<span class="cov0" title="0">
+                span.SetAttributes(attribute.String("event.type", eventType))
+                if err := h.handleCheckRunEvent(ctx, event); err != nil </span><span class="cov0" title="0">{
+                        span.SetAttributes(attribute.String("error", err.Error()))
+                        h.logger.Error("Failed to handle check run event", "error", err)
+                        http.Error(w, "Failed to handle check run event", http.StatusInternalServerError)
+                        return
+                }</span>
+
+        case github.WorkflowRunPayload:<span class="cov0" title="0">
+                span.SetAttributes(attribute.String("event.type", eventType))
+                if err := h.handleWorkflowRunEvent(ctx, event); err != nil </span><span class="cov0" title="0">{
+                        span.SetAttributes(attribute.String("error", err.Error()))
+                        h.logger.Error("Failed to handle workflow run event", "error", err)
+                        http.Error(w, "Failed to handle workflow run event", http.StatusInternalServerError)
+                        return
+                }</span>
+
+        default:<span class="cov0" title="0">
+                span.SetAttributes(attribute.String("event.type", eventType))
+                h.logger.Warn("Unsupported event type", "event_type", eventType)
+                http.Error(w, "Unsupported event type", http.StatusBadRequest)
+                return</span>
+        }
+
+        <span class="cov0" title="0">w.WriteHeader(http.StatusOK)
+        w.Write([]byte("Webhook received successfully"))</span>
+}
+
+// handlePullRequestEvent processes pull request events.
+func (h *WebhookHandler) handlePullRequestEvent(ctx context.Context, event github.PullRequestPayload) error <span class="cov0" title="0">{
+        tracer := otel.Tracer("polly/handlers")
+        ctx, span := tracer.Start(ctx, "webhook.handle_pull_request")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("pr.action", event.Action),
+                attribute.Int64("pr.number", event.Number),
+        )
+
+        h.logger.InfoContext(ctx,
+                "Processing pull request event",
+                "action", event.Action,
+                "pr_number", event.Number,
+        )
+
+        if event.Action != "opened" &amp;&amp; event.Action != "reopened" </span><span class="cov0" title="0">{
+                h.logger.DebugContext(ctx, "Ignoring non-opened/reopened pull request event",
+                        "action", event.Action,
+                )
+                span.SetAttributes(attribute.String("result", "skipped"))
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">owner, repo, sha, id := getEventInfo(event)
+        span.SetAttributes(
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.String("github.sha", sha),
+                attribute.Int64("github.id", id),
+        )
+
+        h.logger.DebugContext(ctx, "Handling pull request event",
+                "owner", owner,
+                "repo", repo,
+                "sha", sha,
+                "id", id,
+        )
+
+        h.prContextMutex.Lock()
+        h.prContextStore[sha] = event.Number // Store the PR number in the context store
+        h.prContextMutex.Unlock()
+
+        // 1. Create a check run for the pull request
+        checkRun, err := h.createCheckRun(ctx, event)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to create check run",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "sha", sha,
+                )
+                return err
+        }</span>
+
+        // 2. Update status of the check run to "in_progress" and trigger OPA policy validation
+        <span class="cov0" title="0">h.logger.DebugContext(ctx, "Updating check run status to in_progress",
+                "owner", owner,
+                "repo", repo,
+                "sha", sha,
+        )
+        if err := h.checkService.StartPolicyCheck(
+                ctx,
+                owner,
+                repo,
+                checkRun.GetID(),
+        ); err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to start policy check",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "sha", sha,
+                )
+                return err
+        }</span>
+
+        // 3. Perform OPA policy validation
+        <span class="cov0" title="0">h.logger.DebugContext(ctx, "Performing OPA policy validation",
+                "owner", owner,
+                "repo", repo,
+                "sha", sha,
+        )
+
+        return h.validateAndCompletePolicyCheck(ctx, owner, repo, sha, checkRun.GetID())</span>
+}
+
+// handleCheckRunEvent processes check run events.
+// Used for handling rerequested check runs.
+func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.CheckRunPayload) error <span class="cov0" title="0">{
+        tracer := otel.Tracer("polly/handlers")
+        ctx, span := tracer.Start(ctx, "webhook.handle_check_run")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("check_run.action", event.Action),
+                attribute.Int64("check_run.id", event.CheckRun.ID),
+        )
+
+        h.logger.InfoContext(ctx,
+                "Processing check run event",
+                "action", event.Action,
+                "check_run_id", event.CheckRun.ID,
+        )
+
+        if event.Action != "rerequested" </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("result", "skipped"))
+                h.logger.DebugContext(ctx, "Ignoring non-rerequested check run event")
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">owner, repo, sha, checkRunID := getEventInfo(event)
+        span.SetAttributes(
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.String("github.sha", sha),
+                attribute.Int64("github.check_run_id", checkRunID),
+        )
+
+        h.logger.DebugContext(ctx, "Handling check run event",
+                "owner", owner,
+                "repo", repo,
+                "sha", sha,
+                "check_run_id", checkRunID,
+        )
+
+        // 1. Update status of the check run to "in_progress"
+        if err := h.checkService.StartPolicyCheck(
+                ctx,
+                owner,
+                repo,
+                checkRunID,
+        ); err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to start policy check",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "sha", sha,
+                        "check_run_id", checkRunID,
+                )
+                return err
+        }</span>
+
+        // 2. Validate policies and complete check run
+        <span class="cov0" title="0">return h.validateAndCompletePolicyCheck(ctx, owner, repo, sha, checkRunID)</span>
+}
+
+// handleWorkflowRunEvent processes workflow run events.
+// This is a placeholder for future functionality, currently it does nothing.
+func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event github.WorkflowRunPayload) error <span class="cov0" title="0">{
+        tracer := otel.Tracer("polly/handlers")
+        ctx, span := tracer.Start(ctx, "webhook.handle_workflow_run")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("workflow.name", event.Workflow.Name),
+                attribute.String("workflow.status", event.Workflow.State),
+                attribute.String("workflow.action", event.Action),
+                attribute.Int64("workflow.id", event.WorkflowRun.ID),
+                attribute.String("workflow.conclusion", event.WorkflowRun.Conclusion),
+        )
+
+        h.logger.InfoContext(ctx,
+                "Processing workflow run event",
+                "action", event.Action,
+                "workflow_run_id", event.WorkflowRun.ID,
+        )
+
+        owner, repo, sha, workflowRunID := getEventInfo(event)
+        span.SetAttributes(
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.String("github.sha", sha),
+                attribute.Int64("github.workflow_run_id", workflowRunID),
+        )
+
+        // Handle workflow start - create a pending security check run
+        if event.Action == "requested" || event.Action == "in_progress" </span><span class="cov0" title="0">{
+                return h.handleWorkflowStarted(ctx, event, owner, repo, sha, workflowRunID)
+        }</span>
+
+        // Handle workflow completion - process security artifacts
+        <span class="cov0" title="0">if event.Action == "completed" </span><span class="cov0" title="0">{
+                return h.handleWorkflowCompleted(ctx, event, owner, repo, sha, workflowRunID)
+        }</span>
+
+        // Ignore other actions
+        <span class="cov0" title="0">span.SetAttributes(attribute.String("result", "skipped"))
+        h.logger.DebugContext(ctx, "Ignoring workflow run event with unsupported action",
+                "action", event.Action,
+        )
+        return nil</span>
+}
+
+// handleWorkflowStarted creates a pending security check when a workflow starts
+func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github.WorkflowRunPayload, owner, repo, sha string, workflowRunID int64) error <span class="cov0" title="0">{
+        h.logger.InfoContext(ctx, "Workflow started - creating pending security check",
+                "owner", owner,
+                "repo", repo,
+                "workflow_name", event.Workflow.Name,
+                "workflow_run_id", workflowRunID,
+        )
+
+        // Get PR number from stored context
+        h.prContextMutex.RLock()
+        prNumber, exists := h.prContextStore[sha]
+        h.prContextMutex.RUnlock()
+
+        if !exists </span><span class="cov0" title="0">{
+                h.logger.DebugContext(ctx, "No PR context found for SHA - skipping security check creation",
+                        "sha", sha,
+                )
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">h.logger.InfoContext(ctx, "Found PR context for security check",
+                "sha", sha,
+                "pr_number", prNumber,
+        )
+
+        // Create security check run in pending state
+        checkRun, err := h.checkService.CreateVulnerabilityCheck(ctx, owner, repo, sha)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to create security check run",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "sha", sha,
+                )
+                return err
+        }</span>
+
+        // Mark it as pending (waiting for workflow to complete)
+        <span class="cov0" title="0">if err := h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRun.GetID()); err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to start vulnerability check",
+                        "error", err,
+                        "check_run_id", checkRun.GetID(),
+                )
+                return err
+        }</span>
+
+        // Store the security check run ID for later retrieval
+        <span class="cov0" title="0">h.vulnerabilityCheckMutex.Lock()
+        h.vulnerabilityCheckStore[sha] = checkRun.GetID()
+        h.vulnerabilityCheckMutex.Unlock()
+
+        h.logger.InfoContext(ctx, "Created pending vulnerability check run",
+                "check_run_id", checkRun.GetID(),
+                "pr_number", prNumber,
+        )
+
+        return nil</span>
+}
+
+// handleWorkflowCompleted processes security artifacts when a workflow completes
+func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event github.WorkflowRunPayload, owner, repo, sha string, workflowRunID int64) error <span class="cov0" title="0">{
+        // Only process successful workflows
+        if event.WorkflowRun.Conclusion != "success" </span><span class="cov0" title="0">{
+                h.logger.DebugContext(ctx, "Handling workflow run event with non-success conclusion as a failed workflow",
+                        "conclusion", event.WorkflowRun.Conclusion,
+                )
+
+                // If workflow failed, we should complete any pending vulnerability checks as "neutral"
+                return h.completeVulnerabilityCheckAsNeutral(ctx, owner, repo, sha)
+        }</span>
+
+        <span class="cov0" title="0">if event.WorkflowRun.ArtifactsURL == "" </span><span class="cov0" title="0">{
+                h.logger.DebugContext(ctx, "Ignoring workflow run event with no artifacts URL",
+                        "artifacts_url", event.WorkflowRun.ArtifactsURL,
+                )
+                return h.completeVulnerabilityCheckAsNeutral(ctx, owner, repo, sha)
+        }</span>
+
+        <span class="cov0" title="0">h.logger.InfoContext(ctx, "Processing workflow security artifacts",
+                "owner", owner,
+                "repo", repo,
+                "workflow_name", event.Workflow.Name,
+                "workflow_run_id", workflowRunID,
+        )
+
+        // Process security artifacts
+        payloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(ctx, owner, repo, sha, workflowRunID)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to process workflow security artifacts",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "workflow_run_id", workflowRunID,
+                )
+                return fmt.Errorf("failed to process security artifacts: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if len(payloads) == 0 </span><span class="cov0" title="0">{
+                h.logger.InfoContext(ctx, "No security artifacts found for workflow run",
+                        "owner", owner,
+                        "repo", repo,
+                        "workflow_run_id", workflowRunID,
+                )
+
+                // Complete any pending security checks as "neutral" (no security artifacts to evaluate)
+                return h.completeVulnerabilityCheckAsNeutral(ctx, owner, repo, sha)
+        }</span>
+
+        // Get PR number from stored context
+        <span class="cov0" title="0">h.prContextMutex.RLock()
+        prNumber, exists := h.prContextStore[sha]
+        h.prContextMutex.RUnlock()
+
+        if !exists </span><span class="cov0" title="0">{
+                h.logger.DebugContext(ctx, "No PR context found for SHA",
+                        "sha", sha,
+                )
+                return nil
+        }</span>
+
+        // Find the existing security check run for this SHA
+        <span class="cov0" title="0">checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to find security check run",
+                        "error", err,
+                        "sha", sha,
+                )
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if checkRunID == 0 </span><span class="cov0" title="0">{
+                h.logger.WarnContext(ctx, "No security check run found for SHA",
+                        "sha", sha,
+                )
+                return nil
+        }</span>
+
+        // Process and evaluate vulnerability payloads
+        <span class="cov0" title="0">return h.processVulnerabilityPayloads(ctx, payloads, owner, repo, sha, prNumber, checkRunID)</span>
+}
+
+// completeVulnerabilityCheckAsNeutral completes vulnerability checks as neutral when no artifacts are found
+func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(ctx context.Context, owner, repo, sha string) error <span class="cov8" title="1">{
+        checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to find security check run",
+                        "error", err,
+                        "sha", sha,
+                )
+                return nil // Don't fail if we can't find the check run
+        }</span>
+
+        <span class="cov8" title="1">if checkRunID == 0 </span><span class="cov8" title="1">{
+                return nil // No security check run to complete
+        }</span>
+
+        <span class="cov0" title="0">return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)</span>
+}
+
+// findVulnerabilityCheckRun finds an existing vulnerability check run for the given SHA
+func (h *WebhookHandler) findVulnerabilityCheckRun(ctx context.Context, owner, repo, sha string) (int64, error) <span class="cov8" title="1">{
+        h.vulnerabilityCheckMutex.RLock()
+        checkRunID, exists := h.vulnerabilityCheckStore[sha]
+        h.vulnerabilityCheckMutex.RUnlock()
+
+        if !exists </span><span class="cov8" title="1">{
+                h.logger.DebugContext(ctx, "No security check run found for SHA",
+                        "sha", sha,
+                )
+                return 0, nil
+        }</span>
+
+        <span class="cov8" title="1">h.logger.DebugContext(ctx, "Found security check run for SHA",
+                "sha", sha,
+                "check_run_id", checkRunID,
+        )
+
+        return checkRunID, nil</span>
+}
+
+// createCheckRun is a helper function to create a check run for the pull request.
+func (h *WebhookHandler) createCheckRun(ctx context.Context, event github.PullRequestPayload) (*gogithub.CheckRun, error) <span class="cov0" title="0">{
+        h.logger.DebugContext(ctx, "Creating check run for pull request",
+                "owner", event.Repository.Owner.Login,
+                "repo", event.Repository.Name,
+                "sha", event.PullRequest.Head.Sha,
+        )
+
+        checkRun, err := h.checkService.CreatePolicyCheck(
+                ctx,
+                event.Repository.Owner.Login,
+                event.Repository.Name,
+                event.PullRequest.Head.Sha,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to create policy check",
+                        "error", err,
+                        "owner", event.Repository.Owner.Login,
+                        "repo", event.Repository.Name,
+                        "sha", event.PullRequest.Head.Sha,
+                )
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return checkRun, nil</span>
+}
+
+// buildCheckrunResult builds the check run result based on policy validation outome.
+func (h *WebhookHandler) buildCheckRunResult(policyPassed bool, policyError error) (services.CheckRunConclusion, services.CheckRunResult) <span class="cov8" title="1">{
+        if policyError != nil </span><span class="cov8" title="1">{
+                return services.ConclusionFailure, services.CheckRunResult{
+                        Title:   "OPA Policy Check - Error",
+                        Summary: "Policy validation failed due to error",
+                        Text:    fmt.Sprintf("Error: %v", policyError),
+                }
+        }</span>
+        <span class="cov8" title="1">if policyPassed </span><span class="cov8" title="1">{
+                return services.ConclusionSuccess, services.CheckRunResult{
+                        Title:   "OPA Policy Check - Passed",
+                        Summary: "All policies passed",
+                        Text:    "The hello policy validation succeeded.",
+                }
+        }</span>
+        <span class="cov8" title="1">return services.ConclusionFailure, services.CheckRunResult{
+                Title:   "OPA Policy Check - Failed",
+                Summary: "Policy validation failed",
+                Text:    "The hello policy validation failed.",
+        }</span>
+}
+
+// validateAndCompletePolicyCheck performs policy validation and completes the check run
+func (h *WebhookHandler) validateAndCompletePolicyCheck(ctx context.Context, owner, repo, sha string, checkRunID int64) error <span class="cov0" title="0">{
+        h.logger.DebugContext(ctx, "Validating policies and completing check run",
+                "owner", owner,
+                "repo", repo,
+                "sha", sha,
+                "check_run_id", checkRunID,
+        )
+
+        helloInput := services.HelloInput{Message: "hello"}
+        policyPassed, err := h.policyService.CheckHelloPolicy(ctx, helloInput)
+        if err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Policy validation failed", "error", err)
+                return h.completePolicyCheckWithResult(ctx, owner, repo, checkRunID, false, err)
+        }</span>
+
+        <span class="cov0" title="0">return h.completePolicyCheckWithResult(ctx, owner, repo, checkRunID, policyPassed, nil)</span>
+}
+
+// completePolicyCheckWithResult completes the check run with the given policy result.
+func (h *WebhookHandler) completePolicyCheckWithResult(ctx context.Context, owner, repo string, checkRunID int64, policyPassed bool, policyError error) error <span class="cov0" title="0">{
+        conclusion, result := h.buildCheckRunResult(policyPassed, policyError)
+        if err := h.checkService.CompletePolicyCheck(
+                ctx,
+                owner,
+                repo,
+                checkRunID,
+                conclusion,
+                result,
+        ); err != nil </span><span class="cov0" title="0">{
+                h.logger.ErrorContext(ctx, "Failed to complete policy check",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "check_run_id", checkRunID,
+                )
+                return err
+        }</span>
+        <span class="cov0" title="0">h.logger.InfoContext(ctx, "Policy check completed",
+                "owner", owner,
+                "repo", repo,
+                "check_run_id", checkRunID,
+                "conclusion", conclusion,
+                "result", result,
+        )
+        return nil</span>
+}
+
+// processVulnerabilityPayloads evaluates vulnerability payloads and completes the check run
+func (h *WebhookHandler) processVulnerabilityPayloads(ctx context.Context, payloads []*services.VulnerabilityPayload, owner, repo, sha string, prNumber int64, checkRunID int64) error <span class="cov0" title="0">{
+        allPassed := true
+        var failureDetails []string
+        var allNonCompliantVulns []services.VulnerabilityPolicyVuln
+
+        for _, payload := range payloads </span><span class="cov0" title="0">{
+                h.logger.DebugContext(ctx, "Processing vulnerability payload",
+                        "owner", owner,
+                        "repo", repo,
+                        "sha", sha,
+                        "payload_summary", payload.Summary,
+                )
+
+                // Use the full payload as input to OPA policy for richer context
+                policyResult, err := h.policyService.CheckVulnerabilityPolicy(ctx, payload)
+                if err != nil </span><span class="cov0" title="0">{
+                        h.logger.ErrorContext(ctx, "Failed to evaluate vulnerability policy", "error", err)
+                        // Fall back to simple logic if OPA fails
+                        if payload.Summary.Critical &gt; 0 || payload.Summary.High &gt; 0 </span><span class="cov0" title="0">{
+                                allPassed = false
+                                failureDetails = append(failureDetails,
+                                        fmt.Sprintf("Found %d critical and %d high severity vulnerabilities (policy evaluation failed)",
+                                                payload.Summary.Critical, payload.Summary.High))
+                        }</span>
+                        <span class="cov0" title="0">continue</span>
+                }
+
+                // Use OPA policy result
+                <span class="cov0" title="0">if !policyResult.Compliant </span><span class="cov0" title="0">{
+                        allPassed = false
+                        failureDetails = append(failureDetails,
+                                fmt.Sprintf("Policy violation: %d non-compliant vulnerabilities out of %d total",
+                                        policyResult.NonCompliantCount, policyResult.TotalVulnerabilities))
+
+                        // Collect non-compliant vulnerabilities for comments
+                        allNonCompliantVulns = append(allNonCompliantVulns, policyResult.NonCompliantVulnerabilities...)
+                }</span>
+        }
+
+        // Post comment with policy violations if any
+        <span class="cov0" title="0">if len(allNonCompliantVulns) &gt; 0 </span><span class="cov0" title="0">{
+                fullComment := h.buildVulnerabilityViolationComment(allNonCompliantVulns)
+                if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), fullComment); err != nil </span><span class="cov0" title="0">{
+                        h.logger.ErrorContext(ctx, "Failed to post vulnerability comment", "error", err)
+                }</span>
+        }
+
+        // Complete the vulnerability check run
+        <span class="cov0" title="0">conclusion := services.ConclusionSuccess
+        result := services.CheckRunResult{
+                Title:   "Vulnerability Check - Passed",
+                Summary: fmt.Sprintf("Processed %d vulnerability findings", len(payloads)),
+                Text:    "All vulnerability policies passed.",
+        }
+
+        if !allPassed </span><span class="cov0" title="0">{
+                conclusion = services.ConclusionFailure
+                result = services.CheckRunResult{
+                        Title:   "Vulnerability Check - Failed",
+                        Summary: fmt.Sprintf("Found vulnerability violations in %d scan results", len(failureDetails)),
+                        Text:    fmt.Sprintf("Vulnerability violations found:\n\n%s", strings.Join(failureDetails, "\n")),
+                }
+        }</span>
+        <span class="cov0" title="0">return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, conclusion, result)</span>
+}
+
+// buildVulnerabilityViolationComment generates a markdown comment for vulnerability policy violations.
+func (h *WebhookHandler) buildVulnerabilityViolationComment(vulns []services.VulnerabilityPolicyVuln) string <span class="cov8" title="1">{
+        vulnComments := make([]string, 0, len(vulns))
+        for _, vuln := range vulns </span><span class="cov8" title="1">{
+                comment := fmt.Sprintf("**Package:** `%s@%s`\n**Vulnerability:** %s\n**Severity:** %s",
+                        vuln.Package, vuln.Version, vuln.ID, vuln.Severity)
+
+                if vuln.Score &gt; 0 </span><span class="cov8" title="1">{
+                        comment += fmt.Sprintf("\n**CVSS Score:** %.1f", vuln.Score)
+                }</span>
+                <span class="cov8" title="1">vulnComments = append(vulnComments, comment)</span>
+        }
+        <span class="cov8" title="1">return fmt.Sprintf("🚨 **Vulnerability Policy Violation - %d vulnerabilities blocked**\n\n&lt;details&gt;\n&lt;summary&gt;Click to view policy violation details&lt;/summary&gt;\n\n%s\n\n&lt;/details&gt;",
+                len(vulnComments), strings.Join(vulnComments, "\n\n---\n\n"))</span>
+}
+
+// getEventInfo extracts common event information for logging using generics
+func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](event T) (owner, repo, sha string, ID int64) <span class="cov0" title="0">{
+        // We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.
+        switch e := any(event).(type) </span>{
+        case github.PullRequestPayload:<span class="cov0" title="0">
+                return e.Repository.Owner.Login, e.Repository.Name, e.PullRequest.Head.Sha, e.PullRequest.ID</span>
+        case github.CheckRunPayload:<span class="cov0" title="0">
+                return e.Repository.Owner.Login, e.Repository.Name, e.CheckRun.HeadSHA, e.CheckRun.ID</span>
+        case github.WorkflowRunPayload:<span class="cov0" title="0">
+                return e.Repository.Owner.Login, e.Repository.Name, e.WorkflowRun.HeadSha, e.WorkflowRun.ID</span>
+        default:<span class="cov0" title="0">
+                // This should never happen due to type constraints, but just in case
+                return "", "", "", 0</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package otel
+
+import (
+        "context"
+        "errors"
+        "time"
+
+        "github.com/terrpan/polly/internal/config"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+        "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+        "go.opentelemetry.io/otel/sdk/resource"
+        "go.opentelemetry.io/otel/sdk/trace"
+        semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
+)
+
+func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(context.Context) error, err error) <span class="cov0" title="0">{
+        var shutdownFuncs []func(context.Context) error
+
+        shutdown = func(ctx context.Context) error </span><span class="cov0" title="0">{
+                var err error
+
+                for _, fn := range shutdownFuncs </span><span class="cov0" title="0">{
+                        err = errors.Join(err, fn(ctx))
+                }</span>
+
+                <span class="cov0" title="0">shutdownFuncs = nil
+                return err</span>
+        }
+
+        <span class="cov0" title="0">handleErr := func(inErr error) </span><span class="cov0" title="0">{
+                err = errors.Join(inErr, shutdown(ctx))
+        }</span>
+
+        <span class="cov0" title="0">tracerProvider, err := newTraceProvider(ctx, serviceName)
+        if err != nil </span><span class="cov0" title="0">{
+                handleErr(err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
+        otel.SetTracerProvider(tracerProvider)
+
+        return</span>
+}
+
+func newTraceProvider(ctx context.Context, serviceName string) (*trace.TracerProvider, error) <span class="cov0" title="0">{
+        traceExporter, err := otlptracehttp.New(ctx,
+                otlptracehttp.WithInsecure(), // This enables plain HTTP
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var traceStdOut trace.SpanExporter
+        if config.AppConfig.OTLP.OTLPStdOut </span><span class="cov0" title="0">{
+                traceStdOut, err = stdouttrace.New(stdouttrace.WithPrettyPrint())
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+
+        // Merge default resource with service name
+        <span class="cov0" title="0">res, err := resource.Merge(
+                resource.Default(),
+                resource.NewWithAttributes(
+                        semconv.SchemaURL,
+                        semconv.ServiceName(serviceName),
+                ),
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">traceProviderOptions := []trace.TracerProviderOption{
+                trace.WithBatcher(traceExporter,
+                        trace.WithBatchTimeout(time.Second)),
+                trace.WithResource(res),
+        }
+
+        if traceStdOut != nil </span><span class="cov0" title="0">{
+                traceProviderOptions = append(traceProviderOptions, trace.WithBatcher(traceStdOut))
+        }</span>
+
+        <span class="cov0" title="0">traceProvider := trace.NewTracerProvider(traceProviderOptions...)
+        return traceProvider, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package services
+
+import (
+        "context"
+        "log/slog"
+
+        gogithub "github.com/google/go-github/v72/github"
+        "github.com/terrpan/polly/internal/clients"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+)
+
+type CheckService struct {
+        githubClient *clients.GitHubClient
+        logger       *slog.Logger
+}
+
+type CheckRunStatus string
+type CheckRunConclusion string
+type CheckRunType string
+
+const (
+        //Check Run Statuses
+        StatusQueued     CheckRunStatus = "queued"
+        StatusInProgress CheckRunStatus = "in_progress"
+        StatusCompleted  CheckRunStatus = "completed"
+
+        // Check Run Conclusions
+        ConclusionSuccess   CheckRunConclusion = "success"
+        ConclusionFailure   CheckRunConclusion = "failure"
+        ConclusionNeutral   CheckRunConclusion = "neutral"
+        ConclusionCancelled CheckRunConclusion = "cancelled"
+        ConclusionSkipped   CheckRunConclusion = "skipped"
+        ConclusionTimedOut  CheckRunConclusion = "timed_out"
+
+        // Check Run Types
+        CheckRunTypePolicy        CheckRunType = "OPA Policy Check"
+        CheckRunTypeVulnerability CheckRunType = "Vulnerability Scan Check"
+)
+
+type CheckRunResult struct {
+        Success     bool
+        Title       string
+        Summary     string
+        Text        string
+        Annotations []gogithub.CheckRunAnnotation
+}
+
+// NewCheckService initializes a new CheckService with the provided GitHub client and logger.
+func NewCheckService(githubClient *clients.GitHubClient, logger *slog.Logger) *CheckService <span class="cov8" title="1">{
+        return &amp;CheckService{
+                githubClient: githubClient,
+                logger:       logger,
+        }
+}</span>
+
+// Generic method to create any type of check run
+func (s *CheckService) CreateCheckRun(ctx context.Context, owner, repo, sha string, checkType CheckRunType) (*gogithub.CheckRun, error) <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "checks.create_check_run")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.String("github.sha", sha),
+                attribute.String("check.type", string(checkType)),
+        )
+
+        checkRun, err := s.githubClient.CreateCheckRun(ctx, owner, repo, sha, string(checkType))
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                s.logger.ErrorContext(ctx, "Failed to create check run",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "sha", sha,
+                        "check_type", checkType,
+                )
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">span.SetAttributes(attribute.Int64("github.check_run_id", checkRun.GetID()))
+        s.logger.InfoContext(ctx, "Check run created",
+                "check_run_id", checkRun.GetID(),
+                "owner", owner,
+                "repo", repo,
+                "sha", sha,
+                "check_type", checkType,
+        )
+
+        return checkRun, nil</span>
+}
+
+// Generic method to start any type of check run
+func (s *CheckService) StartCheckRun(ctx context.Context, owner, repo string, checkRunID int64, checkType CheckRunType) error <span class="cov0" title="0">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "checks.start_check_run")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.Int64("github.check_run_id", checkRunID),
+                attribute.String("check.type", string(checkType)),
+        )
+
+        // Customize output based on check type
+        var title, summary, text string
+        switch checkType </span>{
+        case CheckRunTypePolicy:<span class="cov0" title="0">
+                title = "OPA Policy Check - In Progress"
+                summary = "OPA Policy validation is in progress"
+                text = "The OPA Policy validation is currently being processed. Please wait for the results."</span>
+        case CheckRunTypeVulnerability:<span class="cov0" title="0">
+                title = "Vulnerability Scan Check - In Progress"
+                summary = "Vulnerability scan is in progress"
+                text = "The vulnerability scan is currently being processed. Please wait for the results."</span>
+        }
+
+        <span class="cov0" title="0">output := &amp;gogithub.CheckRunOutput{
+                Title:   gogithub.Ptr(title),
+                Summary: gogithub.Ptr(summary),
+                Text:    gogithub.Ptr(text),
+        }
+
+        err := s.githubClient.UpdateCheckRun(ctx, owner, repo, checkRunID, string(checkType), string(StatusInProgress), nil, output)
+        if err != nil </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                s.logger.ErrorContext(ctx, "Failed to start check run",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "check_run_id", checkRunID,
+                        "check_type", checkType,
+                )
+                return err
+        }</span>
+
+        <span class="cov0" title="0">s.logger.InfoContext(ctx, "Check run started",
+                "check_run_id", checkRunID,
+                "owner", owner,
+                "repo", repo,
+                "check_type", checkType,
+        )
+        return nil</span>
+}
+
+// Generic method to complete any type of check run
+func (s *CheckService) CompleteCheckRun(ctx context.Context, owner, repo string, checkRunID int64, checkType CheckRunType, conclusion CheckRunConclusion, result CheckRunResult) error <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "checks.complete_check_run")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.Int64("github.check_run_id", checkRunID),
+                attribute.String("check.type", string(checkType)),
+                attribute.String("check.conclusion", string(conclusion)),
+                attribute.Bool("check.success", result.Success),
+        )
+
+        var githubConclusion *string
+        if conclusion != "" </span><span class="cov8" title="1">{
+                githubConclusion = gogithub.Ptr(string(conclusion))
+        }</span>
+
+        <span class="cov8" title="1">output := &amp;gogithub.CheckRunOutput{
+                Title:   gogithub.Ptr(result.Title),
+                Summary: gogithub.Ptr(result.Summary),
+                Text:    gogithub.Ptr(result.Text),
+        }
+
+        err := s.githubClient.UpdateCheckRun(ctx, owner, repo, checkRunID, string(checkType), string(StatusCompleted), githubConclusion, output)
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                s.logger.ErrorContext(ctx, "Failed to complete check run",
+                        "error", err,
+                        "owner", owner,
+                        "repo", repo,
+                        "check_run_id", checkRunID,
+                        "check_type", checkType,
+                        "conclusion", conclusion,
+                )
+                return err
+        }</span>
+
+        <span class="cov0" title="0">s.logger.InfoContext(ctx, "Check run completed",
+                "check_run_id", checkRunID,
+                "owner", owner,
+                "repo", repo,
+                "check_type", checkType,
+                "conclusion", conclusion,
+        )
+        return nil</span>
+}
+
+// Convenience methods for backward compatibility
+func (s *CheckService) CreatePolicyCheck(ctx context.Context, owner, repo, sha string) (*gogithub.CheckRun, error) <span class="cov0" title="0">{
+        return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypePolicy)
+}</span>
+
+func (s *CheckService) CreateVulnerabilityCheck(ctx context.Context, owner, repo, sha string) (*gogithub.CheckRun, error) <span class="cov0" title="0">{
+        return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypeVulnerability)
+}</span>
+
+func (s *CheckService) StartPolicyCheck(ctx context.Context, owner, repo string, checkRunID int64) error <span class="cov0" title="0">{
+        return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypePolicy)
+}</span>
+
+func (s *CheckService) StartVulnerabilityCheck(ctx context.Context, owner, repo string, checkRunID int64) error <span class="cov0" title="0">{
+        return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability)
+}</span>
+
+func (s *CheckService) CompletePolicyCheck(ctx context.Context, owner, repo string, checkRunID int64, conclusion CheckRunConclusion, result CheckRunResult) error <span class="cov0" title="0">{
+        return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypePolicy, conclusion, result)
+}</span>
+
+func (s *CheckService) CompleteVulnerabilityCheck(ctx context.Context, owner, repo string, checkRunID int64, conclusion CheckRunConclusion, result CheckRunResult) error <span class="cov0" title="0">{
+        return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability, conclusion, result)
+}</span>
+
+func (s *CheckService) CompleteVulnerabilityCheckWithNoArtifacts(ctx context.Context, owner, repo string, checkRunID int64) error <span class="cov0" title="0">{
+        result := CheckRunResult{
+                Title:   "Vulnerability Scan Check - No Reports Found",
+                Summary: "No vulnerability scan reports were found to analyze",
+                Text:    "The workflow completed successfully but no vulnerability scan reports (Trivy, SARIF, SBOM) were found to analyze. This may indicate that no security scanning tools were configured in the workflow.",
+        }
+        return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability, ConclusionNeutral, result)
+}</span>
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package services
+
+import (
+        "context"
+        "log/slog"
+
+        "github.com/terrpan/polly/internal/clients"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+)
+
+type CommentService struct {
+        githubClient *clients.GitHubClient
+        logger       *slog.Logger
+}
+
+// NewCommentService initializes a new CommentService with the provided GitHub client and logger.
+func NewCommentService(githubClient *clients.GitHubClient, logger *slog.Logger) *CommentService <span class="cov8" title="1">{
+        return &amp;CommentService{
+                githubClient: githubClient,
+                logger:       logger,
+        }
+}</span>
+
+// WriteComment writes a comment on a pull request using the GitHub client.
+func (s *CommentService) WriteComment(ctx context.Context, owner, repo string, number int, comment string) error <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "comment.write")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.Int("pr.number", number),
+                attribute.Int("comment.length", len(comment)),
+        )
+
+        s.logger.Info("Writing comment", "owner", owner, "repo", repo, "pr_number", number)
+
+        err := s.githubClient.WriteComment(ctx, owner, repo, number, comment)
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                s.logger.Error("Failed to write comment", "error", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">s.logger.Info("Comment written successfully", "owner", owner, "repo", repo, "pr_number", number)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package services
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "net/http"
+        "runtime"
+        "time"
+
+        "github.com/terrpan/polly/internal/clients"
+        "github.com/terrpan/polly/internal/config"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+)
+
+type HealthService struct {
+        logger    *slog.Logger
+        opaClient *clients.OPAClient
+}
+
+type HealthServiceResponse struct {
+        ServiceName  string                     `json:"service_name"`
+        Status       string                     `json:"status"`
+        OS           string                     `json:"os"`
+        Arch         string                     `json:"architecture"`
+        Version      string                     `json:"version"`
+        Commit       string                     `json:"commit"`
+        BuildTime    string                     `json:"build_time"`
+        GoVersion    string                     `json:"go_version"`
+        Dependencies map[string]DependencyCheck `json:"dependencies,omitempty"` // Optional field for dependencies status
+        Timestamp    time.Time                  `json:"timestamp"`
+}
+
+type DependencyCheck struct {
+        Status    string    `json:"status"`
+        Message   string    `json:"message,omitempty"` // Optional message for the dependency status
+        Duration  int64     `json:"duration_ms"`
+        Timestamp time.Time `json:"timestamp"`
+}
+
+// NewHealthService initializes a new HealthService with the provided logger.
+func NewHealthService(logger *slog.Logger, opaClient *clients.OPAClient) *HealthService <span class="cov8" title="1">{
+        return &amp;HealthService{
+                logger:    logger,
+                opaClient: opaClient,
+        }
+}</span>
+
+// CheckHealth performs a health check and returns a status message.
+func (s *HealthService) CheckHealth(ctx context.Context) *HealthServiceResponse <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "health.check")
+        defer span.End()
+
+        s.logger.DebugContext(ctx, "Performing health check")
+
+        dependencies := make(map[string]DependencyCheck)
+        dependencies["opa"] = s.checkOPAHealth(ctx)
+
+        overallStatus := s.getOverallStatus(dependencies)
+        s.logger.DebugContext(ctx, "Overall health status", "status", overallStatus)
+
+        // Fetching build information dynamically
+        version, commit, buildTime := config.GetBuildInfo()
+        return &amp;HealthServiceResponse{
+                ServiceName:  "polly",
+                Status:       overallStatus,
+                OS:           runtime.GOOS,      // This could be dynamically fetched using runtime.GOOS
+                Arch:         runtime.GOARCH,    // This could be dynamically fetched using runtime.GOARCH
+                Version:      version,           // This should be dynamically fetched from build info
+                Commit:       commit,            // This should be dynamically fetched from build info
+                BuildTime:    buildTime,         // This should be dynamically fetched from build info
+                GoVersion:    runtime.Version(), // This should be dynamically fetched using runtime.Version()
+                Timestamp:    time.Now().UTC(),
+                Dependencies: dependencies,
+        }
+
+}</span>
+
+// checkOpaHealth checks the health of the OPA service.
+func (s *HealthService) checkOPAHealth(ctx context.Context) DependencyCheck <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "health.check_opa")
+        defer span.End()
+
+        start := time.Now()
+
+        if s.opaClient == nil </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("error", "OPA client not initialized"))
+                s.logger.WarnContext(ctx, "OPA client is not initialized")
+                return DependencyCheck{
+                        Status:    "error",
+                        Message:   "OPA client is not initialized",
+                        Duration:  time.Since(start).Milliseconds(),
+                        Timestamp: time.Now().UTC(),
+                }
+        }</span>
+
+        <span class="cov8" title="1">checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+        defer cancel()
+
+        span.SetAttributes(attribute.String("opa.timeout", "5s"))
+        resp, err := s.opaClient.GetOpaHealth(checkCtx)
+
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(
+                        attribute.String("opa.status", "error"),
+                        attribute.String("error", err.Error()),
+                )
+                s.logger.ErrorContext(ctx, "Failed to get OPA health", "error", err)
+                return DependencyCheck{
+                        Status:    "error",
+                        Message:   "Failed to connect to OPA: " + err.Error(),
+                        Duration:  time.Since(start).Milliseconds(),
+                        Timestamp: time.Now().UTC(),
+                }
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode == http.StatusOK </span><span class="cov0" title="0">{
+                span.SetAttributes(
+                        attribute.String("opa.status", "healthy"),
+                        attribute.Int("opa.response_code", resp.StatusCode),
+                )
+                s.logger.DebugContext(ctx, "OPA health check passed")
+                return DependencyCheck{
+                        Status:    "healthy",
+                        Message:   "OPA service is responding",
+                        Duration:  time.Since(start).Milliseconds(),
+                        Timestamp: time.Now().UTC(),
+                }
+        }</span> else<span class="cov0" title="0"> {
+                span.SetAttributes(
+                        attribute.String("opa.status", "degraded"),
+                        attribute.Int("opa.response_code", resp.StatusCode),
+                )
+                s.logger.WarnContext(ctx, "OPA health check returned non-200 status",
+                        "status_code", resp.StatusCode)
+                return DependencyCheck{
+                        Status:    "degraded",
+                        Message:   fmt.Sprintf("OPA returned status code: %d", resp.StatusCode),
+                        Duration:  time.Since(start).Milliseconds(),
+                        Timestamp: time.Now().UTC(),
+                }
+        }</span>
+
+}
+
+// getOverallStatus aggregates the health status of all dependencies.
+func (s *HealthService) getOverallStatus(dependencies map[string]DependencyCheck) string <span class="cov8" title="1">{
+        hasError := false
+        hasDegraded := false
+
+        for _, dep := range dependencies </span><span class="cov8" title="1">{
+                switch dep.Status </span>{
+                case "error":<span class="cov8" title="1">
+                        hasError = true</span>
+                case "degraded":<span class="cov0" title="0">
+                        hasDegraded = true</span>
+                }
+        }
+        <span class="cov8" title="1">if hasError </span><span class="cov8" title="1">{
+                return "error"
+        }</span>
+        <span class="cov0" title="0">if hasDegraded </span><span class="cov0" title="0">{
+                return "degraded"
+        }</span>
+        <span class="cov0" title="0">return "healthy"</span>
+}
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">package services
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "io"
+        "log/slog"
+        "net/http"
+
+        "github.com/terrpan/polly/internal/clients"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+)
+
+const (
+        helloPolicyPath         = "/v1/data/playground/hello"
+        licensePolicyPath       = "/v1/data/playground/license"
+        vulnerabilityPolicyPath = "/v1/data/playground/vulnerability"
+)
+
+type PolicyService struct {
+        opaClient *clients.OPAClient
+        logger    *slog.Logger
+}
+
+type PolicyCheckResult struct {
+        Result bool `json:"result"`
+}
+
+type HelloInput struct {
+        Message string `json:"message"`
+}
+
+type VulnerabilityPolicyVuln struct {
+        ID           string  `json:"id"`
+        Package      string  `json:"package"`
+        Version      string  `json:"version"`
+        Severity     string  `json:"severity"`
+        Score        float64 `json:"score,omitempty"`
+        FixedVersion string  `json:"fixed_version,omitempty"`
+}
+
+type VulnerabilityPolicyResult struct {
+        Compliant                   bool                      `json:"compliant"`
+        CompliantCount              int                       `json:"compliant_count"`
+        NonCompliantCount           int                       `json:"non_compliant_count"`
+        NonCompliantVulnerabilities []VulnerabilityPolicyVuln `json:"non_compliant_vulnerabilities"`
+        TotalVulnerabilities        int                       `json:"total_vulnerabilities"`
+}
+
+// NewPolicyService initializes a new PolicyService with the provided OPA client and logger.
+func NewPolicyService(opaClient *clients.OPAClient, logger *slog.Logger) *PolicyService <span class="cov8" title="1">{
+        return &amp;PolicyService{
+                opaClient: opaClient,
+                logger:    logger,
+        }
+}</span>
+
+// evaluatePolicy is a helper function to evaluate a policy with the given input.
+func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, policyPath string, input T) (R, error) <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "policy.evaluate")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("policy.path", policyPath),
+        )
+
+        var zero R
+
+        // Wrap input in the format OPA expects: {"input": {...}}
+        opaPayload := map[string]interface{}{
+                "input": input,
+        }
+
+        service.logger.DebugContext(ctx, "Evaluating policy", "path", policyPath, "input", input, "payload", opaPayload)
+        resp, err := service.opaClient.EvaluatePolicy(ctx, policyPath, opaPayload)
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                service.logger.ErrorContext(ctx, "Failed to evaluate policy",
+                        "error", err,
+                        "path", policyPath,
+                        "input", input)
+                return zero, err
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        span.SetAttributes(attribute.Int("opa.response_code", resp.StatusCode))
+        if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("error", "policy evaluation failed"))
+                service.logger.ErrorContext(ctx, "Policy evaluation failed",
+                        "status", resp.Status,
+                        "path", policyPath,
+                        "input", input)
+                return zero, fmt.Errorf("policy evaluation failed: status %s", resp.Status)
+        }</span>
+
+        <span class="cov0" title="0">body, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                service.logger.ErrorContext(ctx, "Failed to read response body",
+                        "error", err,
+                        "path", policyPath,
+                        "input", input)
+                return zero, err
+        }</span>
+
+        <span class="cov0" title="0">var policyResponse struct {
+                Result R `json:"result"`
+        }
+        if err := json.Unmarshal(body, &amp;policyResponse); err != nil </span><span class="cov0" title="0">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                service.logger.ErrorContext(ctx, "Failed to unmarshal policy response",
+                        "error", err,
+                        "path", policyPath,
+                        "input", input)
+                return zero, err
+        }</span>
+
+        <span class="cov0" title="0">return policyResponse.Result, nil</span>
+}
+
+// CheckHelloPolicy evaluates the hello policy with the given input.
+func (s *PolicyService) CheckHelloPolicy(ctx context.Context, input HelloInput) (bool, error) <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "policy.check_hello")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("policy.type", "hello"),
+                attribute.String("input.message", input.Message),
+        )
+
+        s.logger.DebugContext(ctx, "Checking hello policy", "input", input)
+
+        result, err := evaluatePolicy[HelloInput, bool](ctx, s, helloPolicyPath, input)
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                s.logger.ErrorContext(ctx, "Failed to check hello policy", "error", err)
+                return false, err
+        }</span>
+
+        <span class="cov0" title="0">span.SetAttributes(attribute.Bool("policy.result", result))
+        s.logger.InfoContext(ctx, "Hello policy check completed", "result", result)
+        return result, nil</span>
+}
+
+// CheckVulnerabilityPolicy evaluates the vulnerability policy with the given payload.
+func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, input *VulnerabilityPayload) (VulnerabilityPolicyResult, error) <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "policy.check_vulnerability")
+        defer span.End()
+
+        span.SetAttributes(
+                attribute.String("policy.type", "vulnerability"),
+                attribute.Int("input.vulnerability_count", len(input.Vulnerabilities)),
+                attribute.String("input.scan_target", input.Metadata.ScanTarget),
+                attribute.String("input.tool_name", input.Metadata.ToolName),
+        )
+
+        s.logger.DebugContext(ctx, "Checking vulnerability policy",
+                "vulnerability_count", len(input.Vulnerabilities),
+                "scan_target", input.Metadata.ScanTarget,
+                "tool_name", input.Metadata.ToolName)
+
+        result, err := evaluatePolicy[*VulnerabilityPayload, VulnerabilityPolicyResult](ctx, s, vulnerabilityPolicyPath, input)
+        if err != nil </span><span class="cov8" title="1">{
+                span.SetAttributes(attribute.String("error", err.Error()))
+                s.logger.ErrorContext(ctx, "Failed to check vulnerability policy", "error", err)
+                return VulnerabilityPolicyResult{}, err
+        }</span>
+
+        <span class="cov0" title="0">span.SetAttributes(
+                attribute.Bool("policy.compliant", result.Compliant),
+                attribute.Int("policy.total_vulnerabilities", result.TotalVulnerabilities),
+                attribute.Int("policy.non_compliant_count", result.NonCompliantCount),
+        )
+        s.logger.InfoContext(ctx, "Vulnerability policy check completed",
+                "compliant", result.Compliant,
+                "total_vulnerabilities", result.TotalVulnerabilities,
+                "non_compliant_count", result.NonCompliantCount)
+        return result, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file16" style="display: none">package services
+
+import (
+        "archive/zip"
+        "bytes"
+        "context"
+        "encoding/json"
+        "fmt"
+        "io"
+        "log/slog"
+        "strings"
+
+        "github.com/aquasecurity/trivy/pkg/types"
+        "github.com/owenrumney/go-sarif/sarif"
+
+        dbtypes "github.com/aquasecurity/trivy-db/pkg/types"
+        spdxjson "github.com/spdx/tools-golang/json"
+        "github.com/terrpan/polly/internal/clients"
+        "go.opentelemetry.io/otel"
+        "go.opentelemetry.io/otel/attribute"
+)
+
+type SecurityService struct {
+        githubClient *clients.GitHubClient
+        logger       *slog.Logger
+}
+
+type SecurityArtifact struct {
+        ArtifactName string            `json:"artifact_name"`
+        FileName     string            `json:"file_name"`
+        Content      []byte            `json:"content"`
+        Type         ArtifactType      `json:"type"`
+        Metadata     *SecurityMetadata `json:"metadata,omitempty"`
+}
+
+type SecurityMetadata struct {
+        SPDXMetadata          *SPDXMetadata          `json:"spdx_metadata,omitempty"`
+        VulnerabilityMetadata *VulnerabilityMetadata `json:"vulnerability_metadata,omitempty"`
+}
+
+type SPDXMetadata struct {
+        DocumentName      string           `json:"document_name"`
+        DocumentNamespace string           `json:"document_namespace"`
+        SPDXVersion       string           `json:"spdx_version"`
+        DataLicense       string           `json:"data_license"`
+        Packages          []PackageInfo    `json:"packages"`
+        LicensesSummary   *LicensesSummary `json:"licenses_summary"`
+}
+
+type PackageInfo struct {
+        Name             string `json:"name"`
+        SPDXID           string `json:"spdx_id"`
+        DownloadLocation string `json:"download_location"`
+        LicenseConcluded string `json:"license_concluded"`
+        LicenseDeclared  string `json:"license_declared"`
+        CopyrightText    string `json:"copyright_text"`
+}
+
+type LicensesSummary struct {
+        TotalPackages          int            `json:"total_packages"`
+        AllLicenses            []string       `json:"all_licenses"`
+        LicenseDistribution    map[string]int `json:"license_distribution"`
+        PackagesWithoutLicense int            `json:"packages_without_license"`
+}
+
+type VulnerabilityMetadata struct {
+        SourceFormat      string               `json:"source_format"`
+        ToolName          string               `json:"tool_name"`
+        ToolVersion       string               `json:"tool_version"`
+        SchemaVersion     string               `json:"schema_version"`
+        ScanTarget        string               `json:"scan_target"`
+        ResultCount       int                  `json:"result_count"`
+        SeverityBreakdown map[string]int       `json:"severity_breakdown"`
+        Summary           VulnerabilitySummary `json:"summary"`
+}
+
+type VulnerabilitySummary struct {
+        TotalVulnerabilities int `json:"total_vulnerabilities"`
+        Critical             int `json:"critical"`
+        High                 int `json:"high"`
+        Medium               int `json:"medium"`
+        Low                  int `json:"low"`
+        Info                 int `json:"info"`
+}
+
+type VulnerabilityPayload struct {
+        Type            string               `json:"type"`
+        Metadata        PayloadMetadata      `json:"metadata"`
+        Vulnerabilities []Vulnerability      `json:"vulnerabilities"`
+        Summary         VulnerabilitySummary `json:"summary"`
+}
+
+type PayloadMetadata struct {
+        SourceFormat  string `json:"source_format"`
+        ToolName      string `json:"tool_name"`
+        ToolVersion   string `json:"tool_version"`
+        ScanTime      string `json:"scan_time"`
+        Repository    string `json:"repository"`
+        CommitSHA     string `json:"commit_sha"`
+        PRNumber      int    `json:"pr_number,omitempty"`
+        ScanTarget    string `json:"scan_target"`
+        SchemaVersion string `json:"schema_version"`
+}
+
+type Vulnerability struct {
+        ID           string   `json:"id"`
+        Severity     string   `json:"severity"`
+        Score        float64  `json:"score,omitempty"`
+        Package      Package  `json:"package"`
+        Location     Location `json:"location"`
+        Description  string   `json:"description"`
+        FixedVersion string   `json:"fixed_version,omitempty"`
+        References   []string `json:"references,omitempty"`
+}
+
+type Package struct {
+        Name      string `json:"name"`
+        Version   string `json:"version"`
+        Ecosystem string `json:"ecosystem,omitempty"`
+}
+
+type Location struct {
+        File string `json:"file"`
+        Line int    `json:"line,omitempty"`
+}
+
+type ArtifactType string
+
+const (
+        ArtifactTypeSBOMSPDX           ArtifactType = "sbom_spdx"
+        ArtifactTypeVulnerabilitySARIF ArtifactType = "vulnerability_sarif"
+        ArtifactTypeUnknown            ArtifactType = "unknown"
+        ArtifactTypeVulnerabilityJSON  ArtifactType = "vulnerability_json"
+)
+
+// cvssPriority defines the order of CVSS sources to check for scores.
+var cvssPriority = []dbtypes.SourceID{"nvd", "redhat", "ghsa"}
+
+// NewSecurityService initializes a new SecurityService with the provided logger.
+func NewSecurityService(githubClient *clients.GitHubClient, logger *slog.Logger) *SecurityService <span class="cov8" title="1">{
+        return &amp;SecurityService{
+                githubClient: githubClient,
+                logger:       logger,
+        }
+}</span>
+
+// ProcessWorkflowSecurityArtifacts processes security artifacts and returns normalized payloads
+func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, error) <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "security.process_workflow_artifacts")
+        defer span.End()
+
+        s.logger.InfoContext(ctx, "Processing security artifacts",
+                "owner", owner,
+                "repo", repo,
+                "sha", sha,
+                "workflow_id", workflowID,
+        )
+
+        // 1. Discover security artifacts
+        securityArtifacts, err := s.DiscoverSecurityArtifacts(ctx, owner, repo, workflowID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to discover security artifacts: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if len(securityArtifacts) == 0 </span><span class="cov0" title="0">{
+                s.logger.InfoContext(ctx, "No security artifacts found")
+                return nil, nil
+        }</span>
+
+        // 2. Build payloads from artifacts
+        <span class="cov0" title="0">return s.BuildPayloadsFromArtifacts(ctx, securityArtifacts, owner, repo, sha, workflowID)</span>
+}
+
+// DiscoverSecurityArtifacts finds and downloads security-related artifacts
+func (s *SecurityService) DiscoverSecurityArtifacts(ctx context.Context, owner, repo string, workflowID int64) ([]*SecurityArtifact, error) <span class="cov8" title="1">{
+        return s.checkArtifactForSecurityContent(ctx, owner, repo, workflowID)
+}</span>
+
+// BuildPayloadsFromArtifacts converts security artifacts into normalized payloads
+func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifacts []*SecurityArtifact, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, error) <span class="cov8" title="1">{
+        var payloads []*VulnerabilityPayload
+
+        s.logger.InfoContext(ctx, "Building payloads from security artifacts", "count", len(artifacts))
+
+        for _, artifact := range artifacts </span><span class="cov8" title="1">{
+                s.logger.InfoContext(ctx, "Processing security artifact",
+                        "type", artifact.Type,
+                        "filename", artifact.FileName,
+                        "size", len(artifact.Content),
+                )
+
+                switch artifact.Type </span>{
+                case ArtifactTypeVulnerabilityJSON:<span class="cov8" title="1">
+                        payload, err := s.BuildVulnerabilityPayloadFromTrivy(ctx, artifact, owner, repo, sha, 0, workflowID)
+                        if err != nil </span><span class="cov8" title="1">{
+                                s.logger.ErrorContext(ctx, "Failed to build vulnerability payload",
+                                        "artifact_name", artifact.ArtifactName,
+                                        "file_name", artifact.FileName,
+                                        "error", err,
+                                )
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">payloads = append(payloads, payload)</span>
+
+                case ArtifactTypeSBOMSPDX:<span class="cov0" title="0">
+                        // TODO: Implement SBOM payload builder
+                        s.logger.DebugContext(ctx, "SBOM processing not yet implemented", "artifact", artifact.FileName)</span>
+
+                default:<span class="cov8" title="1">
+                        s.logger.WarnContext(ctx, "Unsupported artifact type",
+                                "type", artifact.Type,
+                                "filename", artifact.FileName,
+                        )</span>
+                }
+        }
+
+        <span class="cov8" title="1">s.logger.InfoContext(ctx, "Built payloads from security artifacts",
+                "total_artifacts", len(artifacts),
+                "successful_payloads", len(payloads))
+
+        return payloads, nil</span>
+}
+
+// checkArtifactForSecurityContent downloads and inspects for security-related content.
+func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, owner, repo string, workflowID int64) ([]*SecurityArtifact, error) <span class="cov8" title="1">{
+        tracer := otel.Tracer("polly/services")
+        ctx, span := tracer.Start(ctx, "security.check_artifacts")
+        defer span.End()
+
+        // List all artifacts for the workflow
+        artifacts, err := s.githubClient.ListWorkflowArtifacts(ctx, owner, repo, workflowID)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to list artifacts: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if len(artifacts) == 0 </span><span class="cov0" title="0">{
+                s.logger.InfoContext(ctx, "No artifacts found for workflow",
+                        "owner", owner,
+                        "repo", repo,
+                        "workflow_id", workflowID,
+                )
+                return nil, nil
+        }</span>
+
+        <span class="cov0" title="0">span.SetAttributes(
+                attribute.Int("artifact.count", len(artifacts)),
+                attribute.String("github.owner", owner),
+                attribute.String("github.repo", repo),
+                attribute.Int64("github.workflow_id", workflowID),
+        )
+
+        var securityArtifacts []*SecurityArtifact
+        for _, artifact := range artifacts </span><span class="cov0" title="0">{
+                s.logger.DebugContext(ctx, "Checking artifact for security content",
+                        "artifact_name", artifact.GetName(),
+                        "artifact_id", artifact.GetID(),
+                        "artifact_size", artifact.GetSizeInBytes(),
+                )
+
+                // Download the artifact content
+                zipData, err := s.githubClient.DownloadArtifact(ctx, owner, repo, artifact.GetID())
+                if err != nil </span><span class="cov0" title="0">{
+                        s.logger.WarnContext(ctx, "Failed to download artifact",
+                                "artifact_name", artifact.GetName(),
+                                "artifact_id", artifact.GetID(),
+                                "error", err,
+                        )
+                        continue</span>
+                }
+
+                // Inspect the artifact content for security-related files
+                <span class="cov0" title="0">artifactFiles, err := s.inspectZipContent(zipData, artifact.GetName())
+                if err != nil </span><span class="cov0" title="0">{
+                        s.logger.WarnContext(ctx, "Failed to inspect ZIP content",
+                                "artifact", artifact.GetName(),
+                                "error", err)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">securityArtifacts = append(securityArtifacts, artifactFiles...)</span>
+        }
+
+        <span class="cov0" title="0">span.SetAttributes(attribute.Int("security_artifacts.found", len(securityArtifacts)))
+        return securityArtifacts, nil</span>
+}
+
+// inspectZipContent inspects the content of a ZIP file for security-related files.
+func (s *SecurityService) inspectZipContent(zipData []byte, artifactName string) ([]*SecurityArtifact, error) <span class="cov0" title="0">{
+        // Create ZIP reader
+        zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create zip reader: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">var securityArtifacts []*SecurityArtifact
+
+        // Examine each file in the ZIP
+        for _, file := range zipReader.File </span><span class="cov0" title="0">{
+                if file.FileInfo().IsDir() </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">s.logger.Debug("Inspecting file", "filename", file.Name)
+
+                // Read file content
+                rc, err := file.Open()
+                if err != nil </span><span class="cov0" title="0">{
+                        s.logger.Warn("Failed to open file in ZIP", "filename", file.Name, "error", err)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">content, err := io.ReadAll(rc)
+                rc.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        s.logger.Warn("Failed to read file content", "filename", file.Name, "error", err)
+                        continue</span>
+                }
+
+                // Check if this file contains security content
+                <span class="cov0" title="0">artifactType := s.detectSecurityContent(content, file.Name)
+                if artifactType != ArtifactTypeUnknown </span><span class="cov0" title="0">{
+                        securityArtifacts = append(securityArtifacts, &amp;SecurityArtifact{
+                                ArtifactName: artifactName,
+                                FileName:     file.Name,
+                                Content:      content,
+                                Type:         artifactType,
+                        })
+
+                        s.logger.Info("Found security content",
+                                "type", artifactType,
+                                "filename", file.Name,
+                                "artifact", artifactName,
+                                "size", len(content))
+                }</span>
+        }
+
+        <span class="cov0" title="0">return securityArtifacts, nil</span>
+}
+
+// detectSecurityContent determines if file content is SPDX or SARIF
+func (s *SecurityService) detectSecurityContent(content []byte, filename string) ArtifactType <span class="cov8" title="1">{
+        // Try SPDX detection first
+        if isSPDXContent(content) </span><span class="cov0" title="0">{
+
+                s.logger.Debug("Detected SPDX content", "filename", filename)
+                return ArtifactTypeSBOMSPDX
+        }</span>
+
+        // Try Trivy JSON detection
+        <span class="cov8" title="1">if isTrivyJSONContent(content) </span><span class="cov0" title="0">{
+                s.logger.Debug("Detected Trivy JSON content", "filename", filename)
+                return ArtifactTypeVulnerabilityJSON
+        }</span>
+
+        // Try SARIF detection
+        <span class="cov8" title="1">if isSarifContent(content) </span><span class="cov0" title="0">{
+                s.logger.Debug("Detected SARIF content", "filename", filename)
+                return ArtifactTypeVulnerabilitySARIF
+        }</span>
+
+        <span class="cov8" title="1">return ArtifactTypeUnknown</span>
+}
+
+// BuildVulnerabilityPayloadFromTrivy creates a normalized vulnerability payload from Trivy JSON report
+func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*VulnerabilityPayload, error) <span class="cov8" title="1">{
+        // parse the trivy report
+        var trivyReport types.Report
+        if err := json.Unmarshal(artifact.Content, &amp;trivyReport); err != nil </span><span class="cov8" title="1">{
+                s.logger.ErrorContext(ctx, "Failed to parse Trivy report",
+                        "artifact_name", artifact.ArtifactName,
+                        "file_name", artifact.FileName,
+                        "error", err,
+                )
+                return nil, err
+        }</span>
+
+        // build the metadata
+        <span class="cov0" title="0">metadata := PayloadMetadata{
+                SourceFormat:  "trivy_json",
+                ToolName:      "trivy",
+                ScanTime:      trivyReport.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+                Repository:    fmt.Sprintf("%s/%s", owner, repo),
+                CommitSHA:     sha,
+                PRNumber:      prNumber,
+                ScanTarget:    trivyReport.ArtifactName,
+                SchemaVersion: fmt.Sprintf("%d", trivyReport.SchemaVersion),
+        }
+
+        // Extract vulnerabilities and build summary
+        vulnerabilities := []Vulnerability{}
+        severityCount := map[string]int{
+                "CRITICAL": 0,
+                "HIGH":     0,
+                "MEDIUM":   0,
+                "LOW":      0,
+                "INFO":     0,
+        }
+
+        for _, result := range trivyReport.Results </span><span class="cov0" title="0">{
+                if result.Vulnerabilities == nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                // Extract vulnerabilities from this target
+                <span class="cov0" title="0">for _, vuln := range result.Vulnerabilities </span><span class="cov0" title="0">{
+                        // Normalize the vulnerability
+                        normalizedVuln := normalizeTrivyVulnerability(vuln, result.Target)
+                        vulnerabilities = append(vulnerabilities, normalizedVuln)
+
+                        // Count severity
+                        if count, exists := severityCount[normalizedVuln.Severity]; exists </span><span class="cov0" title="0">{
+                                severityCount[normalizedVuln.Severity] = count + 1
+                        }</span>
+                }
+        }
+
+        // build the complete payload
+        <span class="cov0" title="0">payload := &amp;VulnerabilityPayload{
+                Type:            "vulnerability_scan",
+                Metadata:        metadata,
+                Vulnerabilities: vulnerabilities,
+                Summary: VulnerabilitySummary{
+                        TotalVulnerabilities: len(vulnerabilities),
+                        Critical:             severityCount["CRITICAL"],
+                        High:                 severityCount["HIGH"],
+                        Medium:               severityCount["MEDIUM"],
+                        Low:                  severityCount["LOW"],
+                        Info:                 severityCount["INFO"],
+                },
+        }
+        // Update the artifact metadata
+        artifact.Metadata = &amp;SecurityMetadata{
+                VulnerabilityMetadata: &amp;VulnerabilityMetadata{
+                        SourceFormat:      "trivy_json",
+                        ToolName:          "trivy",
+                        ToolVersion:       metadata.ToolVersion,
+                        SchemaVersion:     metadata.SchemaVersion,
+                        ScanTarget:        metadata.ScanTarget,
+                        ResultCount:       len(trivyReport.Results),
+                        SeverityBreakdown: severityCount,
+                        Summary:           payload.Summary,
+                },
+        }
+
+        s.logger.InfoContext(ctx, "Built vulnerability payload from Trivy JSON",
+                "total_vulnerabilities", len(vulnerabilities),
+                "critical", severityCount["CRITICAL"],
+                "high", severityCount["HIGH"],
+                "medium", severityCount["MEDIUM"],
+                "low", severityCount["LOW"],
+        )
+
+        return payload, nil</span>
+}
+
+// normalizeTrivyVulnerability normalizes a Trivy vulnerability into a common format.
+func normalizeTrivyVulnerability(vuln types.DetectedVulnerability, target string) Vulnerability <span class="cov0" title="0">{
+        // Extract CVSS score (prefer GHSA, fallback to NVD)
+        score := extractCVSSScore(vuln)
+
+        return Vulnerability{
+                ID:       vuln.VulnerabilityID,
+                Severity: vuln.Severity,
+                Score:    score,
+                Package: Package{
+                        Name:      vuln.PkgName,
+                        Version:   vuln.InstalledVersion,
+                        Ecosystem: detectEcosystem(target),
+                },
+                Location: Location{
+                        File: target,
+                        Line: 0, // Trivy does not provide line numbers
+                },
+                Description:  vuln.Description,
+                FixedVersion: vuln.FixedVersion,
+                References:   vuln.References,
+        }
+}</span>
+
+// extractCVSSScore returns the highest‐priority, non‐zero score from vuln.CVSS,
+// falling back to the maximum score across all vendors.
+func extractCVSSScore(vuln types.DetectedVulnerability) float64 <span class="cov0" title="0">{
+        if len(vuln.CVSS) == 0 </span><span class="cov0" title="0">{
+                return 0
+        }</span>
+
+        // first try the priority vendors
+        <span class="cov0" title="0">for _, vendor := range cvssPriority </span><span class="cov0" title="0">{
+                if c, ok := vuln.CVSS[vendor]; ok </span><span class="cov0" title="0">{
+                        if s := bestScore(c); s &gt; 0 </span><span class="cov0" title="0">{
+                                return s
+                        }</span>
+                }
+        }
+
+        // fallback: pick the single highest score among all
+        <span class="cov0" title="0">var max float64
+        for _, c := range vuln.CVSS </span><span class="cov0" title="0">{
+                if s := bestScore(c); s &gt; max </span><span class="cov0" title="0">{
+                        max = s
+                }</span>
+        }
+        <span class="cov0" title="0">return max</span>
+}
+
+// bestScore prefers v4.0, then v3.x, then v2.x
+func bestScore(c dbtypes.CVSS) float64 <span class="cov0" title="0">{
+        if c.V40Score &gt; 0 </span><span class="cov0" title="0">{
+                return c.V40Score
+        }</span>
+        <span class="cov0" title="0">if c.V3Score &gt; 0 </span><span class="cov0" title="0">{
+                return c.V3Score
+        }</span>
+        <span class="cov0" title="0">if c.V2Score &gt; 0 </span><span class="cov0" title="0">{
+                return c.V2Score
+        }</span>
+        <span class="cov0" title="0">return 0</span>
+}
+
+// detectEcosystem determines the package ecosystem from the target file
+func detectEcosystem(target string) string <span class="cov8" title="1">{
+        ecosystemMap := map[string]string{
+                "package-lock.json": "npm",
+                "pnpm-lock.yaml":    "npm",
+                "yarn.lock":         "npm",
+                "Gemfile.lock":      "rubygems",
+                "requirements.txt":  "pypi",
+                "Pipfile.lock":      "pypi",
+                "go.mod":            "go",
+                "go.sum":            "go",
+                "Cargo.lock":        "cargo",
+                "composer.lock":     "packagist",
+                "pom.xml":           "maven",
+                "build.gradle":      "gradle",
+                "nuget.config":      "nuget",
+        }
+
+        for pattern, ecosystem := range ecosystemMap </span><span class="cov8" title="1">{
+                if strings.Contains(target, pattern) </span><span class="cov8" title="1">{
+                        return ecosystem
+                }</span>
+        }
+
+        // Default to "unknown" if no match found
+        <span class="cov8" title="1">return "unknown"</span>
+
+}
+
+// isSarifContent checks if the content is a valid SARIF document
+func isSarifContent(content []byte) bool <span class="cov8" title="1">{
+        // Use the go-sarif library to validate SARIF format
+        doc, err := sarif.FromBytes(content)
+        if err != nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">if doc == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov8" title="1">if doc.Version == "" </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if doc.Version != "2.1.0" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if len(doc.Runs) == 0 </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return true</span>
+}
+
+// isSPDXContent checks if the content is a valid SPDX document
+func isSPDXContent(content []byte) bool <span class="cov8" title="1">{
+        doc, err := spdxjson.Read(bytes.NewReader(content))
+        if err != nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if doc == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if doc.SPDXVersion == "" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if doc.DataLicense == "" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if doc.SPDXIdentifier == "" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if doc.DocumentName == "" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">if doc.DocumentNamespace == "" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">if doc.CreationInfo == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if !strings.HasPrefix(doc.SPDXVersion, "SPDX-") </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">if doc.DataLicense != "CC0-1.0" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return true</span>
+}
+
+// isTrivyJson checks if the content is a valid Trivy JSON report
+func isTrivyJSONContent(content []byte) bool <span class="cov8" title="1">{
+        var report types.Report
+
+        if err := json.Unmarshal(content, &amp;report); err != nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        <span class="cov8" title="1">if report.SchemaVersion == 0 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if report.ArtifactName == "" </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">if report.Results == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return true</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
