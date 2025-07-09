@@ -59,6 +59,12 @@ func (c *OPAClient) EvaluatePolicy(ctx context.Context, policyPath string, paylo
 		return nil, fmt.Errorf("failed to marshal input: %w", err)
 	}
 
-	// Make a POST request to evaluate the policy
-	return c.Do(ctx, http.MethodPost, url, bytes.NewReader(body))
+	// Create POST request with proper Content-Type header for JSON
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	return c.HTTPClient.Do(req)
 }
