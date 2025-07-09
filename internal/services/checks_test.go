@@ -5,13 +5,14 @@ import (
 	"log/slog"
 	"testing"
 
+	gogithub "github.com/google/go-github/v72/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/terrpan/polly/internal/clients"
 )
 
 func TestNewCheckService(t *testing.T) {
 	logger := slog.Default()
-	
+
 	// Create a real GitHub client for testing the constructor
 	realClient := clients.NewGitHubClient(context.Background())
 
@@ -135,22 +136,36 @@ func TestCheckService_CheckRunResult(t *testing.T) {
 		assert.Equal(t, "Test Title", result.Title)
 		assert.Equal(t, "Test Summary", result.Summary)
 		assert.Equal(t, "Test Text", result.Text)
-		assert.NotNil(t, result.Annotations) // Should be initialized
+		assert.Nil(t, result.Annotations) // Should be nil by default
+	})
+	
+	t.Run("check run result with annotations", func(t *testing.T) {
+		result := CheckRunResult{
+			Success:     true,
+			Title:       "Test Title",
+			Summary:     "Test Summary",
+			Text:        "Test Text",
+			Annotations: make([]gogithub.CheckRunAnnotation, 0), // Initialize as empty slice
+		}
+
+		assert.True(t, result.Success)
+		assert.NotNil(t, result.Annotations)
+		assert.Len(t, result.Annotations, 0)
 	})
 }
 
 // Integration test helpers - these would require a real GitHub API or mock server
 func TestCheckService_IntegrationExamples(t *testing.T) {
 	t.Skip("Integration tests require GitHub API setup")
-	
+
 	// Example of how integration tests would look:
 	// logger := slog.Default()
 	// githubClient := clients.NewGitHubClient(context.Background())
 	// err := githubClient.Authenticate(context.Background(), "test-token")
 	// require.NoError(t, err)
-	// 
+	//
 	// service := NewCheckService(githubClient, logger)
-	// 
+	//
 	// ctx := context.Background()
 	// checkRun, err := service.CreatePolicyCheck(ctx, "owner", "repo", "sha")
 	// assert.NoError(t, err)

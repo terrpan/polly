@@ -21,10 +21,10 @@ func TestNewGitHubClient(t *testing.T) {
 
 func TestNewGitHubAppClient(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         GitHubAppConfig
-		expectedError  bool
-		errorContains  string
+		name          string
+		config        GitHubAppConfig
+		expectedError bool
+		errorContains string
 	}{
 		{
 			name: "valid config",
@@ -90,9 +90,9 @@ func TestAuthenticate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			client := NewGitHubClient(ctx)
-			
+
 			err := client.Authenticate(ctx, tt.token)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Equal(t, tt.errorMessage, err.Error())
@@ -137,7 +137,7 @@ func TestGetPullRequest(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
@@ -156,7 +156,7 @@ func TestGetPullRequest(t *testing.T) {
 		},
 		{
 			name:          "not found",
-			owner:         "owner", 
+			owner:         "owner",
 			repo:          "repo",
 			number:        404,
 			expectedError: true,
@@ -166,7 +166,7 @@ func TestGetPullRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pr, err := githubClient.GetPullRequest(ctx, tt.owner, tt.repo, tt.number)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, pr)
@@ -212,7 +212,7 @@ func TestWriteComment(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
@@ -234,7 +234,7 @@ func TestWriteComment(t *testing.T) {
 		{
 			name:          "server error",
 			owner:         "owner",
-			repo:          "repo", 
+			repo:          "repo",
 			number:        500,
 			comment:       "Test comment",
 			expectedError: true,
@@ -244,7 +244,7 @@ func TestWriteComment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := githubClient.WriteComment(ctx, tt.owner, tt.repo, tt.number, tt.comment)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "failed to write comment")
@@ -286,7 +286,7 @@ func TestCreateCheckRun(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
@@ -309,7 +309,7 @@ func TestCreateCheckRun(t *testing.T) {
 			name:          "validation error",
 			owner:         "owner",
 			repo:          "error-repo",
-			sha:           "abc123", 
+			sha:           "abc123",
 			checkName:     "Test Check",
 			expectedError: true,
 		},
@@ -318,7 +318,7 @@ func TestCreateCheckRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			checkRun, err := githubClient.CreateCheckRun(ctx, tt.owner, tt.repo, tt.sha, tt.checkName)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, checkRun)
@@ -365,7 +365,7 @@ func TestUpdateCheckRun(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
@@ -379,23 +379,23 @@ func TestUpdateCheckRun(t *testing.T) {
 		expectedError bool
 	}{
 		{
-			name:       "successful update completed",
-			owner:      "owner",
-			repo:       "repo",
-			checkRunID: 789,
-			checkName:  "Test Check",
-			status:     "completed",
-			conclusion: github.Ptr("success"),
+			name:          "successful update completed",
+			owner:         "owner",
+			repo:          "repo",
+			checkRunID:    789,
+			checkName:     "Test Check",
+			status:        "completed",
+			conclusion:    github.Ptr("success"),
 			expectedError: false,
 		},
 		{
-			name:       "not found",
-			owner:      "owner",
-			repo:       "repo",
-			checkRunID: 404,
-			checkName:  "Test Check",
-			status:     "in_progress",
-			conclusion: nil,
+			name:          "not found",
+			owner:         "owner",
+			repo:          "repo",
+			checkRunID:    404,
+			checkName:     "Test Check",
+			status:        "in_progress",
+			conclusion:    nil,
 			expectedError: true,
 		},
 	}
@@ -403,7 +403,7 @@ func TestUpdateCheckRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := githubClient.UpdateCheckRun(ctx, tt.owner, tt.repo, tt.checkRunID, tt.checkName, tt.status, tt.conclusion, nil)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "failed to update check run")
@@ -418,7 +418,7 @@ func TestDownloadArtifact(t *testing.T) {
 	// Note: This test is simplified since the actual DownloadArtifact method
 	// in the GitHub client involves complex URL redirection and external downloads
 	// In a real test environment, you would mock the GitHub API more comprehensively
-	
+
 	t.Skip("Skipping DownloadArtifact test - requires complex GitHub API mocking")
 }
 
@@ -459,16 +459,16 @@ func TestListWorkflowRunArtifacts(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
-		name               string
-		owner              string
-		repo               string
-		runID              int64
-		expectedError      bool
-		expectedArtifacts  int
+		name              string
+		owner             string
+		repo              string
+		runID             int64
+		expectedError     bool
+		expectedArtifacts int
 	}{
 		{
 			name:              "successful list",
@@ -491,7 +491,7 @@ func TestListWorkflowRunArtifacts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			artifacts, err := githubClient.ListWorkflowArtifacts(ctx, tt.owner, tt.repo, tt.runID)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, artifacts)
@@ -499,7 +499,7 @@ func TestListWorkflowRunArtifacts(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, artifacts)
 				assert.Len(t, artifacts, tt.expectedArtifacts)
-				
+
 				if len(artifacts) > 0 {
 					assert.Equal(t, int64(456), *artifacts[0].ID)
 					assert.Equal(t, "trivy-results", *artifacts[0].Name)
@@ -536,7 +536,7 @@ func TestGetCheckRun(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
@@ -565,7 +565,7 @@ func TestGetCheckRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			checkRun, err := githubClient.GetCheckRun(ctx, tt.owner, tt.repo, tt.checkRunID)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, checkRun)
@@ -619,16 +619,16 @@ func TestListCheckRuns(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
-		name               string
-		owner              string
-		repo               string
-		sha                string
-		expectedError      bool
-		expectedCheckRuns  int
+		name              string
+		owner             string
+		repo              string
+		sha               string
+		expectedError     bool
+		expectedCheckRuns int
 	}{
 		{
 			name:              "successful list",
@@ -651,7 +651,7 @@ func TestListCheckRuns(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			checkRuns, err := githubClient.ListCheckRuns(ctx, tt.owner, tt.repo, tt.sha)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, checkRuns)
@@ -660,7 +660,7 @@ func TestListCheckRuns(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, checkRuns)
 				assert.Len(t, checkRuns, tt.expectedCheckRuns)
-				
+
 				if len(checkRuns) > 0 {
 					assert.Equal(t, int64(789), *checkRuns[0].ID)
 					assert.Equal(t, "Policy Check", *checkRuns[0].Name)
@@ -700,7 +700,7 @@ func TestGetArtifact(t *testing.T) {
 	ctx := context.Background()
 	client := github.NewClient(nil)
 	client.BaseURL = mustParseURL(server.URL + "/")
-	
+
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
@@ -729,7 +729,7 @@ func TestGetArtifact(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			artifact, err := githubClient.GetArtifact(ctx, tt.owner, tt.repo, tt.artifactID)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, artifact)

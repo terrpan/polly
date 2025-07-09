@@ -127,7 +127,7 @@ func TestOPAClient_Do(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			url := server.URL + tt.path
-			
+
 			var body io.Reader
 			if tt.body != "" {
 				body = strings.NewReader(tt.body)
@@ -221,7 +221,7 @@ func TestOPAClient_ContextCancellation(t *testing.T) {
 		defer cancel()
 
 		_, err := client.Do(ctx, http.MethodGet, server.URL+"/test", nil)
-		
+
 		// Should get a context deadline exceeded error
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "context deadline exceeded")
@@ -234,7 +234,7 @@ func TestOPAClient_InvalidURL(t *testing.T) {
 
 	t.Run("invalid URL in Do method", func(t *testing.T) {
 		ctx := context.Background()
-		
+
 		// Test with invalid URL
 		_, err := client.Do(ctx, http.MethodGet, "://invalid-url", nil)
 		assert.Error(t, err)
@@ -249,7 +249,7 @@ func TestOPAClient_HTTPClientConfiguration(t *testing.T) {
 	t.Run("verify HTTP client configuration", func(t *testing.T) {
 		assert.NotNil(t, client.HTTPClient)
 		assert.Equal(t, 30*time.Second, client.HTTPClient.Timeout)
-		
+
 		// Verify that the transport is wrapped with OpenTelemetry
 		assert.NotNil(t, client.HTTPClient.Transport)
 	})
