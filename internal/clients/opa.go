@@ -37,6 +37,9 @@ func (c *OPAClient) Do(ctx context.Context, method, url string, body io.Reader) 
 	if err != nil {
 		return nil, err
 	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	return c.HTTPClient.Do(req)
 }
 
