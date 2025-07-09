@@ -206,3 +206,254 @@ No code changes required for new policy bundles.
 - Multi-step policy workflows
 - Custom policy result formatting
 - Integration with other policy engines
+
+## Vulnerability Check System
+
+The vulnerability check system processes security artifacts from GitHub Actions workflows and evaluates them against OPA policies. This system runs parallel to policy checks and provides automated security review for pull requests.
+
+### Vulnerability Check Flow
+
+```
+GitHub Workflow Event → Security Artifact Discovery → Payload Normalization → OPA Policy Evaluation → Check Run Update & PR Comments
+```
+
+### Key Components
+
+#### 1. Security Service (`internal/services/security.go`)
+- **Purpose**: Discover, download, and normalize security artifacts from GitHub workflows
+- **Responsibilities**:
+  - Download artifacts from completed GitHub Actions workflows
+  - Detect security report formats (Trivy JSON, SARIF, SPDX SBOM)
+  - Normalize different formats into unified `VulnerabilityPayload` structure
+  - Extract vulnerability metadata, CVSS scores, and package information
+
+#### 2. Vulnerability Check Orchestration (`internal/handlers/webhook.go`)
+- **Purpose**: Coordinate the vulnerability scanning workflow
+- **Responsibilities**:
+  - Create pending vulnerability check runs when workflows start
+  - Process completed workflows to extract security artifacts
+  - Coordinate OPA policy evaluation for vulnerability data
+  - Post PR comments with policy violation details
+  - Complete check runs with appropriate success/failure status
+
+#### 3. Vulnerability Policy Evaluation (`internal/services/policy.go`)
+- **Purpose**: Evaluate complete vulnerability payloads against OPA policies
+- **Responsibilities**:
+  - Send full `VulnerabilityPayload` to OPA vulnerability policies
+  - Process policy results to determine compliance status
+  - Extract non-compliant vulnerabilities for user feedback
+
+### Workflow Lifecycle
+
+#### Phase 1: Workflow Start Detection
+```go
+// When GitHub workflow starts (action: "requested" or "in_progress")
+handleWorkflowStarted() {
+    1. Check if SHA has associated PR context
+    2. Create pending vulnerability check run
+    3. Store check run ID for later completion
+}
+```
+
+#### Phase 2: Workflow Completion Processing
+```go
+// When GitHub workflow completes (action: "completed")
+handleWorkflowCompleted() {
+    1. Check workflow conclusion (only process "success")
+    2. Download and inspect workflow artifacts
+    3. Discover security reports (Trivy, SARIF, SBOM)
+    4. Normalize artifacts into VulnerabilityPayload structures
+    5. Evaluate payloads against OPA vulnerability policies
+    6. Post PR comments for policy violations
+    7. Complete vulnerability check run with final status
+}
+```
+
+### Vulnerability Payload Structure
+
+The system normalizes all security artifacts into a unified `VulnerabilityPayload`:
+
+```go
+type VulnerabilityPayload struct {
+    Type            string                   // "vulnerability_json", "vulnerability_sarif", etc.
+    Metadata        PayloadMetadata          // Scan context and tool information
+    Vulnerabilities []Vulnerability          // Normalized vulnerability data
+    Summary         VulnerabilitySummary     // Aggregated statistics
+}
+
+type PayloadMetadata struct {
+    SourceFormat  string  // "trivy", "sarif", "spdx"
+    ToolName      string  // "trivy", "snyk", "github-security-advisories"
+    ToolVersion   string  // Tool version for compatibility
+    ScanTime      string  // ISO timestamp of scan
+    Repository    string  // "owner/repo"
+    CommitSHA     string  // Git commit being scanned
+    PRNumber      int     // Associated PR number
+    ScanTarget    string  // File being scanned (package.json, Dockerfile)
+    SchemaVersion string  // Payload schema version
+}
+```
+
+### OPA Policy Integration
+
+#### Full Context Policy Evaluation
+The system passes complete vulnerability payloads to OPA policies, providing rich context:
+
+```json
+{
+  "input": {
+    "type": "vulnerability_json",
+    "metadata": {
+      "source_format": "trivy",
+      "tool_name": "trivy",
+      "tool_version": "0.50.0",
+      "scan_time": "2024-01-15T10:30:00Z",
+      "repository": "owner/repo",
+      "commit_sha": "abc123def456",
+      "pr_number": 42,
+      "scan_target": "package.json",
+      "schema_version": "1.0"
+    },
+    "vulnerabilities": [
+      {
+        "id": "CVE-2021-3749",
+        "severity": "CRITICAL",
+        "score": 9.8,
+        "package": {
+          "name": "axios",
+          "version": "0.21.1",
+          "ecosystem": "npm"
+        },
+        "location": {
+          "file": "package.json",
+          "line": 15
+        },
+        "description": "Axios is vulnerable to Server-Side Request Forgery",
+        "fixed_version": "0.21.2",
+        "references": ["https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-3749"]
+      }
+    ],
+    "summary": {
+      "total_vulnerabilities": 49,
+      "critical": 2,
+      "high": 22,
+      "medium": 20,
+      "low": 5,
+      "info": 0
+    }
+  }
+}
+```
+
+#### Policy Response Structure
+OPA policies return structured results indicating compliance:
+
+```json
+{
+  "result": {
+    "compliant": false,
+    "compliant_count": 25,
+    "non_compliant_count": 24,
+    "non_compliant_vulnerabilities": [
+      {
+        "id": "CVE-2021-3749",
+        "package": "axios",
+        "version": "0.21.1",
+        "severity": "CRITICAL",
+        "score": 9.8
+      }
+    ],
+    "total_vulnerabilities": 49
+  }
+}
+```
+
+### Advanced Policy Capabilities
+
+#### Context-Aware Decision Making
+OPA policies can make sophisticated decisions based on:
+
+- **Scan Target Context**: Different rules for `package.json` vs `Dockerfile` vs `requirements.txt`
+- **Repository Context**: Per-repo or org-specific policy overrides
+- **Tool Compatibility**: Version-specific behavior for different scanning tools
+- **PR Context**: Different approval workflows for different types of changes
+- **Temporal Context**: Time-based policies (emergency patches, maintenance windows)
+
+#### Example Policy Logic
+```rego
+# Block critical vulnerabilities in production dependencies
+allow = false {
+    input.metadata.scan_target == "package.json"
+    input.vulnerabilities[_].severity == "CRITICAL"
+    input.vulnerabilities[_].package.ecosystem == "npm"
+}
+
+# Allow specific CVEs that have been manually reviewed
+allow = true {
+    input.vulnerabilities[_].id in data.approved_cves
+}
+
+# Different rules for different repositories
+allow = true {
+    input.metadata.repository == "owner/internal-tool"
+    input.summary.critical == 0
+    input.summary.high <= 5
+}
+```
+
+### Security Artifact Support
+
+#### Supported Formats
+1. **Trivy JSON**: Complete vulnerability reports with CVSS scores and fix information
+2. **SARIF**: Static analysis results interchange format for broader tool compatibility
+3. **SPDX SBOM**: Software bill of materials for license and dependency analysis
+
+#### Artifact Discovery
+```go
+// Automatic detection of security content in workflow artifacts
+detectSecurityContent(content []byte, filename string) ArtifactType {
+    // 1. Try SPDX JSON detection (document structure)
+    // 2. Try Trivy JSON detection (vulnerability schema)
+    // 3. Try SARIF detection (static analysis schema)
+    // 4. Return unknown if no match
+}
+```
+
+### Error Handling and Fallbacks
+
+#### Graceful Degradation
+- If OPA policy evaluation fails, falls back to simple severity-based rules
+- If no artifacts found, completes check as "neutral" with informative message
+- If workflow fails, marks vulnerability check as "skipped"
+
+#### User Feedback
+- **Expandable PR Comments**: Summary with collapsible details to avoid overwhelming conversations
+- **Rich Check Run Details**: Complete vulnerability information in GitHub check runs
+- **Policy Violation Context**: Clear explanations of why specific vulnerabilities were blocked
+
+### Performance Considerations
+
+#### Efficient Processing
+- Streams large artifact downloads to avoid memory issues
+- Concurrent artifact processing for multiple security reports
+- Caches vulnerability data to avoid redundant OPA evaluations
+
+#### Scalability
+- In-memory PR context storage with planned ValKey migration
+- Stateless processing for horizontal scaling
+- Background artifact processing to avoid blocking webhook responses
+
+### Future Enhancements
+
+#### Planned Features
+- **Multiple Security Tools**: Support for Snyk, GitHub Security Advisories, etc.
+- **Historical Tracking**: Vulnerability trend analysis across commits
+- **Auto-Fix Suggestions**: Integration with dependency update tools
+- **Risk Scoring**: Composite scores based on multiple factors
+- **Compliance Reporting**: Generate reports for security audits
+
+#### Extensibility
+- Plugin architecture for new security tool integrations
+- Custom payload transformation rules
+- Webhook integrations for external security platforms
+- API endpoints for external vulnerability data sources
