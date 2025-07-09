@@ -1,8 +1,8 @@
 package config
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -235,17 +235,17 @@ func TestConfig_ReflectionFunctions(t *testing.T) {
 	testConfig := Config{
 		Port: 8080,
 		Logger: LoggerConfig{
-			Level: "info",
+			Level:      "info",
 			JSONOutput: true,
 		},
 		Opa: OpaConfig{
 			ServerURL: "http://test:8181",
 		},
 	}
-	
+
 	// Test setDefaultsViaReflection
 	setDefaultsViaReflection(&testConfig)
-	
+
 	// The function should complete without panic
 	assert.Equal(t, 8080, testConfig.Port)
 	assert.Equal(t, "info", testConfig.Logger.Level)
@@ -256,7 +256,7 @@ func TestConfig_EnvironmentBinding(t *testing.T) {
 	assert.NotPanics(t, func() {
 		bindNestedEnvVars()
 	})
-	
+
 	// Test bindStructEnvVars function
 	assert.NotPanics(t, func() {
 		bindStructEnvVars(reflect.TypeOf(Config{}), "", "TEST")
@@ -269,7 +269,7 @@ func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
 	defer func() {
 		AppConfig = originalAppConfig
 	}()
-	
+
 	// Test missing installation ID
 	AppConfig = &Config{
 		GitHubApp: GitHubAppConfig{
@@ -277,11 +277,11 @@ func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
 			InstallationID: 0,
 		},
 	}
-	
+
 	_, err := LoadGitHubAppConfig()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "GITHUB_INSTALLATION_ID is required")
-	
+
 	// Test missing private key
 	AppConfig = &Config{
 		GitHubApp: GitHubAppConfig{
@@ -291,7 +291,7 @@ func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
 			PrivateKeyPath: "",
 		},
 	}
-	
+
 	_, err = LoadGitHubAppConfig()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required")

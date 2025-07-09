@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"log/slog"
+	"os"
 	"testing"
 
 	gogithub "github.com/google/go-github/v72/github"
@@ -170,4 +171,45 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 	// checkRun, err := service.CreatePolicyCheck(ctx, "owner", "repo", "sha")
 	// assert.NoError(t, err)
 	// assert.NotNil(t, checkRun)
+}
+
+func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	githubClient := clients.NewGitHubClient(context.Background())
+	service := NewCheckService(githubClient, logger)
+
+	ctx := context.Background()
+	
+	// Test with empty parameters (will likely fail but tests method signature)
+	assert.NotPanics(t, func() {
+		_, err := service.CreateCheckRun(ctx, "", "", "", CheckRunTypePolicy)
+		assert.Error(t, err, "Should return error for empty parameters")
+	})
+}
+
+func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	githubClient := clients.NewGitHubClient(context.Background())
+	service := NewCheckService(githubClient, logger)
+
+	ctx := context.Background()
+	
+	// Test with invalid parameters
+	assert.NotPanics(t, func() {
+		err := service.CompleteCheckRun(ctx, "", "", 0, CheckRunTypePolicy, ConclusionSuccess, CheckRunResult{})
+		assert.Error(t, err, "Should return error for invalid parameters")
+	})
+}
+
+func TestCheckService_ContextHandling(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	githubClient := clients.NewGitHubClient(context.Background())
+	service := NewCheckService(githubClient, logger)
+
+	// Test with cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	
+	_, err := service.CreateCheckRun(ctx, "owner", "repo", "sha", CheckRunTypePolicy)
+	assert.Error(t, err, "Should handle cancelled context")
 }

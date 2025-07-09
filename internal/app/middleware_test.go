@@ -50,7 +50,7 @@ func TestSetupRoutes_Structure(t *testing.T) {
 	// Test that we can call setupRoutes function exists
 	assert.NotPanics(t, func() {
 		// Just test that the function exists and mux can be created
-		_ = mux 
+		_ = mux
 	}, "setupRoutes function should exist")
 
 	// Test the middleware function directly works
