@@ -105,9 +105,9 @@ func (c *GitHubClient) CreateCheckRun(ctx context.Context, owner, repo, sha, nam
 }
 
 // UpdateCheckRun updates an existing check run with the given ID.
-func (c *GitHubClient) UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, status string, conclusion *string, output *github.CheckRunOutput) error {
+func (c *GitHubClient) UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, name, status string, conclusion *string, output *github.CheckRunOutput) error {
 	opts := github.UpdateCheckRunOptions{
-		Name:   "OPA Policy Check",
+		Name:   name,
 		Status: github.Ptr(status),
 	}
 

@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	helloPolicyPath   = "/v1/data/playground/hello"
-	licensePolicyPath = "/v1/data/playground/license"
+	helloPolicyPath         = "/v1/data/playground/hello"
+	licensePolicyPath       = "/v1/data/playground/license"
+	vulnerabilityPolicyPath = "/v1/data/playground/vulnerability"
 )
 
 type PolicyService struct {
@@ -29,6 +30,23 @@ type PolicyCheckResult struct {
 
 type HelloInput struct {
 	Message string `json:"message"`
+}
+
+type VulnerabilityPolicyVuln struct {
+	ID           string  `json:"id"`
+	Package      string  `json:"package"`
+	Version      string  `json:"version"`
+	Severity     string  `json:"severity"`
+	Score        float64 `json:"score,omitempty"`
+	FixedVersion string  `json:"fixed_version,omitempty"`
+}
+
+type VulnerabilityPolicyResult struct {
+	Compliant                   bool                      `json:"compliant"`
+	CompliantCount              int                       `json:"compliant_count"`
+	NonCompliantCount           int                       `json:"non_compliant_count"`
+	NonCompliantVulnerabilities []VulnerabilityPolicyVuln `json:"non_compliant_vulnerabilities"`
+	TotalVulnerabilities        int                       `json:"total_vulnerabilities"`
 }
 
 // NewPolicyService initializes a new PolicyService with the provided OPA client and logger.
@@ -125,5 +143,42 @@ func (s *PolicyService) CheckHelloPolicy(ctx context.Context, input HelloInput) 
 
 	span.SetAttributes(attribute.Bool("policy.result", result))
 	s.logger.InfoContext(ctx, "Hello policy check completed", "result", result)
+	return result, nil
+}
+
+// CheckVulnerabilityPolicy evaluates the vulnerability policy with the given payload.
+func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, input *VulnerabilityPayload) (VulnerabilityPolicyResult, error) {
+	tracer := otel.Tracer("polly/services")
+	ctx, span := tracer.Start(ctx, "policy.check_vulnerability")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("policy.type", "vulnerability"),
+		attribute.Int("input.vulnerability_count", len(input.Vulnerabilities)),
+		attribute.String("input.scan_target", input.Metadata.ScanTarget),
+		attribute.String("input.tool_name", input.Metadata.ToolName),
+	)
+
+	s.logger.DebugContext(ctx, "Checking vulnerability policy",
+		"vulnerability_count", len(input.Vulnerabilities),
+		"scan_target", input.Metadata.ScanTarget,
+		"tool_name", input.Metadata.ToolName)
+
+	result, err := evaluatePolicy[*VulnerabilityPayload, VulnerabilityPolicyResult](ctx, s, vulnerabilityPolicyPath, input)
+	if err != nil {
+		span.SetAttributes(attribute.String("error", err.Error()))
+		s.logger.ErrorContext(ctx, "Failed to check vulnerability policy", "error", err)
+		return VulnerabilityPolicyResult{}, err
+	}
+
+	span.SetAttributes(
+		attribute.Bool("policy.compliant", result.Compliant),
+		attribute.Int("policy.total_vulnerabilities", result.TotalVulnerabilities),
+		attribute.Int("policy.non_compliant_count", result.NonCompliantCount),
+	)
+	s.logger.InfoContext(ctx, "Vulnerability policy check completed",
+		"compliant", result.Compliant,
+		"total_vulnerabilities", result.TotalVulnerabilities,
+		"non_compliant_count", result.NonCompliantCount)
 	return result, nil
 }
