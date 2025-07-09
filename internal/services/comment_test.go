@@ -40,7 +40,7 @@ func TestCommentService_WriteComment_Parameters(t *testing.T) {
 	service := NewCommentService(githubClient, logger)
 
 	ctx := context.Background()
-	
+
 	// Test parameter validation (function will likely fail on API call, but tests signature)
 	assert.NotPanics(t, func() {
 		// Test with empty parameters to verify method signature
@@ -56,11 +56,11 @@ func TestCommentService_ErrorHandling(t *testing.T) {
 	service := NewCommentService(githubClient, logger)
 
 	ctx := context.Background()
-	
+
 	// Test with invalid parameters
 	err := service.WriteComment(ctx, "invalid", "repo", 0, "test comment")
 	assert.Error(t, err, "Should return error for invalid parameters")
-	
+
 	// Test with empty comment
 	err = service.WriteComment(ctx, "owner", "repo", 1, "")
 	assert.Error(t, err, "Should return error for empty comment")
@@ -74,7 +74,7 @@ func TestCommentService_ContextHandling(t *testing.T) {
 	// Test context cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
-	
+
 	err := service.WriteComment(ctx, "owner", "repo", 1, "test")
 	assert.Error(t, err, "Should handle cancelled context")
 }

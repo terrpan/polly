@@ -181,8 +181,8 @@ func TestWebhookHandler_HandleWebhook_RequestParsing(t *testing.T) {
 			method: "POST",
 			body:   `{"action": "opened"}`,
 			headers: map[string]string{
-				"Content-Type":    "application/json",
-				"X-GitHub-Event":  "unsupported_event",
+				"Content-Type":   "application/json",
+				"X-GitHub-Event": "unsupported_event",
 			},
 			expectedStatus: 400, // Bad Request for unsupported event
 		},
@@ -225,11 +225,11 @@ func TestWebhookHandler_BuildCheckRunResult(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		policyPassed   bool
-		policyError    error
-		expectedConc   services.CheckRunConclusion
-		expectedTitle  string
+		name          string
+		policyPassed  bool
+		policyError   error
+		expectedConc  services.CheckRunConclusion
+		expectedTitle string
 	}{
 		{
 			name:          "policy passed",
@@ -394,7 +394,7 @@ func TestWebhookHandler_CompleteVulnerabilityCheckAsNeutral(t *testing.T) {
 	// storage mechanism separately.
 	sha := "test-sha-with-check"
 	checkRunID := int64(789)
-	
+
 	handler.vulnerabilityCheckMutex.Lock()
 	handler.vulnerabilityCheckStore[sha] = checkRunID
 	handler.vulnerabilityCheckMutex.Unlock()

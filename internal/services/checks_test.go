@@ -179,7 +179,7 @@ func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 	service := NewCheckService(githubClient, logger)
 
 	ctx := context.Background()
-	
+
 	// Test with empty parameters (will likely fail but tests method signature)
 	assert.NotPanics(t, func() {
 		_, err := service.CreateCheckRun(ctx, "", "", "", CheckRunTypePolicy)
@@ -193,7 +193,7 @@ func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 	service := NewCheckService(githubClient, logger)
 
 	ctx := context.Background()
-	
+
 	// Test with invalid parameters
 	assert.NotPanics(t, func() {
 		err := service.CompleteCheckRun(ctx, "", "", 0, CheckRunTypePolicy, ConclusionSuccess, CheckRunResult{})
@@ -209,7 +209,7 @@ func TestCheckService_ContextHandling(t *testing.T) {
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	
+
 	_, err := service.CreateCheckRun(ctx, "owner", "repo", "sha", CheckRunTypePolicy)
 	assert.Error(t, err, "Should handle cancelled context")
 }

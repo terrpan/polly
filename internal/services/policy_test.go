@@ -33,9 +33,9 @@ func TestPolicyService_HelloInput_Structure(t *testing.T) {
 
 func TestPolicyService_VulnerabilityPolicyResult_Structure(t *testing.T) {
 	result := VulnerabilityPolicyResult{
-		Compliant:               true,
-		TotalVulnerabilities:    5,
-		NonCompliantCount:       2,
+		Compliant:            true,
+		TotalVulnerabilities: 5,
+		NonCompliantCount:    2,
 		NonCompliantVulnerabilities: []VulnerabilityPolicyVuln{
 			{
 				ID:       "CVE-2021-1234",
@@ -65,7 +65,7 @@ func TestPolicyService_EvaluatePolicy_ErrorHandling(t *testing.T) {
 	// Test hello policy with invalid context
 	ctx, cancel := context.WithCancel(ctx)
 	cancel() // Cancel immediately
-	
+
 	input := HelloInput{Message: "hello"}
 	passed, err := service.CheckHelloPolicy(ctx, input)
 	assert.Error(t, err)
@@ -81,9 +81,9 @@ func TestPolicyService_CheckVulnerabilityPolicy_EdgeCases(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		payload  *VulnerabilityPayload
-		wantErr  bool
+		name    string
+		payload *VulnerabilityPayload
+		wantErr bool
 	}{
 		{
 			name: "empty payload",

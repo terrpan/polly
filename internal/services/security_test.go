@@ -84,7 +84,7 @@ func TestSecurityService_VulnerabilityPayload_NewStructure(t *testing.T) {
 			Low:      3,
 		},
 	}
-	
+
 	assert.Equal(t, "vulnerability_report", payload.Type)
 	assert.Equal(t, "trivy", payload.Metadata.ToolName)
 	assert.Equal(t, "test/repo", payload.Metadata.Repository)
@@ -100,7 +100,7 @@ func TestSecurityService_ContextHandling(t *testing.T) {
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	
+
 	_, err := service.ProcessWorkflowSecurityArtifacts(ctx, "owner", "repo", "sha", 123)
 	assert.Error(t, err, "Should handle cancelled context")
 }
@@ -111,7 +111,7 @@ func TestSecurityService_DiscoverSecurityArtifacts(t *testing.T) {
 	service := NewSecurityService(githubClient, logger)
 
 	ctx := context.Background()
-	
+
 	// Test discovering artifacts (will likely fail without real GitHub API)
 	_, err := service.DiscoverSecurityArtifacts(ctx, "owner", "repo", 123)
 	assert.Error(t, err, "Should return error without valid GitHub API")
@@ -162,9 +162,9 @@ func TestSecurityService_NormalizeTrivyVulnerability(t *testing.T) {
 	// Since the DetectedVulnerability structure is complex and from external library,
 	// we'll test the normalization function with simplified test cases
 	tests := []struct {
-		name         string
-		target       string
-		expectedEco  string
+		name        string
+		target      string
+		expectedEco string
 	}{
 		{
 			name:        "node vulnerability",
@@ -323,7 +323,7 @@ func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			payloads, err := service.BuildPayloadsFromArtifacts(ctx, tt.artifacts, "owner", "repo", "sha", 123)
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
