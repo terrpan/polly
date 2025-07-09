@@ -1,9 +1,9 @@
 package services
 
 import (
-	"testing"
 	"log/slog"
 	"os"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/terrpan/polly/internal/clients"
@@ -28,7 +28,7 @@ func TestHealthService_Structure(t *testing.T) {
 	// Test that service has the expected structure
 	assert.NotNil(t, service.opaClient)
 	assert.NotNil(t, service.logger)
-	
+
 	// Note: We can't test actual health checks without real external dependencies
 	// This would require integration testing with real or stubbed services
 }

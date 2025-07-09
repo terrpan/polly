@@ -138,7 +138,7 @@ func TestCheckService_CheckRunResult(t *testing.T) {
 		assert.Equal(t, "Test Text", result.Text)
 		assert.Nil(t, result.Annotations) // Should be nil by default
 	})
-	
+
 	t.Run("check run result with annotations", func(t *testing.T) {
 		result := CheckRunResult{
 			Success:     true,
