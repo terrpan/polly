@@ -13,16 +13,16 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
-        
+
     - name: Cache Go modules
       uses: actions/cache@v4
       with:
@@ -32,22 +32,22 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-          
+
     - name: Download dependencies
       run: go mod download
-      
+
     - name: Verify dependencies
       run: go mod verify
-      
+
     - name: Run go vet
       run: go vet ./...
-      
+
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out ./...
-      
+
     - name: Generate coverage report
       run: go tool cover -func=coverage.out
-      
+
     - name: Check coverage threshold
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep "total:" | awk '{print $3}' | sed 's/%//')
@@ -58,7 +58,7 @@ jobs:
         else
           echo "✅ Coverage ${COVERAGE}% meets 30% threshold"
         fi
-      
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -70,16 +70,16 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
-        
+
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
@@ -89,16 +89,16 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Run Gosec Security Scanner
       uses: securecodewarrior/github-action-gosec@master
       with:
         args: './...'
-        
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
@@ -106,7 +106,7 @@ jobs:
         scan-ref: '.'
         format: 'sarif'
         output: 'trivy-results.sarif'
-        
+
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
       if: always()
