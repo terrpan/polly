@@ -116,7 +116,7 @@ func (s *HealthService) checkOPAHealth(ctx context.Context) DependencyCheck {
 			Timestamp: time.Now().UTC(),
 		}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusOK {
 		span.SetAttributes(

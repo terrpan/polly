@@ -311,7 +311,7 @@ func (s *SecurityService) inspectZipContent(zipData []byte, artifactName string)
 		}
 
 		content, err := io.ReadAll(rc)
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			s.logger.Warn("Failed to read file content", "filename", file.Name, "error", err)
 			continue

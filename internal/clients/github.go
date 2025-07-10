@@ -212,7 +212,7 @@ func (c *GitHubClient) DownloadArtifact(ctx context.Context, owner, repo string,
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform download request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to download artifact: received status code %d", resp.StatusCode)

@@ -109,7 +109,7 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Webhook received successfully"))
+	_, _ = w.Write([]byte("Webhook received successfully"))
 }
 
 // handlePullRequestEvent processes pull request events.

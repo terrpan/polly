@@ -58,20 +58,20 @@ func TestOPAClient_Do(t *testing.T) {
 		switch r.URL.Path {
 		case "/test/success":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"result": true}`))
+			_, _ = w.Write([]byte(`{"result": true}`))
 		case "/test/not-found":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"message": "Not Found"}`))
+			_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 		case "/test/server-error":
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"message": "Internal Server Error"}`))
+			_, _ = w.Write([]byte(`{"message": "Internal Server Error"}`))
 		case "/test/post":
 			if r.Method != http.MethodPost {
 				w.WriteHeader(http.StatusMethodNotAllowed)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"result": "created"}`))
+			_, _ = w.Write([]byte(`{"result": "created"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -142,7 +142,7 @@ func TestOPAClient_Do(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
 				assert.Equal(t, tt.expectedStatus, resp.StatusCode)
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		})
 	}
@@ -159,7 +159,7 @@ func TestOPAClient_GetOpaHealth(t *testing.T) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status": "ok"}`))
+			_, _ = w.Write([]byte(`{"status": "ok"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -197,7 +197,7 @@ func TestOPAClient_GetOpaHealth(t *testing.T) {
 				assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 				assert.Equal(t, http.MethodGet, resp.Request.Method)
 				assert.Contains(t, resp.Request.URL.Path, "/health")
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		})
 	}
@@ -209,7 +209,7 @@ func TestOPAClient_ContextCancellation(t *testing.T) {
 		// Simulate slow response
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"result": true}`))
+		_, _ = w.Write([]byte(`{"result": true}`))
 	}))
 	defer server.Close()
 

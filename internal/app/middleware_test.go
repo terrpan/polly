@@ -12,7 +12,7 @@ func TestJsonContentTypeMiddleware(t *testing.T) {
 	// Create a test handler that will be wrapped by the middleware
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test response"))
+	   _, _ = w.Write([]byte("test response"))
 	})
 
 	// Wrap the handler with the middleware

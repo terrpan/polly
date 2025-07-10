@@ -124,10 +124,10 @@ func TestGetPullRequest(t *testing.T) {
 					"ref": "main"
 				}
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/repo/pulls/404":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"message": "Not Found"}`))
+			_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -199,10 +199,10 @@ func TestWriteComment(t *testing.T) {
 					"login": "test-user"
 				}
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/repo/issues/500/comments":
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"message": "Internal Server Error"}`))
+			_, _ = w.Write([]byte(`{"message": "Internal Server Error"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -273,10 +273,10 @@ func TestCreateCheckRun(t *testing.T) {
 				"status": "queued",
 				"started_at": "2023-01-01T00:00:00Z"
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/error-repo/check-runs":
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte(`{"message": "Validation Failed"}`))
+			_, _ = w.Write([]byte(`{"message": "Validation Failed"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -352,10 +352,10 @@ func TestUpdateCheckRun(t *testing.T) {
 				"status": "completed",
 				"conclusion": "success"
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/repo/check-runs/404":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"message": "Not Found"}`))
+			_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -446,10 +446,10 @@ func TestListWorkflowRunArtifacts(t *testing.T) {
 					}
 				]
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/repo/actions/runs/404/artifacts":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"message": "Not Found"}`))
+			_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -523,10 +523,10 @@ func TestGetCheckRun(t *testing.T) {
 				"status": "completed",
 				"conclusion": "success"
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/repo/check-runs/404":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"message": "Not Found"}`))
+			_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -606,10 +606,10 @@ func TestListCheckRuns(t *testing.T) {
 					}
 				]
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/repo/commits/404/check-runs":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"message": "Not Found"}`))
+			_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -687,10 +687,10 @@ func TestGetArtifact(t *testing.T) {
 				"created_at": "2023-01-01T00:00:00Z",
 				"updated_at": "2023-01-01T00:00:00Z"
 			}`
-			w.Write([]byte(response))
+			_, _ = w.Write([]byte(response))
 		case "/repos/owner/repo/actions/artifacts/404":
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(`{"message": "Not Found"}`))
+			_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

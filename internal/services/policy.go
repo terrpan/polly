@@ -84,7 +84,7 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 			"input", input)
 		return zero, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	span.SetAttributes(attribute.Int("opa.response_code", resp.StatusCode))
 	if resp.StatusCode != http.StatusOK {
