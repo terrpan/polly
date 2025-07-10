@@ -1,0 +1,67 @@
+run:
+  timeout: 5m
+  go: "1.21"
+  tests: true
+
+output:
+  format: colored-line-number
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - dupl
+    - goconst
+    - gocyclo
+    - revive
+    - gosec
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  
+  dupl:
+    threshold: 100
+  
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  
+  misspell:
+    locale: US
+  
+  revive:
+    rules:
+      - name: exported-function
+      - name: exported-type
+      - name: exported-var
+      - name: package-comments
+        disabled: true
+  
+  gosec:
+    excludes:
+      - G104
+      - G204
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - goconst
+    
+    - path: internal/
+      text: "weak cryptographic primitive"
+      linters:
+        - gosec
+  
+  max-issues-per-linter: 0
+  max-same-issues: 0

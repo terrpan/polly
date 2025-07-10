@@ -262,7 +262,7 @@ func bindStructEnvVars(structType reflect.Type, keyPrefix, envPrefix string) {
 			bindStructEnvVars(fieldType, viperKey, envPrefix)
 		} else {
 			// Bind the environment variable to the viper key
-			viper.BindEnv(viperKey, envKey)
+			_ = viper.BindEnv(viperKey, envKey)
 		}
 	}
 }
