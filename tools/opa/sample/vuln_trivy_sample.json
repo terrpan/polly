@@ -1,51 +1,1671 @@
 {
-    "type": "vulnerability_scan",
-    "metadata": {
-        "source_format": "trivy_json",
-        "tool_name": "trivy",
-        "tool_version": "",
-        "scan_time": "2025-07-06T21:53:59Z",
-        "repository": "terrpan/test-repo",
-        "commit_sha": "5da17a7eccaf3590013b3400902e99929a44465b",
-        "scan_target": ".",
-        "schema_version": "2"
-    },
-    "vulnerabilities": [
-        {
-            "id": "CVE-2023-45857",
-            "severity": "MEDIUM",
-            "score": 6.5,
-            "package": {
-                "name": "axios",
-                "version": "0.21.1",
-                "ecosystem": "npm"
-            },
-            "location": {
-                "file": "package-lock.json"
-            },
-            "description": "An issue discovered in Axios 1.5.1 inadvertently reveals the confidential XSRF-TOKEN stored in cookies",
-            "fixed_version": "1.6.0, 0.28.0",
-            "references": [
-                "https://github.com/axios/axios/security/advisories/GHSA-xvch-5gv4-984h"
-            ]
+    "input": {
+        "type": "vulnerability_scan",
+        "metadata": {
+            "source_format": "trivy_json",
+            "tool_name": "trivy",
+            "tool_version": "",
+            "scan_time": "2025-07-06T21:53:59Z",
+            "repository": "terrpan/test-repo",
+            "commit_sha": "5da17a7eccaf3590013b3400902e99929a44465b",
+            "scan_target": ".",
+            "schema_version": "2"
         },
-        {
-            "id": "CVE-2020-8203",
-            "severity": "LOW",
-            "score": 7.4,
-            "package": {
-                "name": "lodash",
-                "version": "4.17.15",
-                "ecosystem": "npm"
+        "vulnerabilities": [
+            {
+                "id": "CVE-2021-3749",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "axios",
+                    "version": "0.21.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "axios is vulnerable to Inefficient Regular Expression Complexity",
+                "fixed_version": "0.21.2",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2021-3749",
+                    "https://cert-portal.siemens.com/productcert/pdf/ssa-637483.pdf",
+                    "https://github.com/axios/axios",
+                    "https://github.com/axios/axios/commit/5b457116e31db0e88fede6c428e969e87f290929",
+                    "https://github.com/axios/axios/pull/3980",
+                    "https://huntr.dev/bounties/1e8f07fc-c384-4ff9-8498-0690de2e8c31",
+                    "https://huntr.dev/bounties/1e8f07fc-c384-4ff9-8498-0690de2e8c31/",
+                    "https://lists.apache.org/thread.html/r075d464dce95cd13c03ff9384658edcccd5ab2983b82bfc72b62bb10%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r075d464dce95cd13c03ff9384658edcccd5ab2983b82bfc72b62bb10@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r216f0fd0a3833856d6a6a1fada488cadba45f447d87010024328ccf2%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r216f0fd0a3833856d6a6a1fada488cadba45f447d87010024328ccf2@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r3ae6d2654f92c5851bdb73b35e96b0e4e3da39f28ac7a1b15ae3aab8%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r3ae6d2654f92c5851bdb73b35e96b0e4e3da39f28ac7a1b15ae3aab8@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r4bf1b32983f50be00f9752214c1b53738b621be1c2b0dbd68c7f2391%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r4bf1b32983f50be00f9752214c1b53738b621be1c2b0dbd68c7f2391@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r7324ecc35b8027a51cb6ed629490fcd3b2d7cf01c424746ed5744bf1%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r7324ecc35b8027a51cb6ed629490fcd3b2d7cf01c424746ed5744bf1@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r74d0b359408fff31f87445261f0ee13bdfcac7d66f6b8e846face321%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r74d0b359408fff31f87445261f0ee13bdfcac7d66f6b8e846face321@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra15d63c54dc6474b29f72ae4324bcb03038758545b3ab800845de7a1%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra15d63c54dc6474b29f72ae4324bcb03038758545b3ab800845de7a1@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rc263bfc5b53afcb7e849605478d73f5556eb0c00d1f912084e407289%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rc263bfc5b53afcb7e849605478d73f5556eb0c00d1f912084e407289@%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rfa094029c959da0f7c8cd7dc9c4e59d21b03457bf0cedf6c93e1bb0a%40%3Cdev.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rfa094029c959da0f7c8cd7dc9c4e59d21b03457bf0cedf6c93e1bb0a@%3Cdev.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rfc5c478053ff808671aef170f3d9fc9d05cc1fab8fb64431edc66103%40%3Ccommits.druid.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rfc5c478053ff808671aef170f3d9fc9d05cc1fab8fb64431edc66103@%3Ccommits.druid.apache.org%3E",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-3749",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-3749",
+                    "https://www.npmjs.com/package/axios",
+                    "https://www.oracle.com/security-alerts/cpujul2022.html"
+                ]
             },
-            "location": {
-                "file": "package-lock.json"
+            {
+                "id": "CVE-2025-27152",
+                "severity": "HIGH",
+                "score": 5.3,
+                "package": {
+                    "name": "axios",
+                    "version": "0.21.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "axios is a promise based HTTP client for the browser and node.js. The issue occurs when passing absolute URLs rather than protocol-relative URLs to axios. Even if ⁠baseURL is set, axios sends the request to the specified absolute URL, potentially causing SSRF and credential leakage. This issue impacts both server-side and client-side usage of axios. This issue is fixed in 1.8.2.",
+                "fixed_version": "1.8.2, 0.30.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2025-27152",
+                    "https://github.com/axios/axios",
+                    "https://github.com/axios/axios/commit/02c3c69ced0f8fd86407c23203835892313d7fde",
+                    "https://github.com/axios/axios/commit/fb8eec214ce7744b5ca787f2c3b8339b2f54b00f",
+                    "https://github.com/axios/axios/issues/6463",
+                    "https://github.com/axios/axios/pull/6829",
+                    "https://github.com/axios/axios/releases/tag/v1.8.2",
+                    "https://github.com/axios/axios/security/advisories/GHSA-jr5f-v2jv-69x6",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2025-27152",
+                    "https://www.cve.org/CVERecord?id=CVE-2025-27152"
+                ]
             },
-            "description": "Prototype pollution attack when using _.zipObjectDeep in lodash before 4.17.20.",
-            "fixed_version": "4.17.19",
-            "references": [
-                "https://github.com/lodash/lodash/commit/c84fe82760fb2d3e03a63379b297a1cc1a2fce12"
-            ]
+            {
+                "id": "CVE-2023-45857",
+                "severity": "MEDIUM",
+                "score": 6.5,
+                "package": {
+                    "name": "axios",
+                    "version": "0.21.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "An issue discovered in Axios 1.5.1 inadvertently reveals the confidential XSRF-TOKEN stored in cookies by including it in the HTTP header X-XSRF-TOKEN for every request made to any host allowing attackers to view sensitive information.",
+                "fixed_version": "1.6.0, 0.28.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2023-45857",
+                    "https://github.com/axios/axios",
+                    "https://github.com/axios/axios/commit/2755df562b9c194fba6d8b609a383443f6a6e967",
+                    "https://github.com/axios/axios/commit/96ee232bd3ee4de2e657333d4d2191cd389e14d0",
+                    "https://github.com/axios/axios/issues/6006",
+                    "https://github.com/axios/axios/issues/6022",
+                    "https://github.com/axios/axios/pull/6028",
+                    "https://github.com/axios/axios/pull/6091",
+                    "https://github.com/axios/axios/releases/tag/v0.28.0",
+                    "https://github.com/axios/axios/releases/tag/v1.6.0",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2023-45857",
+                    "https://security.netapp.com/advisory/ntap-20240621-0006",
+                    "https://security.netapp.com/advisory/ntap-20240621-0006/",
+                    "https://security.snyk.io/vuln/SNYK-JS-AXIOS-6032459",
+                    "https://www.cve.org/CVERecord?id=CVE-2023-45857"
+                ]
+            },
+            {
+                "id": "CVE-2024-45590",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "body-parser",
+                    "version": "1.19.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "body-parser is Node.js body parsing middleware. body-parser <1.20.3 is vulnerable to denial of service when url encoding is enabled. A malicious actor using a specially crafted payload could flood the server with a large number of requests, resulting in denial of service. This issue is patched in 1.20.3.",
+                "fixed_version": "1.20.3",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-45590",
+                    "https://github.com/expressjs/body-parser",
+                    "https://github.com/expressjs/body-parser/commit/b2695c4450f06ba3b0ccf48d872a229bb41c9bce",
+                    "https://github.com/expressjs/body-parser/security/advisories/GHSA-qwcr-r2fm-qrc7",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-45590",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-45590"
+                ]
+            },
+            {
+                "id": "CVE-2024-6531",
+                "severity": "MEDIUM",
+                "score": 6.1,
+                "package": {
+                    "name": "bootstrap",
+                    "version": "4.6.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "A vulnerability has been identified in Bootstrap that exposes users to Cross-Site Scripting (XSS) attacks. The issue is present in the carousel component, where the data-slide and data-slide-to attributes can be exploited through the href attribute of an <a> tag due to inadequate sanitization. This vulnerability could potentially enable attackers to execute arbitrary JavaScript within the victim's browser.",
+                "fixed_version": "5.0.0",
+                "references": [
+                    "https://github.com/advisories/GHSA-vc8w-jr9v-vj7f",
+                    "https://github.com/rubysec/ruby-advisory-db/blob/master/gems/bootstrap/CVE-2024-6531.yml",
+                    "https://github.com/twbs/bootstrap",
+                    "https://lists.debian.org/debian-lts-announce/2025/04/msg00021.html",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-6531",
+                    "https://ubuntu.com/security/notices/USN-7556-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-6531",
+                    "https://www.herodevs.com/vulnerability-directory/cve-2024-6531"
+                ]
+            },
+            {
+                "id": "CVE-2024-47764",
+                "severity": "LOW",
+                "score": 3.7,
+                "package": {
+                    "name": "cookie",
+                    "version": "0.4.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "cookie is a basic HTTP cookie parser and serializer for HTTP servers. The cookie name could be used to set other fields of the cookie, resulting in an unexpected cookie value. A similar escape can be used for path and domain, which could be abused to alter other fields of the cookie. Upgrade to 0.7.0, which updates the validation for name, path, and domain.",
+                "fixed_version": "0.7.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-47764",
+                    "https://github.com/jshttp/cookie",
+                    "https://github.com/jshttp/cookie/commit/e10042845354fea83bd8f34af72475eed1dadf5c",
+                    "https://github.com/jshttp/cookie/pull/167",
+                    "https://github.com/jshttp/cookie/security/advisories/GHSA-pxg6-pf52-xh8x",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-47764",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-47764"
+                ]
+            },
+            {
+                "id": "GHSA-vjh7-7g9h-fjfh",
+                "severity": "CRITICAL",
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "### Summary\n\nPrivate key can be extracted from ECDSA signature upon signing a malformed input (e.g. a string or a number), which could e.g. come from JSON network input\n\nNote that `elliptic` by design accepts hex strings as one of the possible input types\n\n### Details\n\nIn this code: https://github.com/indutny/elliptic/blob/3e46a48fdd2ef2f89593e5e058d85530578c9761/lib/elliptic/ec/index.js#L100-L107\n\n`msg` is a BN instance after conversion, but `nonce` is an array, and different BN instances could generate equivalent arrays after conversion.\n\nMeaning that a same `nonce` could be generated for different messages used in signing process, leading to `k` reuse, leading to private key extraction from a pair of signatures\n\nSuch a message can be constructed for any already known message/signature pair, meaning that the attack needs only a single malicious message being signed for a full key extraction\n\nWhile signing unverified attacker-controlled messages would be problematic itself (and exploitation of this needs such a scenario), signing a single message still _should not_ leak the private key\n\nAlso, message validation could have the same bug (out of scope for this report, but could be possible in some situations), which makes this attack more likely when used in a chain\n\n### PoC\n\n#### `k` reuse example\n\n```js\nimport elliptic from 'elliptic'\n\nconst { ec: EC } = elliptic\n\nconst privateKey = crypto.getRandomValues(new Uint8Array(32))\nconst curve = 'ed25519' // or any other curve, e.g. secp256k1\nconst ec = new EC(curve)\nconst prettyprint = ({ r, s }) => `r: ${r}, s: ${s}`\nconst sig0 = prettyprint(ec.sign(Buffer.alloc(32, 1), privateKey)) // array of ones\nconst sig1 = prettyprint(ec.sign('01'.repeat(32), privateKey)) // same message in hex form\nconst sig2 = prettyprint(ec.sign('-' + '01'.repeat(32), privateKey)) // same `r`, different `s`\nconsole.log({ sig0, sig1, sig2 })\n```\n\n#### Full attack\n\nThis doesn't include code for generation/recovery on a purpose (bit it's rather trivial)\n\n```js\nimport elliptic from 'elliptic'\n\nconst { ec: EC } = elliptic\n\nconst privateKey = crypto.getRandomValues(new Uint8Array(32))\nconst curve = 'secp256k1' // or any other curve, e.g. ed25519\nconst ec = new EC(curve)\n\n// Any message, e.g. previously known signature\nconst msg0 = crypto.getRandomValues(new Uint8Array(32))\nconst sig0 = ec.sign(msg0, privateKey)\n\n// Attack\nconst msg1 = funny(msg0) // this is a string here, but can also be of other non-Uint8Array types\nconst sig1 = ec.sign(msg1, privateKey)\n\nconst something = extract(msg0, sig0, sig1, curve)\n\nconsole.log('Curve:', curve)\nconsole.log('Typeof:', typeof msg1)\nconsole.log('Keys equal?', Buffer.from(privateKey).toString('hex') === something)\nconst rnd = crypto.getRandomValues(new Uint8Array(32))\nconst st = (x) => JSON.stringify(x)\nconsole.log('Keys equivalent?', st(ec.sign(rnd, something).toDER()) === st(ec.sign(rnd, privateKey).toDER()))\nconsole.log('Orig key:', Buffer.from(privateKey).toString('hex'))\nconsole.log('Restored:', something)\n```\n\nOutput:\n```console\nCurve: secp256k1\nTypeof: string\nKeys equal? true\nKeys equivalent? true\nOrig key: c7870f7eb3e8fd5155d5c8cdfca61aa993eed1fbe5b41feef69a68303248c22a\nRestored: c7870f7eb3e8fd5155d5c8cdfca61aa993eed1fbe5b41feef69a68303248c22a\n```\n\nSimilar for `ed25519`, but due to low `n`, the key might not match precisely but is nevertheless equivalent for signing:\n```console\nCurve: ed25519\nTypeof: string\nKeys equal? false\nKeys equivalent? true\nOrig key: f1ce0e4395592f4de24f6423099e022925ad5d2d7039b614aaffdbb194a0d189\nRestored: 01ce0e4395592f4de24f6423099e0227ec9cb921e3b7858581ec0d26223966a6\n```\n`restored` is equal to `orig` mod `N`.\n\n### Impact\n\nFull private key extraction when signing a single malicious message (that passes `JSON.stringify`/`JSON.parse`)",
+                "fixed_version": "6.6.1",
+                "references": [
+                    "https://github.com/indutny/elliptic",
+                    "https://github.com/indutny/elliptic/commit/04cb6f54ce552b3ebde6be06d6050419e1c7333e",
+                    "https://github.com/indutny/elliptic/security/advisories/GHSA-vjh7-7g9h-fjfh"
+                ]
+            },
+            {
+                "id": "CVE-2020-13822",
+                "severity": "HIGH",
+                "score": 7.7,
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The Elliptic package 6.5.2 for Node.js allows ECDSA signature malleability via variations in encoding, leading '\\0' bytes, or integer overflows. This could conceivably have a security-relevant impact if an application relied on a single canonical signature.",
+                "fixed_version": "6.5.3",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2020-13822",
+                    "https://github.com/indutny/elliptic",
+                    "https://github.com/indutny/elliptic/commit/856fe4d99fe7b6200556e6400b3bf585b1721bec",
+                    "https://github.com/indutny/elliptic/issues/226",
+                    "https://medium.com/%40herman_10687/malleability-attack-why-it-matters-7b5f59fb99a4",
+                    "https://medium.com/@herman_10687/malleability-attack-why-it-matters-7b5f59fb99a4",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-13822",
+                    "https://snyk.io/vuln/SNYK-JS-ELLIPTIC-571484",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-13822",
+                    "https://www.npmjs.com/package/elliptic",
+                    "https://yondon.blog/2019/01/01/how-not-to-use-ecdsa",
+                    "https://yondon.blog/2019/01/01/how-not-to-use-ecdsa/"
+                ]
+            },
+            {
+                "id": "CVE-2020-28498",
+                "severity": "MEDIUM",
+                "score": 4.3,
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The package elliptic before 6.5.4 are vulnerable to Cryptographic Issues via the secp256k1 implementation in elliptic/ec/key.js. There is no check to confirm that the public key point passed into the derive function actually exists on the secp256k1 curve. This results in the potential for the private key used in this implementation to be revealed after a number of ECDH operations are performed.",
+                "fixed_version": "6.5.4",
+                "references": [
+                    "https://github.com/christianlundkvist/blog/blob/master/2020_05_26_secp256k1_twist_attacks/secp256k1_twist_attacks.md",
+                    "https://github.com/indutny/elliptic/commit/441b7428b0e8f6636c42118ad2aaa186d3c34c3f",
+                    "https://github.com/indutny/elliptic/pull/244/commits",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-28498",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1069836",
+                    "https://snyk.io/vuln/SNYK-JS-ELLIPTIC-1064899",
+                    "https://www.npmjs.com/package/elliptic"
+                ]
+            },
+            {
+                "id": "CVE-2024-42459",
+                "severity": "LOW",
+                "score": 5.3,
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "In the Elliptic package 6.5.6 for Node.js, EDDSA signature malleability occurs because there is a missing signature length check, and thus zero-valued bytes can be removed or appended.",
+                "fixed_version": "6.5.7",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-42459",
+                    "https://github.com/indutny/elliptic",
+                    "https://github.com/indutny/elliptic/commit/accb61e9c1a005e5c8ff96a8b33893100bb42d11",
+                    "https://github.com/indutny/elliptic/commit/c0690b36be043ee73c1780ae4b7df48632b11cf9",
+                    "https://github.com/indutny/elliptic/pull/317",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-42459",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-42459"
+                ]
+            },
+            {
+                "id": "CVE-2024-42460",
+                "severity": "LOW",
+                "score": 5.3,
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "In the Elliptic package 6.5.6 for Node.js, ECDSA signature malleability occurs because there is a missing check for whether the leading bit of r and s is zero.",
+                "fixed_version": "6.5.7",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-42460",
+                    "https://github.com/indutny/elliptic",
+                    "https://github.com/indutny/elliptic/commit/accb61e9c1a005e5c8ff96a8b33893100bb42d11",
+                    "https://github.com/indutny/elliptic/commit/b6ff1758d9a6d1a7aec177ff6df9f586492a6315",
+                    "https://github.com/indutny/elliptic/pull/317",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-42460",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-42460"
+                ]
+            },
+            {
+                "id": "CVE-2024-42461",
+                "severity": "LOW",
+                "score": 9.1,
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "In the Elliptic package 6.5.6 for Node.js, ECDSA signature malleability occurs because BER-encoded signatures are allowed.",
+                "fixed_version": "6.5.7",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-42461",
+                    "https://github.com/indutny/elliptic",
+                    "https://github.com/indutny/elliptic/commit/accb61e9c1a005e5c8ff96a8b33893100bb42d11",
+                    "https://github.com/indutny/elliptic/pull/317",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-42461",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-42461"
+                ]
+            },
+            {
+                "id": "CVE-2024-48948",
+                "severity": "LOW",
+                "score": 3.7,
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The Elliptic package 6.5.7 for Node.js, in its for ECDSA implementation, does not correctly verify valid signatures if the hash contains at least four leading 0 bytes and when the order of the elliptic curve's base point is smaller than the hash, because of an _truncateToN anomaly. This leads to valid signatures being rejected. Legitimate transactions or communications may be incorrectly flagged as invalid.",
+                "fixed_version": "6.6.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-48948",
+                    "https://github.com/indutny/elliptic",
+                    "https://github.com/indutny/elliptic/commit/34c853478cec1be4e37260ed2cb12cdbdc6402cf",
+                    "https://github.com/indutny/elliptic/issues/321",
+                    "https://github.com/indutny/elliptic/pull/322",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-48948",
+                    "https://security.netapp.com/advisory/ntap-20241220-0004",
+                    "https://security.netapp.com/advisory/ntap-20241220-0004/",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-48948"
+                ]
+            },
+            {
+                "id": "CVE-2024-48949",
+                "severity": "LOW",
+                "score": 9.1,
+                "package": {
+                    "name": "elliptic",
+                    "version": "6.5.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The verify function in lib/elliptic/eddsa/index.js in the Elliptic package before 6.5.6 for Node.js omits \"sig.S().gte(sig.eddsa.curve.n) || sig.S().isNeg()\" validation.",
+                "fixed_version": "6.5.6",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-48949",
+                    "https://github.com/indutny/elliptic",
+                    "https://github.com/indutny/elliptic/commit/7ac5360118f74eb02da73bdf9f24fd0c72ff5281",
+                    "https://github.com/indutny/elliptic/compare/v6.5.5...v6.5.6",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-48949",
+                    "https://security.netapp.com/advisory/ntap-20241227-0003",
+                    "https://security.netapp.com/advisory/ntap-20241227-0003/",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-48949"
+                ]
+            },
+            {
+                "id": "CVE-2024-29041",
+                "severity": "MEDIUM",
+                "score": 6.1,
+                "package": {
+                    "name": "express",
+                    "version": "4.17.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Express.js minimalist web framework for node. Versions of Express.js prior to 4.19.0 and all pre-release alpha and beta versions of 5.0 are affected by an open redirect vulnerability using malformed URLs. When a user of Express performs a redirect using a user-provided URL Express performs an encode [using `encodeurl`](https://github.com/pillarjs/encodeurl) on the contents before passing it to the `location` header. This can cause malformed URLs to be evaluated in unexpected ways by common redirect allow list implementations in Express applications, leading to an Open Redirect via bypass of a properly implemented allow list. The main method impacted is `res.location()` but this is also called from within `res.redirect()`. The vulnerability is fixed in 4.19.2 and 5.0.0-beta.3.",
+                "fixed_version": "4.19.2, 5.0.0-beta.3",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-29041",
+                    "https://expressjs.com/en/4x/api.html#res.location",
+                    "https://github.com/expressjs/express",
+                    "https://github.com/expressjs/express/commit/0867302ddbde0e9463d0564fea5861feb708c2dd",
+                    "https://github.com/expressjs/express/commit/0b746953c4bd8e377123527db11f9cd866e39f94",
+                    "https://github.com/expressjs/express/pull/5539",
+                    "https://github.com/expressjs/express/security/advisories/GHSA-rv95-896h-c2vc",
+                    "https://github.com/koajs/koa/issues/1800",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-29041",
+                    "https://ubuntu.com/security/notices/USN-7581-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-29041"
+                ]
+            },
+            {
+                "id": "CVE-2024-43796",
+                "severity": "LOW",
+                "score": 4.7,
+                "package": {
+                    "name": "express",
+                    "version": "4.17.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Express.js minimalist web framework for node. In express < 4.20.0, passing untrusted user input - even after sanitizing it - to response.redirect() may execute untrusted code. This issue is patched in express 4.20.0.",
+                "fixed_version": "4.20.0, 5.0.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-43796",
+                    "https://github.com/expressjs/express",
+                    "https://github.com/expressjs/express/commit/54271f69b511fea198471e6ff3400ab805d6b553",
+                    "https://github.com/expressjs/express/security/advisories/GHSA-qw6h-vgh9-j6wx",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-43796",
+                    "https://ubuntu.com/security/notices/USN-7581-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-43796"
+                ]
+            },
+            {
+                "id": "CVE-2021-23369",
+                "severity": "CRITICAL",
+                "score": 9.8,
+                "package": {
+                    "name": "handlebars",
+                    "version": "4.7.6",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The package handlebars before 4.7.7 are vulnerable to Remote Code Execution (RCE) when selecting certain compiling options to compile templates coming from an untrusted source.",
+                "fixed_version": "4.7.7",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2021-23369",
+                    "https://github.com/advisories/GHSA-f2jv-r9rf-7988",
+                    "https://github.com/handlebars-lang/handlebars.js/commit/b6d3de7123eebba603e321f04afdbae608e8fea8",
+                    "https://github.com/handlebars-lang/handlebars.js/commit/f0589701698268578199be25285b2ebea1c1e427",
+                    "https://github.com/wycats/handlebars.js",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-23369",
+                    "https://security.netapp.com/advisory/ntap-20210604-0008",
+                    "https://security.netapp.com/advisory/ntap-20210604-0008/",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARS-1074950",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWER-1074951",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1074952",
+                    "https://snyk.io/vuln/SNYK-JS-HANDLEBARS-1056767",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-23369"
+                ]
+            },
+            {
+                "id": "CVE-2021-23383",
+                "severity": "CRITICAL",
+                "score": 9.8,
+                "package": {
+                    "name": "handlebars",
+                    "version": "4.7.6",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The package handlebars before 4.7.7 are vulnerable to Prototype Pollution when selecting certain compiling options to compile templates coming from an untrusted source.",
+                "fixed_version": "4.7.7",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2021-23383",
+                    "https://github.com/advisories/GHSA-765h-qjxv-5f44",
+                    "https://github.com/handlebars-lang/handlebars.js",
+                    "https://github.com/handlebars-lang/handlebars.js/commit/f0589701698268578199be25285b2ebea1c1e427",
+                    "https://github.com/rubysec/ruby-advisory-db/blob/master/gems/handlebars-source/CVE-2021-23383.yml",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-23383",
+                    "https://security.netapp.com/advisory/ntap-20210618-0007",
+                    "https://security.netapp.com/advisory/ntap-20210618-0007/",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARS-1279031",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWER-1279032",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1279030",
+                    "https://snyk.io/vuln/SNYK-JS-HANDLEBARS-1279029",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-23383",
+                    "https://www.npmjs.com/package/handlebars"
+                ]
+            },
+            {
+                "id": "CVE-2021-23362",
+                "severity": "MEDIUM",
+                "score": 5.3,
+                "package": {
+                    "name": "hosted-git-info",
+                    "version": "2.8.8",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The package hosted-git-info before 3.0.8 are vulnerable to Regular Expression Denial of Service (ReDoS) via regular expression shortcutMatch in the fromUrl function in index.js. The affected regular expression exhibits polynomial worst-case time complexity.",
+                "fixed_version": "2.8.9, 3.0.8",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2021-23362",
+                    "https://cert-portal.siemens.com/productcert/pdf/ssa-389290.pdf",
+                    "https://errata.almalinux.org/8/ALSA-2021-3074.html",
+                    "https://github.com/npm/hosted-git-info",
+                    "https://github.com/npm/hosted-git-info/commit/29adfe5ef789784c861b2cdeb15051ec2ba651a7",
+                    "https://github.com/npm/hosted-git-info/commit/8d4b3697d79bcd89cdb36d1db165e3696c783a01",
+                    "https://github.com/npm/hosted-git-info/commit/bede0dc38e1785e732bf0a48ba6f81a4a908eba3",
+                    "https://github.com/npm/hosted-git-info/commits/v2",
+                    "https://github.com/npm/hosted-git-info/pull/76",
+                    "https://linux.oracle.com/cve/CVE-2021-23362.html",
+                    "https://linux.oracle.com/errata/ELSA-2021-3074.html",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-23362",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1088356",
+                    "https://snyk.io/vuln/SNYK-JS-HOSTEDGITINFO-1088355",
+                    "https://ubuntu.com/security/notices/USN-5216-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-23362"
+                ]
+            },
+            {
+                "id": "CVE-2020-7788",
+                "severity": "HIGH",
+                "score": 9.8,
+                "package": {
+                    "name": "ini",
+                    "version": "1.3.5",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "This affects the package ini before 1.3.6. If an attacker submits a malicious INI file to an application that parses it with ini.parse, they will pollute the prototype on the application. This can be exploited further depending on the context.",
+                "fixed_version": "1.3.6",
+                "references": [
+                    "https://access.redhat.com/errata/RHSA-2022:6595",
+                    "https://access.redhat.com/security/cve/CVE-2020-7788",
+                    "https://bugzilla.redhat.com/1907444",
+                    "https://bugzilla.redhat.com/1945459",
+                    "https://bugzilla.redhat.com/1964461",
+                    "https://bugzilla.redhat.com/2007557",
+                    "https://bugzilla.redhat.com/2098556",
+                    "https://bugzilla.redhat.com/2102001",
+                    "https://bugzilla.redhat.com/2105422",
+                    "https://bugzilla.redhat.com/2105426",
+                    "https://bugzilla.redhat.com/2105428",
+                    "https://bugzilla.redhat.com/2105430",
+                    "https://errata.almalinux.org/9/ALSA-2022-6595.html",
+                    "https://github.com/npm/ini",
+                    "https://github.com/npm/ini/commit/56d2805e07ccd94e2ba0984ac9240ff02d44b6f1",
+                    "https://github.com/npm/ini/commit/56d2805e07ccd94e2ba0984ac9240ff02d44b6f1 (v1.3.6)",
+                    "https://linux.oracle.com/cve/CVE-2020-7788.html",
+                    "https://linux.oracle.com/errata/ELSA-2022-6595.html",
+                    "https://lists.debian.org/debian-lts-announce/2020/12/msg00032.html",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-7788",
+                    "https://snyk.io/vuln/SNYK-JS-INI-1048974",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-7788",
+                    "https://www.npmjs.com/advisories/1589"
+                ]
+            },
+            {
+                "id": "CVE-2020-11022",
+                "severity": "MEDIUM",
+                "score": 6.1,
+                "package": {
+                    "name": "jquery",
+                    "version": "3.4.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "In jQuery versions greater than or equal to 1.2 and before 3.5.0, passing HTML from untrusted sources - even after sanitizing it - to one of jQuery's DOM manipulation methods (i.e. .html(), .append(), and others) may execute untrusted code. This problem is patched in jQuery 3.5.0.",
+                "fixed_version": "3.5.0",
+                "references": [
+                    "http://lists.opensuse.org/opensuse-security-announce/2020-07/msg00067.html",
+                    "http://lists.opensuse.org/opensuse-security-announce/2020-07/msg00085.html",
+                    "http://lists.opensuse.org/opensuse-security-announce/2020-11/msg00039.html",
+                    "http://packetstormsecurity.com/files/162159/jQuery-1.2-Cross-Site-Scripting.html",
+                    "https://access.redhat.com/security/cve/CVE-2020-11022",
+                    "https://blog.jquery.com/2020/04/10/jquery-3-5-0-released",
+                    "https://blog.jquery.com/2020/04/10/jquery-3-5-0-released/",
+                    "https://errata.almalinux.org/8/ALSA-2020-4670.html",
+                    "https://github.com/advisories/GHSA-gxr4-xjj5-5px2",
+                    "https://github.com/jquery/jquery",
+                    "https://github.com/jquery/jquery/commit/1d61fd9407e6fbe82fe55cb0b938307aa0791f77",
+                    "https://github.com/jquery/jquery/releases/tag/3.5.0",
+                    "https://github.com/jquery/jquery/security/advisories/GHSA-gxr4-xjj5-5px2",
+                    "https://github.com/maximebf/php-debugbar/commit/847216e60544258c881f2733d699bbcfeefac0fc",
+                    "https://github.com/maximebf/php-debugbar/issues/447",
+                    "https://github.com/rubysec/ruby-advisory-db/blob/master/gems/jquery-rails/CVE-2020-11022.yml",
+                    "https://jquery.com/upgrade-guide/3.5",
+                    "https://jquery.com/upgrade-guide/3.5/",
+                    "https://linux.oracle.com/cve/CVE-2020-11022.html",
+                    "https://linux.oracle.com/errata/ELSA-2022-9177.html",
+                    "https://lists.apache.org/thread.html/r0483ba0072783c2e1bfea613984bfb3c86e73ba8879d780dc1cc7d36%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r0483ba0072783c2e1bfea613984bfb3c86e73ba8879d780dc1cc7d36@",
+                    "https://lists.apache.org/thread.html/r0483ba0072783c2e1bfea613984bfb3c86e73ba8879d780dc1cc7d36@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r49ce4243b4738dd763caeb27fa8ad6afb426ae3e8c011ff00b8b1f48%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r49ce4243b4738dd763caeb27fa8ad6afb426ae3e8c011ff00b8b1f48@",
+                    "https://lists.apache.org/thread.html/r49ce4243b4738dd763caeb27fa8ad6afb426ae3e8c011ff00b8b1f48@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r54565a8f025c7c4f305355fdfd75b68eca442eebdb5f31c2e7d977ae%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r54565a8f025c7c4f305355fdfd75b68eca442eebdb5f31c2e7d977ae@",
+                    "https://lists.apache.org/thread.html/r54565a8f025c7c4f305355fdfd75b68eca442eebdb5f31c2e7d977ae@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r564585d97bc069137e64f521e68ba490c7c9c5b342df5d73c49a0760%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r564585d97bc069137e64f521e68ba490c7c9c5b342df5d73c49a0760@",
+                    "https://lists.apache.org/thread.html/r564585d97bc069137e64f521e68ba490c7c9c5b342df5d73c49a0760@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r706cfbc098420f7113968cc377247ec3d1439bce42e679c11c609e2d%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r706cfbc098420f7113968cc377247ec3d1439bce42e679c11c609e2d@",
+                    "https://lists.apache.org/thread.html/r706cfbc098420f7113968cc377247ec3d1439bce42e679c11c609e2d@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r8f70b0f65d6bedf316ecd899371fd89e65333bc988f6326d2956735c%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r8f70b0f65d6bedf316ecd899371fd89e65333bc988f6326d2956735c@",
+                    "https://lists.apache.org/thread.html/r8f70b0f65d6bedf316ecd899371fd89e65333bc988f6326d2956735c@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rbb448222ba62c430e21e13f940be4cb5cfc373cd3bce56b48c0ffa67%40%3Cdev.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rbb448222ba62c430e21e13f940be4cb5cfc373cd3bce56b48c0ffa67@",
+                    "https://lists.apache.org/thread.html/rbb448222ba62c430e21e13f940be4cb5cfc373cd3bce56b48c0ffa67@%3Cdev.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rdf44341677cf7eec7e9aa96dcf3f37ed709544863d619cca8c36f133%40%3Ccommits.airflow.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rdf44341677cf7eec7e9aa96dcf3f37ed709544863d619cca8c36f133@",
+                    "https://lists.apache.org/thread.html/rdf44341677cf7eec7e9aa96dcf3f37ed709544863d619cca8c36f133@%3Ccommits.airflow.apache.org%3E",
+                    "https://lists.apache.org/thread.html/re4ae96fa5c1a2fe71ccbb7b7ac1538bd0cb677be270a2bf6e2f8d108%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/re4ae96fa5c1a2fe71ccbb7b7ac1538bd0cb677be270a2bf6e2f8d108@",
+                    "https://lists.apache.org/thread.html/re4ae96fa5c1a2fe71ccbb7b7ac1538bd0cb677be270a2bf6e2f8d108@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rede9cfaa756e050a3d83045008f84a62802fc68c17f2b4eabeaae5e4%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rede9cfaa756e050a3d83045008f84a62802fc68c17f2b4eabeaae5e4@",
+                    "https://lists.apache.org/thread.html/rede9cfaa756e050a3d83045008f84a62802fc68c17f2b4eabeaae5e4@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ree3bd8ddb23df5fa4e372d11c226830ea3650056b1059f3965b3fce2%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ree3bd8ddb23df5fa4e372d11c226830ea3650056b1059f3965b3fce2@",
+                    "https://lists.apache.org/thread.html/ree3bd8ddb23df5fa4e372d11c226830ea3650056b1059f3965b3fce2@%3Cissues.flink.apache.org%3E",
+                    "https://lists.debian.org/debian-lts-announce/2021/03/msg00033.html",
+                    "https://lists.debian.org/debian-lts-announce/2023/08/msg00040.html",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/AVKYXLWCLZBV2N7M46KYK4LVA5OXWPBY/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/QPN2L2XVQGUA2V5HNQJWHK3APSK3VN7K/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/SAPQVX3XDNPGFT26QAQ6AJIXZZBZ4CD4/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/SFP4UK4EGP4AFH2MWYJ5A5Z4I7XVFQ6B/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/VOE7P7APPRQKD4FGNHBKJPDY6FFCOH3W/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/AVKYXLWCLZBV2N7M46KYK4LVA5OXWPBY",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/AVKYXLWCLZBV2N7M46KYK4LVA5OXWPBY/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/QPN2L2XVQGUA2V5HNQJWHK3APSK3VN7K",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/QPN2L2XVQGUA2V5HNQJWHK3APSK3VN7K/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/SAPQVX3XDNPGFT26QAQ6AJIXZZBZ4CD4",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/SAPQVX3XDNPGFT26QAQ6AJIXZZBZ4CD4/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/SFP4UK4EGP4AFH2MWYJ5A5Z4I7XVFQ6B",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/SFP4UK4EGP4AFH2MWYJ5A5Z4I7XVFQ6B/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/VOE7P7APPRQKD4FGNHBKJPDY6FFCOH3W",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/VOE7P7APPRQKD4FGNHBKJPDY6FFCOH3W/",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-11022",
+                    "https://security.gentoo.org/glsa/202007-03",
+                    "https://security.netapp.com/advisory/ntap-20200511-0006",
+                    "https://security.netapp.com/advisory/ntap-20200511-0006/",
+                    "https://ubuntu.com/security/notices/USN-7246-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-11022",
+                    "https://www.debian.org/security/2020/dsa-4693",
+                    "https://www.drupal.org/sa-core-2020-002",
+                    "https://www.npmjs.com/advisories/1518",
+                    "https://www.oracle.com//security-alerts/cpujul2021.html",
+                    "https://www.oracle.com/security-alerts/cpuApr2021.html",
+                    "https://www.oracle.com/security-alerts/cpuapr2022.html",
+                    "https://www.oracle.com/security-alerts/cpujan2021.html",
+                    "https://www.oracle.com/security-alerts/cpujan2022.html",
+                    "https://www.oracle.com/security-alerts/cpujul2020.html",
+                    "https://www.oracle.com/security-alerts/cpujul2022.html",
+                    "https://www.oracle.com/security-alerts/cpuoct2020.html",
+                    "https://www.oracle.com/security-alerts/cpuoct2021.html",
+                    "https://www.tenable.com/security/tns-2020-10",
+                    "https://www.tenable.com/security/tns-2020-11",
+                    "https://www.tenable.com/security/tns-2021-02",
+                    "https://www.tenable.com/security/tns-2021-10"
+                ]
+            },
+            {
+                "id": "CVE-2020-11023",
+                "severity": "MEDIUM",
+                "score": 6.1,
+                "package": {
+                    "name": "jquery",
+                    "version": "3.4.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "In jQuery versions greater than or equal to 1.0.3 and before 3.5.0, passing HTML containing <option> elements from untrusted sources - even after sanitizing it - to one of jQuery's DOM manipulation methods (i.e. .html(), .append(), and others) may execute untrusted code. This problem is patched in jQuery 3.5.0.",
+                "fixed_version": "3.5.0",
+                "references": [
+                    "http://lists.opensuse.org/opensuse-security-announce/2020-07/msg00067.html",
+                    "http://lists.opensuse.org/opensuse-security-announce/2020-07/msg00085.html",
+                    "http://lists.opensuse.org/opensuse-security-announce/2020-11/msg00039.html",
+                    "http://packetstormsecurity.com/files/162160/jQuery-1.0.3-Cross-Site-Scripting.html",
+                    "https://access.redhat.com/errata/RHSA-2025:1346",
+                    "https://access.redhat.com/security/cve/CVE-2020-11023",
+                    "https://blog.jquery.com/2020/04/10/jquery-3-5-0-released",
+                    "https://blog.jquery.com/2020/04/10/jquery-3-5-0-released/",
+                    "https://bugzilla.redhat.com/1850004",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1340463",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1357495",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1484088",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1542737",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1544379",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1660877",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1779981",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1780328",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1780510",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1780782",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1784657",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1809215",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1810148",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1812871",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1824193",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1850004",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1851835",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1857272",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1860129",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1866558",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1872603",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1875001",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1882340",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1891056",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1891505",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1891735",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1891741",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1891832",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1891850",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1894800",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1901068",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1902173",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1902727",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1903025",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1904484",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1904612",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1905919",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1909876",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1912845",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1922955",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1923900",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1924026",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1924501",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1924812",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1925410",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1926699",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1926910",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1928900",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1930426",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1932289",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=1939371",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=871208",
+                    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-11023",
+                    "https://errata.almalinux.org/9/ALSA-2025-1346.html",
+                    "https://errata.rockylinux.org/RLSA-2021:1846",
+                    "https://github.com/github/advisory-database/blob/99afa6fdeaf5d1d23e1021ff915a5e5dbc82c1f1/advisories/github-reviewed/2020/04/GHSA-jpcq-cgw6-v4j6/GHSA-jpcq-cgw6-v4j6.json#L20-L37",
+                    "https://github.com/jquery/jquery",
+                    "https://github.com/jquery/jquery/commit/1d61fd9407e6fbe82fe55cb0b938307aa0791f77",
+                    "https://github.com/jquery/jquery/releases/tag/3.5.0",
+                    "https://github.com/jquery/jquery/security/advisories/GHSA-jpcq-cgw6-v4j6",
+                    "https://github.com/rails/jquery-rails/blob/master/CHANGELOG.md#410",
+                    "https://github.com/rails/jquery-rails/blob/master/CHANGELOG.md#440",
+                    "https://github.com/rails/jquery-rails/blob/v4.3.5/vendor/assets/javascripts/jquery3.js#L5979",
+                    "https://github.com/rails/jquery-rails/blob/v4.4.0/vendor/assets/javascripts/jquery3.js#L6162",
+                    "https://github.com/rubysec/ruby-advisory-db/blob/master/gems/jquery-rails/CVE-2020-11023.yml",
+                    "https://github.com/rubysec/ruby-advisory-db/blob/master/gems/jquery-rails/CVE-2020-23064.yml",
+                    "https://jquery.com/upgrade-guide/3.5",
+                    "https://jquery.com/upgrade-guide/3.5/",
+                    "https://linux.oracle.com/cve/CVE-2020-11023.html",
+                    "https://linux.oracle.com/errata/ELSA-2025-1601.html",
+                    "https://lists.apache.org/thread.html/r0483ba0072783c2e1bfea613984bfb3c86e73ba8879d780dc1cc7d36%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r0483ba0072783c2e1bfea613984bfb3c86e73ba8879d780dc1cc7d36@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r0593393ca1e97b1e7e098fe69d414d6bd0a467148e9138d07e86ebbb%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r0593393ca1e97b1e7e098fe69d414d6bd0a467148e9138d07e86ebbb@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r07ab379471fb15644bf7a92e4a98cbc7df3cf4e736abae0cc7625fe6%40%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r07ab379471fb15644bf7a92e4a98cbc7df3cf4e736abae0cc7625fe6@%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r094f435595582f6b5b24b66fedf80543aa8b1d57a3688fbcc21f06ec%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r094f435595582f6b5b24b66fedf80543aa8b1d57a3688fbcc21f06ec@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r1fed19c860a0d470f2a3eded12795772c8651ff583ef951ddac4918c%40%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r1fed19c860a0d470f2a3eded12795772c8651ff583ef951ddac4918c@%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r2c85121a47442036c7f8353a3724aa04f8ecdfda1819d311ba4f5330%40%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r2c85121a47442036c7f8353a3724aa04f8ecdfda1819d311ba4f5330@%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r3702ede0ff83a29ba3eb418f6f11c473d6e3736baba981a8dbd9c9ef%40%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r3702ede0ff83a29ba3eb418f6f11c473d6e3736baba981a8dbd9c9ef@%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r49ce4243b4738dd763caeb27fa8ad6afb426ae3e8c011ff00b8b1f48%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r49ce4243b4738dd763caeb27fa8ad6afb426ae3e8c011ff00b8b1f48@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r4aadb98086ca72ed75391f54167522d91489a0d0ae25b12baa8fc7c5%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r4aadb98086ca72ed75391f54167522d91489a0d0ae25b12baa8fc7c5@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r4dba67be3239b34861f1b9cfdf9dfb3a90272585dcce374112ed6e16%40%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r4dba67be3239b34861f1b9cfdf9dfb3a90272585dcce374112ed6e16@%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r54565a8f025c7c4f305355fdfd75b68eca442eebdb5f31c2e7d977ae%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r54565a8f025c7c4f305355fdfd75b68eca442eebdb5f31c2e7d977ae@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r55f5e066cc7301e3630ce90bbbf8d28c82212ae1f2d4871012141494%40%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r55f5e066cc7301e3630ce90bbbf8d28c82212ae1f2d4871012141494@%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r564585d97bc069137e64f521e68ba490c7c9c5b342df5d73c49a0760%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r564585d97bc069137e64f521e68ba490c7c9c5b342df5d73c49a0760@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r6c4df3b33e625a44471009a172dabe6865faec8d8f21cac2303463b1%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r6c4df3b33e625a44471009a172dabe6865faec8d8f21cac2303463b1@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r6e97b37963926f6059ecc1e417721608723a807a76af41d4e9dbed49%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r6e97b37963926f6059ecc1e417721608723a807a76af41d4e9dbed49@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r706cfbc098420f7113968cc377247ec3d1439bce42e679c11c609e2d%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r706cfbc098420f7113968cc377247ec3d1439bce42e679c11c609e2d@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r8f70b0f65d6bedf316ecd899371fd89e65333bc988f6326d2956735c%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r8f70b0f65d6bedf316ecd899371fd89e65333bc988f6326d2956735c@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r9006ad2abf81d02a0ef2126bab5177987e59095b7194a487c4ea247c%40%3Ccommits.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r9006ad2abf81d02a0ef2126bab5177987e59095b7194a487c4ea247c@%3Ccommits.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r9c5fda81e4bca8daee305b4c03283dddb383ab8428a151d4cb0b3b15%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r9c5fda81e4bca8daee305b4c03283dddb383ab8428a151d4cb0b3b15@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r9e0bd31b7da9e7403478d22652b8760c946861f8ebd7bd750844898e%40%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/r9e0bd31b7da9e7403478d22652b8760c946861f8ebd7bd750844898e@%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra32c7103ded9041c7c1cb8c12c8d125a6b2f3f3270e2937ef8417fac%40%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra32c7103ded9041c7c1cb8c12c8d125a6b2f3f3270e2937ef8417fac@%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra374bb0299b4aa3e04edde01ebc03ed6f90cf614dad40dd428ce8f72%40%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra374bb0299b4aa3e04edde01ebc03ed6f90cf614dad40dd428ce8f72@%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra3c9219fcb0b289e18e9ec5a5ebeaa5c17d6b79a201667675af6721c%40%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra3c9219fcb0b289e18e9ec5a5ebeaa5c17d6b79a201667675af6721c@%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra406b3adfcffcb5ce8707013bdb7c35e3ffc2776a8a99022f15274c6%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ra406b3adfcffcb5ce8707013bdb7c35e3ffc2776a8a99022f15274c6@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rab82dd040f302018c85bd07d33f5604113573514895ada523c3401d9%40%3Ccommits.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rab82dd040f302018c85bd07d33f5604113573514895ada523c3401d9@%3Ccommits.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/radcb2aa874a79647789f3563fcbbceaf1045a029ee8806b59812a8ea%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/radcb2aa874a79647789f3563fcbbceaf1045a029ee8806b59812a8ea@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rb25c3bc7418ae75cba07988dafe1b6912f76a9dd7d94757878320d61%40%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rb25c3bc7418ae75cba07988dafe1b6912f76a9dd7d94757878320d61@%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rb69b7d8217c1a6a2100247a5d06ce610836b31e3f5d73fc113ded8e7%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rb69b7d8217c1a6a2100247a5d06ce610836b31e3f5d73fc113ded8e7@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rbb448222ba62c430e21e13f940be4cb5cfc373cd3bce56b48c0ffa67%40%3Cdev.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rbb448222ba62c430e21e13f940be4cb5cfc373cd3bce56b48c0ffa67@%3Cdev.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rd38b4185a797b324c8dd940d9213cf99fcdc2dbf1fc5a63ba7dee8c9%40%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rd38b4185a797b324c8dd940d9213cf99fcdc2dbf1fc5a63ba7dee8c9@%3Cissues.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rda99599896c3667f2cc9e9d34c7b6ef5d2bbed1f4801e1d75a2b0679%40%3Ccommits.nifi.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rda99599896c3667f2cc9e9d34c7b6ef5d2bbed1f4801e1d75a2b0679@%3Ccommits.nifi.apache.org%3E",
+                    "https://lists.apache.org/thread.html/re4ae96fa5c1a2fe71ccbb7b7ac1538bd0cb677be270a2bf6e2f8d108%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/re4ae96fa5c1a2fe71ccbb7b7ac1538bd0cb677be270a2bf6e2f8d108@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rede9cfaa756e050a3d83045008f84a62802fc68c17f2b4eabeaae5e4%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rede9cfaa756e050a3d83045008f84a62802fc68c17f2b4eabeaae5e4@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ree3bd8ddb23df5fa4e372d11c226830ea3650056b1059f3965b3fce2%40%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/ree3bd8ddb23df5fa4e372d11c226830ea3650056b1059f3965b3fce2@%3Cissues.flink.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rf0f8939596081d84be1ae6a91d6248b96a02d8388898c372ac807817%40%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rf0f8939596081d84be1ae6a91d6248b96a02d8388898c372ac807817@%3Cdev.felix.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rf1ba79e564fe7efc56aef7c986106f1cf67a3427d08e997e088e7a93%40%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rf1ba79e564fe7efc56aef7c986106f1cf67a3427d08e997e088e7a93@%3Cgitbox.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rf661a90a15da8da5922ba6127b3f5f8194d4ebec8855d60a0dd13248%40%3Cdev.hive.apache.org%3E",
+                    "https://lists.apache.org/thread.html/rf661a90a15da8da5922ba6127b3f5f8194d4ebec8855d60a0dd13248@%3Cdev.hive.apache.org%3E",
+                    "https://lists.debian.org/debian-lts-announce/2021/03/msg00033.html",
+                    "https://lists.debian.org/debian-lts-announce/2023/08/msg00040.html",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/AVKYXLWCLZBV2N7M46KYK4LVA5OXWPBY",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/AVKYXLWCLZBV2N7M46KYK4LVA5OXWPBY/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/QPN2L2XVQGUA2V5HNQJWHK3APSK3VN7K",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/QPN2L2XVQGUA2V5HNQJWHK3APSK3VN7K/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/SAPQVX3XDNPGFT26QAQ6AJIXZZBZ4CD4",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/SAPQVX3XDNPGFT26QAQ6AJIXZZBZ4CD4/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/SFP4UK4EGP4AFH2MWYJ5A5Z4I7XVFQ6B",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/SFP4UK4EGP4AFH2MWYJ5A5Z4I7XVFQ6B/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/AVKYXLWCLZBV2N7M46KYK4LVA5OXWPBY",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/QPN2L2XVQGUA2V5HNQJWHK3APSK3VN7K",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/SAPQVX3XDNPGFT26QAQ6AJIXZZBZ4CD4",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/SFP4UK4EGP4AFH2MWYJ5A5Z4I7XVFQ6B",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-11023",
+                    "https://security.gentoo.org/glsa/202007-03",
+                    "https://security.netapp.com/advisory/ntap-20200511-0006",
+                    "https://security.netapp.com/advisory/ntap-20200511-0006/",
+                    "https://security.netapp.com/advisory/ntap-20230725-0003",
+                    "https://security.snyk.io/vuln/SNYK-DOTNET-JQUERY-565440",
+                    "https://snyk.io/vuln/SNYK-JS-JQUERY-565129",
+                    "https://ubuntu.com/security/notices/USN-7246-1",
+                    "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-11023",
+                    "https://www.debian.org/security/2020/dsa-4693",
+                    "https://www.drupal.org/sa-core-2020-002",
+                    "https://www.oracle.com//security-alerts/cpujul2021.html",
+                    "https://www.oracle.com/security-alerts/cpuApr2021.html",
+                    "https://www.oracle.com/security-alerts/cpuapr2022.html",
+                    "https://www.oracle.com/security-alerts/cpujan2021.html",
+                    "https://www.oracle.com/security-alerts/cpujan2022.html",
+                    "https://www.oracle.com/security-alerts/cpujul2020.html",
+                    "https://www.oracle.com/security-alerts/cpujul2022.html",
+                    "https://www.oracle.com/security-alerts/cpuoct2020.html",
+                    "https://www.oracle.com/security-alerts/cpuoct2021.html",
+                    "https://www.tenable.com/security/tns-2021-02",
+                    "https://www.tenable.com/security/tns-2021-10"
+                ]
+            },
+            {
+                "id": "CVE-2020-8203",
+                "severity": "HIGH",
+                "score": 7.4,
+                "package": {
+                    "name": "lodash",
+                    "version": "4.17.15",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Prototype pollution attack when using _.zipObjectDeep in lodash before 4.17.20.",
+                "fixed_version": "4.17.19",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2020-8203",
+                    "https://github.com/github/advisory-database/pull/2884",
+                    "https://github.com/lodash/lodash",
+                    "https://github.com/lodash/lodash/commit/c84fe82760fb2d3e03a63379b297a1cc1a2fce12",
+                    "https://github.com/lodash/lodash/issues/4744",
+                    "https://github.com/lodash/lodash/issues/4874",
+                    "https://github.com/lodash/lodash/wiki/Changelog#v41719",
+                    "https://hackerone.com/reports/712065",
+                    "https://hackerone.com/reports/864701",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-8203",
+                    "https://security.netapp.com/advisory/ntap-20200724-0006",
+                    "https://security.netapp.com/advisory/ntap-20200724-0006/",
+                    "https://web.archive.org/web/20210914001339/https://github.com/lodash/lodash/issues/4744",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-8203",
+                    "https://www.npmjs.com/advisories/1523",
+                    "https://www.oracle.com//security-alerts/cpujul2021.html",
+                    "https://www.oracle.com/security-alerts/cpuApr2021.html",
+                    "https://www.oracle.com/security-alerts/cpuapr2022.html",
+                    "https://www.oracle.com/security-alerts/cpujan2022.html",
+                    "https://www.oracle.com/security-alerts/cpuoct2021.html"
+                ]
+            },
+            {
+                "id": "CVE-2021-23337",
+                "severity": "HIGH",
+                "score": 7.2,
+                "package": {
+                    "name": "lodash",
+                    "version": "4.17.15",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Lodash versions prior to 4.17.21 are vulnerable to Command Injection via the template function.",
+                "fixed_version": "4.17.21",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2021-23337",
+                    "https://cert-portal.siemens.com/productcert/pdf/ssa-637483.pdf",
+                    "https://github.com/lodash/lodash",
+                    "https://github.com/lodash/lodash/blob/ddfd9b11a0126db2302cb70ec9973b66baec0975/lodash.js#L14851",
+                    "https://github.com/lodash/lodash/blob/ddfd9b11a0126db2302cb70ec9973b66baec0975/lodash.js%23L14851",
+                    "https://github.com/lodash/lodash/commit/3469357cff396a26c363f8c1b5a91dde28ba4b1c",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-23337",
+                    "https://security.netapp.com/advisory/ntap-20210312-0006",
+                    "https://security.netapp.com/advisory/ntap-20210312-0006/",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGFUJIONWEBJARS-1074932",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARS-1074930",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWER-1074928",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWERGITHUBLODASH-1074931",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1074929",
+                    "https://snyk.io/vuln/SNYK-JS-LODASH-1040724",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-23337",
+                    "https://www.oracle.com//security-alerts/cpujul2021.html",
+                    "https://www.oracle.com/security-alerts/cpujan2022.html",
+                    "https://www.oracle.com/security-alerts/cpujul2022.html",
+                    "https://www.oracle.com/security-alerts/cpuoct2021.html"
+                ]
+            },
+            {
+                "id": "NSWG-ECO-516",
+                "severity": "HIGH",
+                "package": {
+                    "name": "lodash",
+                    "version": "4.17.15",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Prototype pollution attack (lodash)",
+                "fixed_version": ">=4.17.19",
+                "references": [
+                    "https://github.com/lodash/lodash/pull/4759",
+                    "https://hackerone.com/reports/712065",
+                    "https://www.npmjs.com/advisories/1523"
+                ]
+            },
+            {
+                "id": "CVE-2020-28500",
+                "severity": "MEDIUM",
+                "score": 5.3,
+                "package": {
+                    "name": "lodash",
+                    "version": "4.17.15",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Lodash versions prior to 4.17.21 are vulnerable to Regular Expression Denial of Service (ReDoS) via the toNumber, trim and trimEnd functions.",
+                "fixed_version": "4.17.21",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2020-28500",
+                    "https://cert-portal.siemens.com/productcert/pdf/ssa-637483.pdf",
+                    "https://github.com/lodash/lodash",
+                    "https://github.com/lodash/lodash/blob/npm/trimEnd.js#L8",
+                    "https://github.com/lodash/lodash/blob/npm/trimEnd.js%23L8",
+                    "https://github.com/lodash/lodash/commit/c4847ebe7d14540bb28a8b932a9ce1b9ecbfee1a",
+                    "https://github.com/lodash/lodash/pull/5065",
+                    "https://github.com/lodash/lodash/pull/5065/commits/02906b8191d3c100c193fe6f7b27d1c40f200bb7",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-28500",
+                    "https://security.netapp.com/advisory/ntap-20210312-0006",
+                    "https://security.netapp.com/advisory/ntap-20210312-0006/",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGFUJIONWEBJARS-1074896",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARS-1074894",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWER-1074892",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWERGITHUBLODASH-1074895",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1074893",
+                    "https://snyk.io/vuln/SNYK-JS-LODASH-1018905",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-28500",
+                    "https://www.oracle.com//security-alerts/cpujul2021.html",
+                    "https://www.oracle.com/security-alerts/cpujan2022.html",
+                    "https://www.oracle.com/security-alerts/cpujul2022.html",
+                    "https://www.oracle.com/security-alerts/cpuoct2021.html"
+                ]
+            },
+            {
+                "id": "CVE-2021-44906",
+                "severity": "CRITICAL",
+                "score": 9.8,
+                "package": {
+                    "name": "minimist",
+                    "version": "1.2.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Minimist <=1.2.5 is vulnerable to Prototype Pollution via file index.js, function setKey() (lines 69-95).",
+                "fixed_version": "1.2.6, 0.2.4",
+                "references": [
+                    "https://access.redhat.com/errata/RHSA-2023:0321",
+                    "https://access.redhat.com/security/cve/CVE-2021-44906",
+                    "https://bugzilla.redhat.com/2066009",
+                    "https://bugzilla.redhat.com/2130518",
+                    "https://bugzilla.redhat.com/2134609",
+                    "https://bugzilla.redhat.com/2140911",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=2066009",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=2130518",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=2134609",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=2140911",
+                    "https://bugzilla.redhat.com/show_bug.cgi?id=2142808",
+                    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44906",
+                    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-3517",
+                    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-35256",
+                    "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-43548",
+                    "https://errata.almalinux.org/9/ALSA-2023-0321.html",
+                    "https://errata.rockylinux.org/RLSA-2023:0321",
+                    "https://github.com/Marynk/JavaScript-vulnerability-detection/blob/main/minimist%20PoC.zip",
+                    "https://github.com/advisories/GHSA-xvch-5gv4-984h",
+                    "https://github.com/minimistjs/minimist/commit/34e20b8461118608703d6485326abbb8e35e1703",
+                    "https://github.com/minimistjs/minimist/commit/bc8ecee43875261f4f17eb20b1243d3ed15e70eb",
+                    "https://github.com/minimistjs/minimist/commit/c2b981977fa834b223b408cfb860f933c9811e4d",
+                    "https://github.com/minimistjs/minimist/commit/ef9153fc52b6cea0744b2239921c5dcae4697f11",
+                    "https://github.com/minimistjs/minimist/commits/v0.2.4",
+                    "https://github.com/minimistjs/minimist/issues/11",
+                    "https://github.com/minimistjs/minimist/pull/24",
+                    "https://github.com/substack/minimist",
+                    "https://github.com/substack/minimist/blob/master/index.js#L69",
+                    "https://github.com/substack/minimist/issues/164",
+                    "https://linux.oracle.com/cve/CVE-2021-44906.html",
+                    "https://linux.oracle.com/errata/ELSA-2023-0321.html",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-44906",
+                    "https://security.netapp.com/advisory/ntap-20240621-0006",
+                    "https://security.netapp.com/advisory/ntap-20240621-0006/",
+                    "https://snyk.io/vuln/SNYK-JS-MINIMIST-559764",
+                    "https://stackoverflow.com/questions/8588563/adding-custom-properties-to-a-function/20278068#20278068",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-44906"
+                ]
+            },
+            {
+                "id": "CVE-2020-7598",
+                "severity": "MEDIUM",
+                "score": 5.6,
+                "package": {
+                    "name": "minimist",
+                    "version": "1.2.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "minimist before 1.2.2 could be tricked into adding or modifying properties of Object.prototype using a \"constructor\" or \"__proto__\" payload.",
+                "fixed_version": "0.2.1, 1.2.3",
+                "references": [
+                    "http://lists.opensuse.org/opensuse-security-announce/2020-06/msg00024.html",
+                    "https://access.redhat.com/security/cve/CVE-2020-7598",
+                    "https://errata.almalinux.org/8/ALSA-2020-2852.html",
+                    "https://github.com/minimistjs/minimist/commit/10bd4cdf49d9686d48214be9d579a9cdfda37c68",
+                    "https://github.com/minimistjs/minimist/commit/38a4d1caead72ef99e824bb420a2528eec03d9ab",
+                    "https://github.com/minimistjs/minimist/commit/4cf1354839cb972e38496d35e12f806eea92c11f#diff-a1e0ee62c91705696ddb71aa30ad4f95",
+                    "https://github.com/minimistjs/minimist/commit/63e7ed05aa4b1889ec2f3b196426db4500cbda94",
+                    "https://github.com/substack/minimist",
+                    "https://linux.oracle.com/cve/CVE-2020-7598.html",
+                    "https://linux.oracle.com/errata/ELSA-2020-2852.html",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-7598",
+                    "https://snyk.io/vuln/SNYK-JS-MINIMIST-559764",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-7598",
+                    "https://www.npmjs.com/advisories/1179"
+                ]
+            },
+            {
+                "id": "CVE-2022-24785",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "moment",
+                    "version": "2.24.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Moment.js is a JavaScript date library for parsing, validating, manipulating, and formatting dates. A path traversal vulnerability impacts npm (server) users of Moment.js between versions 1.0.1 and 2.29.1, especially if a user-provided locale string is directly used to switch moment locale. This problem is patched in 2.29.2, and the patch can be applied to all affected versions. As a workaround, sanitize the user-provided locale name before passing it to Moment.js.",
+                "fixed_version": "2.29.2",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2022-24785",
+                    "https://github.com/moment/moment",
+                    "https://github.com/moment/moment/commit/4211bfc8f15746be4019bba557e29a7ba83d54c5",
+                    "https://github.com/moment/moment/security/advisories/GHSA-8hfj-j24r-96c4",
+                    "https://lists.debian.org/debian-lts-announce/2023/01/msg00035.html",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/6QIO6YNLTK2T7SPKDS4JEL45FANLNC2Q/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/ORJX2LF6KMPIHP6B2P6KZIVKMLE3LVJ5/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/6QIO6YNLTK2T7SPKDS4JEL45FANLNC2Q",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/ORJX2LF6KMPIHP6B2P6KZIVKMLE3LVJ5",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-24785",
+                    "https://security.netapp.com/advisory/ntap-20220513-0006",
+                    "https://security.netapp.com/advisory/ntap-20220513-0006/",
+                    "https://ubuntu.com/security/notices/USN-5559-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2022-24785",
+                    "https://www.tenable.com/security/tns-2022-09"
+                ]
+            },
+            {
+                "id": "CVE-2022-31129",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "moment",
+                    "version": "2.24.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "moment is a JavaScript date library for parsing, validating, manipulating, and formatting dates. Affected versions of moment were found to use an inefficient parsing algorithm. Specifically using string-to-date parsing in moment (more specifically rfc2822 parsing, which is tried by default) has quadratic (N^2) complexity on specific inputs. Users may notice a noticeable slowdown is observed with inputs above 10k characters. Users who pass user-provided strings without sanity length checks to moment constructor are vulnerable to (Re)DoS attacks. The problem is patched in 2.29.4, the patch can be applied to all affected versions with minimal tweaking. Users are advised to upgrade. Users unable to upgrade should consider limiting date lengths accepted from user input.",
+                "fixed_version": "2.29.4",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2022-31129",
+                    "https://github.com/moment/moment",
+                    "https://github.com/moment/moment/commit/9a3b5894f3d5d602948ac8a02e4ee528a49ca3a3",
+                    "https://github.com/moment/moment/pull/6015#issuecomment-1152961973",
+                    "https://github.com/moment/moment/pull/6015/commits/4bbb9f3ccbe231de40207503f344fe5ce97584f4",
+                    "https://github.com/moment/moment/pull/6015/commits/bfd4f2375d5c1a2106246721d693a9611dddfbfe",
+                    "https://github.com/moment/moment/pull/6015/commits/dc0d180e90d8a84f7ff13572363330a22b3ea504",
+                    "https://github.com/moment/moment/security/advisories/GHSA-wc69-rhjr-hc9g",
+                    "https://huntr.dev/bounties/f0952b67-f2ff-44a9-a9cd-99e0a87cb633",
+                    "https://huntr.dev/bounties/f0952b67-f2ff-44a9-a9cd-99e0a87cb633/",
+                    "https://lists.debian.org/debian-lts-announce/2023/01/msg00035.html",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/6QIO6YNLTK2T7SPKDS4JEL45FANLNC2Q/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/IWY24RJA3SBJGA5N4CU4VBPHJPPPJL5O/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/ORJX2LF6KMPIHP6B2P6KZIVKMLE3LVJ5/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce%40lists.fedoraproject.org/message/ZMX5YHELQVCGKKQVFXIYOTBMN23YYSRO/",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/6QIO6YNLTK2T7SPKDS4JEL45FANLNC2Q",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/IWY24RJA3SBJGA5N4CU4VBPHJPPPJL5O",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/ORJX2LF6KMPIHP6B2P6KZIVKMLE3LVJ5",
+                    "https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/ZMX5YHELQVCGKKQVFXIYOTBMN23YYSRO",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-31129",
+                    "https://security.netapp.com/advisory/ntap-20221014-0003",
+                    "https://security.netapp.com/advisory/ntap-20221014-0003/",
+                    "https://ubuntu.com/security/notices/USN-5559-1",
+                    "https://ubuntu.com/security/notices/USN-6550-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2022-31129"
+                ]
+            },
+            {
+                "id": "CVE-2022-24771",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "node-forge",
+                    "version": "0.10.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Forge (also called `node-forge`) is a native implementation of Transport Layer Security in JavaScript. Prior to version 1.3.0, RSA PKCS#1 v1.5 signature verification code is lenient in checking the digest algorithm structure. This can allow a crafted structure that steals padding bytes and uses unchecked portion of the PKCS#1 encoded message to forge a signature when a low public exponent is being used. The issue has been addressed in `node-forge` version 1.3.0. There are currently no known workarounds.",
+                "fixed_version": "1.3.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2022-24771",
+                    "https://github.com/digitalbazaar/forge",
+                    "https://github.com/digitalbazaar/forge/commit/3f0b49a0573ef1bb7af7f5673c0cfebf00424df1",
+                    "https://github.com/digitalbazaar/forge/commit/bb822c02df0b61211836472e29b9790cc541cdb2",
+                    "https://github.com/digitalbazaar/forge/security/advisories/GHSA-cfm4-qjh2-4765",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-24771",
+                    "https://www.cve.org/CVERecord?id=CVE-2022-24771"
+                ]
+            },
+            {
+                "id": "CVE-2022-24772",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "node-forge",
+                    "version": "0.10.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Forge (also called `node-forge`) is a native implementation of Transport Layer Security in JavaScript. Prior to version 1.3.0, RSA PKCS#1 v1.5 signature verification code does not check for tailing garbage bytes after decoding a `DigestInfo` ASN.1 structure. This can allow padding bytes to be removed and garbage data added to forge a signature when a low public exponent is being used. The issue has been addressed in `node-forge` version 1.3.0. There are currently no known workarounds.",
+                "fixed_version": "1.3.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2022-24772",
+                    "https://github.com/digitalbazaar/forge",
+                    "https://github.com/digitalbazaar/forge/commit/3f0b49a0573ef1bb7af7f5673c0cfebf00424df1",
+                    "https://github.com/digitalbazaar/forge/commit/bb822c02df0b61211836472e29b9790cc541cdb2",
+                    "https://github.com/digitalbazaar/forge/security/advisories/GHSA-x4jg-mjrx-434g",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-24772",
+                    "https://www.cve.org/CVERecord?id=CVE-2022-24772"
+                ]
+            },
+            {
+                "id": "CVE-2022-0122",
+                "severity": "MEDIUM",
+                "score": 6.1,
+                "package": {
+                    "name": "node-forge",
+                    "version": "0.10.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "forge is vulnerable to URL Redirection to Untrusted Site",
+                "fixed_version": "1.0.0",
+                "references": [
+                    "https://github.com/digitalbazaar/forge",
+                    "https://github.com/digitalbazaar/forge/commit/db8016c805371e72b06d8e2edfe0ace0df934a5e",
+                    "https://huntr.dev/bounties/41852c50-3c6d-4703-8c55-4db27164a4ae",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-0122"
+                ]
+            },
+            {
+                "id": "CVE-2022-24773",
+                "severity": "MEDIUM",
+                "score": 5.3,
+                "package": {
+                    "name": "node-forge",
+                    "version": "0.10.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Forge (also called `node-forge`) is a native implementation of Transport Layer Security in JavaScript. Prior to version 1.3.0, RSA PKCS#1 v1.5 signature verification code does not properly check `DigestInfo` for a proper ASN.1 structure. This can lead to successful verification with signatures that contain invalid structures but a valid digest. The issue has been addressed in `node-forge` version 1.3.0. There are currently no known workarounds.",
+                "fixed_version": "1.3.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2022-24773",
+                    "https://github.com/digitalbazaar/forge",
+                    "https://github.com/digitalbazaar/forge/commit/3f0b49a0573ef1bb7af7f5673c0cfebf00424df1",
+                    "https://github.com/digitalbazaar/forge/commit/bb822c02df0b61211836472e29b9790cc541cdb2",
+                    "https://github.com/digitalbazaar/forge/security/advisories/GHSA-2r2c-g63r-vccr",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-24773",
+                    "https://www.cve.org/CVERecord?id=CVE-2022-24773"
+                ]
+            },
+            {
+                "id": "GHSA-5rrq-pxf6-6jx5",
+                "severity": "LOW",
+                "package": {
+                    "name": "node-forge",
+                    "version": "0.10.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "### Impact\nThe `forge.debug` API had a potential prototype pollution issue if called with untrusted input. The API was only used for internal debug purposes in a safe way and never documented or advertised.  It is suspected that uses of this API, if any exist, would likely not have used untrusted inputs in a vulnerable way.\n\n### Patches\nThe `forge.debug` API and related functions were removed in 1.0.0.\n\n### Workarounds\nDon't use the `forge.debug` API directly or indirectly with untrusted input.\n\n### References\n- https://www.huntr.dev/bounties/1-npm-node-forge/\n\n### For more information\nIf you have any questions or comments about this advisory:\n* Open an issue in [forge](https://github.com/digitalbazaar/forge).\n* Email us at support@digitalbazaar.com.",
+                "fixed_version": "1.0.0",
+                "references": [
+                    "https://github.com/digitalbazaar/forge",
+                    "https://github.com/digitalbazaar/forge/security/advisories/GHSA-5rrq-pxf6-6jx5"
+                ]
+            },
+            {
+                "id": "GHSA-gf8q-jrpm-jvxq",
+                "severity": "LOW",
+                "package": {
+                    "name": "node-forge",
+                    "version": "0.10.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "### Impact\nThe regex used for the `forge.util.parseUrl` API would not properly parse certain inputs resulting in a parsed data structure that could lead to undesired behavior.\n\n### Patches\n`forge.util.parseUrl` and other very old related URL APIs were removed in 1.0.0 in favor of letting applications use the more modern WHATWG URL Standard API.\n\n### Workarounds\nEnsure code does not directly or indirectly call `forge.util.parseUrl` with untrusted input.\n\n### References\n- https://www.huntr.dev/bounties/41852c50-3c6d-4703-8c55-4db27164a4ae/\n\n### For more information\nIf you have any questions or comments about this advisory:\n* Open an issue in [forge](https://github.com/digitalbazaar/forge)\n* Email us at support@digitalbazaar.com\n",
+                "fixed_version": "1.0.0",
+                "references": [
+                    "https://github.com/digitalbazaar/forge",
+                    "https://github.com/digitalbazaar/forge/security/advisories/GHSA-gf8q-jrpm-jvxq",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-0122",
+                    "https://www.huntr.dev/bounties/41852c50-3c6d-4703-8c55-4db27164a4ae"
+                ]
+            },
+            {
+                "id": "CVE-2021-3803",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "nth-check",
+                    "version": "1.0.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "nth-check is vulnerable to Inefficient Regular Expression Complexity",
+                "fixed_version": "2.0.1",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2021-3803",
+                    "https://github.com/advisories/GHSA-rp65-9cf3-cjxr",
+                    "https://github.com/fb55/nth-check",
+                    "https://github.com/fb55/nth-check/commit/9894c1d2010870c351f66c6f6efcf656e26bb726",
+                    "https://github.com/fb55/nth-check/commit/9894c1d2010870c351f66c6f6efcf656e26bb726 (v2.0.1)",
+                    "https://huntr.dev/bounties/8cf8cc06-d2cf-4b4e-b42c-99fafb0b04d0",
+                    "https://huntr.dev/bounties/8cf8cc06-d2cf-4b4e-b42c-99fafb0b04d0/",
+                    "https://lists.debian.org/debian-lts-announce/2023/05/msg00023.html",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-3803",
+                    "https://ubuntu.com/security/notices/USN-6114-1",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-3803"
+                ]
+            },
+            {
+                "id": "CVE-2024-45296",
+                "severity": "HIGH",
+                "score": 5.3,
+                "package": {
+                    "name": "path-to-regexp",
+                    "version": "0.1.7",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "path-to-regexp turns path strings into a regular expressions. In certain cases, path-to-regexp will output a regular expression that can be exploited to cause poor performance. Because JavaScript is single threaded and regex matching runs on the main thread, poor performance will block the event loop and lead to a DoS. The bad regular expression is generated any time you have two parameters within a single segment, separated by something that is not a period (.). For users of 0.1, upgrade to 0.1.10. All other users should upgrade to 8.0.0.",
+                "fixed_version": "1.9.0, 0.1.10, 8.0.0, 3.3.0, 6.3.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-45296",
+                    "https://github.com/pillarjs/path-to-regexp",
+                    "https://github.com/pillarjs/path-to-regexp/commit/29b96b4a1de52824e1ca0f49a701183cc4ed476f",
+                    "https://github.com/pillarjs/path-to-regexp/commit/60f2121e9b66b7b622cc01080df0aabda9eedee6",
+                    "https://github.com/pillarjs/path-to-regexp/commit/925ac8e3c5780b02f58cbd4e52f95da8ad2ac485",
+                    "https://github.com/pillarjs/path-to-regexp/commit/d31670ae8f6e69cbfd56e835742195b7d10942ef",
+                    "https://github.com/pillarjs/path-to-regexp/commit/f1253b47b347dcb909e3e80b0eb2649109e59894",
+                    "https://github.com/pillarjs/path-to-regexp/releases/tag/v6.3.0",
+                    "https://github.com/pillarjs/path-to-regexp/security/advisories/GHSA-9wv6-86v2-598j",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-45296",
+                    "https://security.netapp.com/advisory/ntap-20250124-0001",
+                    "https://security.netapp.com/advisory/ntap-20250124-0001/",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-45296"
+                ]
+            },
+            {
+                "id": "CVE-2024-52798",
+                "severity": "HIGH",
+                "score": 5.3,
+                "package": {
+                    "name": "path-to-regexp",
+                    "version": "0.1.7",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "path-to-regexp turns path strings into a regular expressions. In certain cases, path-to-regexp will output a regular expression that can be exploited to cause poor performance. The regular expression that is vulnerable to backtracking can be generated in the 0.1.x release of path-to-regexp. Upgrade to 0.1.12. This vulnerability exists because of an incomplete fix for CVE-2024-45296.",
+                "fixed_version": "0.1.12",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-52798",
+                    "https://blakeembrey.com/posts/2024-09-web-redos",
+                    "https://github.com/pillarjs/path-to-regexp",
+                    "https://github.com/pillarjs/path-to-regexp/commit/f01c26a013b1889f0c217c643964513acf17f6a4",
+                    "https://github.com/pillarjs/path-to-regexp/security/advisories/GHSA-rhx6-c78j-4q9w",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-52798",
+                    "https://security.netapp.com/advisory/ntap-20250124-0002",
+                    "https://security.netapp.com/advisory/ntap-20250124-0002/",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-52798"
+                ]
+            },
+            {
+                "id": "CVE-2023-44270",
+                "severity": "MEDIUM",
+                "score": 5.3,
+                "package": {
+                    "name": "postcss",
+                    "version": "7.0.39",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "An issue was discovered in PostCSS before 8.4.31. The vulnerability affects linters using PostCSS to parse external untrusted CSS. An attacker can prepare CSS in such a way that it will contains parts parsed by PostCSS as a CSS comment. After processing by PostCSS, it will be included in the PostCSS output in CSS nodes (rules, properties) despite being included in a comment.",
+                "fixed_version": "8.4.31",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2023-44270",
+                    "https://github.com/github/advisory-database/issues/2820",
+                    "https://github.com/postcss/postcss",
+                    "https://github.com/postcss/postcss/blob/main/lib/tokenize.js#L25",
+                    "https://github.com/postcss/postcss/commit/58cc860b4c1707510c9cd1bc1fa30b423a9ad6c5",
+                    "https://github.com/postcss/postcss/releases/tag/8.4.31",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2023-44270",
+                    "https://www.cve.org/CVERecord?id=CVE-2023-44270"
+                ]
+            },
+            {
+                "id": "CVE-2022-24999",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "qs",
+                    "version": "6.7.0",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "qs before 6.10.3, as used in Express before 4.17.3 and other products, allows attackers to cause a Node process hang for an Express application because an __ proto__ key can be used. In many typical Express use cases, an unauthenticated remote attacker can place the attack payload in the query string of the URL that is used to visit the application, such as a[__proto__]=b&a[__proto__]&a[length]=100000000. The fix was backported to qs 6.9.7, 6.8.3, 6.7.3, 6.6.1, 6.5.3, 6.4.1, 6.3.3, and 6.2.4 (and therefore Express 4.17.3, which has \"deps: qs@6.9.7\" in its release description, is not vulnerable).",
+                "fixed_version": "6.10.3, 6.9.7, 6.8.3, 6.7.3, 6.6.1, 6.5.3, 6.4.1, 6.3.3, 6.2.4",
+                "references": [
+                    "https://access.redhat.com/errata/RHSA-2023:0050",
+                    "https://access.redhat.com/security/cve/CVE-2022-24999",
+                    "https://bugzilla.redhat.com/2044591",
+                    "https://bugzilla.redhat.com/2066009",
+                    "https://bugzilla.redhat.com/2134609",
+                    "https://bugzilla.redhat.com/2140911",
+                    "https://bugzilla.redhat.com/2150323",
+                    "https://errata.almalinux.org/8/ALSA-2023-0050.html",
+                    "https://github.com/expressjs/express/releases/tag/4.17.3",
+                    "https://github.com/ljharb/qs",
+                    "https://github.com/ljharb/qs/commit/4310742efbd8c03f6495f07906b45213da0a32ec",
+                    "https://github.com/ljharb/qs/commit/727ef5d34605108acb3513f72d5435972ed15b68",
+                    "https://github.com/ljharb/qs/commit/73205259936317b40f447c5cdb71c5b341848e1b",
+                    "https://github.com/ljharb/qs/commit/8b4cc14cda94a5c89341b77e5fe435ec6c41be2d",
+                    "https://github.com/ljharb/qs/commit/ba24e74dd17931f825adb52f5633e48293b584e1",
+                    "https://github.com/ljharb/qs/commit/e799ba57e573a30c14b67c1889c7c04d508b9105",
+                    "https://github.com/ljharb/qs/commit/ed0f5dcbef4b168a8ae299d78b1e4a2e9b1baf1f",
+                    "https://github.com/ljharb/qs/commit/f945393cfe442fe8c6e62b4156fd35452c0686ee",
+                    "https://github.com/ljharb/qs/commit/fc3682776670524a42e19709ec4a8138d0d7afda",
+                    "https://github.com/ljharb/qs/pull/428",
+                    "https://github.com/n8tz/CVE-2022-24999",
+                    "https://linux.oracle.com/cve/CVE-2022-24999.html",
+                    "https://linux.oracle.com/errata/ELSA-2023-0050.html",
+                    "https://lists.debian.org/debian-lts-announce/2023/01/msg00039.html",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-24999",
+                    "https://security.netapp.com/advisory/ntap-20230908-0005",
+                    "https://security.netapp.com/advisory/ntap-20230908-0005/",
+                    "https://www.cve.org/CVERecord?id=CVE-2022-24999"
+                ]
+            },
+            {
+                "id": "CVE-2024-43799",
+                "severity": "LOW",
+                "score": 4.7,
+                "package": {
+                    "name": "send",
+                    "version": "0.17.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Send is a library for streaming files from the file system as a http response. Send passes untrusted user input to SendStream.redirect() which executes untrusted code. This issue is patched in send 0.19.0.",
+                "fixed_version": "0.19.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-43799",
+                    "https://github.com/pillarjs/send",
+                    "https://github.com/pillarjs/send/commit/ae4f2989491b392ae2ef3b0015a019770ae65d35",
+                    "https://github.com/pillarjs/send/security/advisories/GHSA-m6fv-jmcg-4jfg",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-43799",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-43799"
+                ]
+            },
+            {
+                "id": "CVE-2024-43800",
+                "severity": "LOW",
+                "score": 4.7,
+                "package": {
+                    "name": "serve-static",
+                    "version": "1.14.1",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "serve-static serves static files. serve-static passes untrusted user input - even after sanitizing it - to redirect() may execute untrusted code. This issue is patched in serve-static 1.16.0.",
+                "fixed_version": "1.16.0, 2.1.0",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2024-43800",
+                    "https://github.com/expressjs/serve-static",
+                    "https://github.com/expressjs/serve-static/commit/0c11fad159898cdc69fd9ab63269b72468ecaf6b",
+                    "https://github.com/expressjs/serve-static/commit/ce730896fddce1588111d9ef6fdf20896de5c6fa",
+                    "https://github.com/expressjs/serve-static/security/advisories/GHSA-cm22-4g7w-348p",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2024-43800",
+                    "https://www.cve.org/CVERecord?id=CVE-2024-43800"
+                ]
+            },
+            {
+                "id": "CVE-2020-7733",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "ua-parser-js",
+                    "version": "0.7.20",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The package ua-parser-js before 0.7.22 are vulnerable to Regular Expression Denial of Service (ReDoS) via the regex for Redmi Phones and Mi Pad Tablets UA.",
+                "fixed_version": "0.7.22",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2020-7733",
+                    "https://github.com/faisalman/ua-parser-js/commit/233d3bae22a795153a7e6638887ce159c63e557d",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-7733",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWERGITHUBFAISALMAN-674666",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-674665",
+                    "https://snyk.io/vuln/SNYK-JS-UAPARSERJS-610226",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-7733",
+                    "https://www.oracle.com//security-alerts/cpujul2021.html"
+                ]
+            },
+            {
+                "id": "CVE-2020-7793",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "ua-parser-js",
+                    "version": "0.7.20",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "The package ua-parser-js before 0.7.23 are vulnerable to Regular Expression Denial of Service (ReDoS) in multiple regexes (see linked commit for more info).",
+                "fixed_version": "0.7.23",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2020-7793",
+                    "https://cert-portal.siemens.com/productcert/pdf/ssa-637483.pdf",
+                    "https://github.com/faisalman/ua-parser-js/commit/6d1f26df051ba681463ef109d36c9cf0f7e32b18",
+                    "https://github.com/faisalman/ua-parser-js/commit/6d1f26df051ba681463ef109d36c9cf0f7e32b18 (0.7.23)",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-7793",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSBOWERGITHUBFAISALMAN-1050388",
+                    "https://snyk.io/vuln/SNYK-JAVA-ORGWEBJARSNPM-1050387",
+                    "https://snyk.io/vuln/SNYK-JS-UAPARSERJS-1023599",
+                    "https://www.cve.org/CVERecord?id=CVE-2020-7793"
+                ]
+            },
+            {
+                "id": "CVE-2021-27292",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "ua-parser-js",
+                    "version": "0.7.20",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "ua-parser-js >= 0.7.14, fixed in 0.7.24, uses a regular expression which is vulnerable to denial of service. If an attacker sends a malicious User-Agent header, ua-parser-js will get stuck processing it for an extended period of time.",
+                "fixed_version": "0.7.24",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2021-27292",
+                    "https://gist.github.com/b-c-ds/6941d80d6b4e694df4bc269493b7be76",
+                    "https://github.com/faisalman/ua-parser-js/commit/809439e20e273ce0d25c1d04e111dcf6011eb566",
+                    "https://github.com/pygments/pygments/commit/2e7e8c4a7b318f4032493773732754e418279a14",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-27292",
+                    "https://www.cve.org/CVERecord?id=CVE-2021-27292"
+                ]
+            },
+            {
+                "id": "CVE-2022-25927",
+                "severity": "HIGH",
+                "score": 7.5,
+                "package": {
+                    "name": "ua-parser-js",
+                    "version": "0.7.20",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "Versions of the package ua-parser-js from 0.7.30 and before 0.7.33, from 0.8.1 and before 1.0.33 are vulnerable to Regular Expression Denial of Service (ReDoS) via the trim() function.\r\r",
+                "fixed_version": "0.7.33, 1.0.33",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2022-25927",
+                    "https://github.com/faisalman/ua-parser-js",
+                    "https://github.com/faisalman/ua-parser-js/commit/a6140a17dd0300a35cfc9cff999545f267889411",
+                    "https://github.com/faisalman/ua-parser-js/security/advisories/GHSA-fhg7-m89q-25r3",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-25927",
+                    "https://security.snyk.io/vuln/SNYK-JS-UAPARSERJS-3244450",
+                    "https://www.cve.org/CVERecord?id=CVE-2022-25927"
+                ]
+            },
+            {
+                "id": "CVE-2025-30359",
+                "severity": "MEDIUM",
+                "score": 5.3,
+                "package": {
+                    "name": "webpack-dev-server",
+                    "version": "4.15.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "webpack-dev-server allows users to use webpack with a development server that provides live reloading. Prior to version 5.2.1, webpack-dev-server users' source code may be stolen when they access a malicious web site. Because the request for classic script by a script tag is not subject to same origin policy, an attacker can inject a malicious script in their site and run the script. Note that the attacker has to know the port and the output entrypoint script path. Combined with prototype pollution, the attacker can get a reference to the webpack runtime variables. By using `Function::toString` against the values in `__webpack_modules__`, the attacker can get the source code. Version 5.2.1 contains a patch for the issue.",
+                "fixed_version": "5.2.1",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2025-30359",
+                    "https://github.com/webpack/webpack-dev-server",
+                    "https://github.com/webpack/webpack-dev-server/commit/5c9378bb01276357d7af208a0856ca2163db188e",
+                    "https://github.com/webpack/webpack-dev-server/commit/d2575ad8dfed9207ed810b5ea0ccf465115a2239",
+                    "https://github.com/webpack/webpack-dev-server/security/advisories/GHSA-4v9v-hfq4-rm2v",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2025-30359",
+                    "https://www.cve.org/CVERecord?id=CVE-2025-30359"
+                ]
+            },
+            {
+                "id": "CVE-2025-30360",
+                "severity": "MEDIUM",
+                "score": 6.5,
+                "package": {
+                    "name": "webpack-dev-server",
+                    "version": "4.15.2",
+                    "ecosystem": "npm"
+                },
+                "location": {
+                    "file": "package-lock.json"
+                },
+                "description": "webpack-dev-server allows users to use webpack with a development server that provides live reloading. Prior to version 5.2.1, webpack-dev-server users' source code may be stolen when you access a malicious web site with non-Chromium based browser. The `Origin` header is checked to prevent Cross-site WebSocket hijacking from happening, which was reported by CVE-2018-14732. But webpack-dev-server always allows IP address `Origin` headers. This allows websites that are served on IP addresses to connect WebSocket. An attacker can obtain source code via a method similar to that used to exploit CVE-2018-14732. Version 5.2.1 contains a patch for the issue.",
+                "fixed_version": "5.2.1",
+                "references": [
+                    "https://access.redhat.com/security/cve/CVE-2025-30360",
+                    "https://github.com/webpack/webpack-dev-server",
+                    "https://github.com/webpack/webpack-dev-server/blob/55220a800ba4e30dbde2d98785ecf4c80b32f711/lib/Server.js#L3113-L3127",
+                    "https://github.com/webpack/webpack-dev-server/commit/5c9378bb01276357d7af208a0856ca2163db188e",
+                    "https://github.com/webpack/webpack-dev-server/commit/72efaab83381a0e1c4914adf401cbd210b7de7eb",
+                    "https://github.com/webpack/webpack-dev-server/commit/d2575ad8dfed9207ed810b5ea0ccf465115a2239",
+                    "https://github.com/webpack/webpack-dev-server/security/advisories/GHSA-9jgg-88mc-972h",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2025-30360",
+                    "https://www.cve.org/CVERecord?id=CVE-2025-30360"
+                ]
+            }
+        ],
+        "summary": {
+            "total_vulnerabilities": 49,
+            "critical": 4,
+            "high": 20,
+            "medium": 14,
+            "low": 11,
+            "info": 0
         }
-    ]
+    }
 }
