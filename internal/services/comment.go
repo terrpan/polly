@@ -10,12 +10,12 @@ import (
 )
 
 type CommentService struct {
-	githubClient *clients.GitHubClient
+	githubClient clients.GitHubClientInterface
 	logger       *slog.Logger
 }
 
 // NewCommentService initializes a new CommentService with the provided GitHub client and logger.
-func NewCommentService(githubClient *clients.GitHubClient, logger *slog.Logger) *CommentService {
+func NewCommentService(githubClient clients.GitHubClientInterface, logger *slog.Logger) *CommentService {
 	return &CommentService{
 		githubClient: githubClient,
 		logger:       logger,
