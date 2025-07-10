@@ -56,14 +56,6 @@ Template encouraging good PR practices:
 - Security considerations
 - Code quality checklist
 
-## Current Test Coverage
-- **Overall**: 37.3% (exceeds 30% threshold)
-- **internal/services**: 44.4%
-- **internal/clients**: 64.6%
-- **internal/config**: 73.7%
-- **internal/handlers**: 21.0%
-- **internal/app**: 10.2%
-- **cmd/server**: 3.2%
 
 ## Status Badges
 The README includes status badges for:

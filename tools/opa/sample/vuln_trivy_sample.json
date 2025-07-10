@@ -1,0 +1,51 @@
+{
+    "type": "vulnerability_scan",
+    "metadata": {
+        "source_format": "trivy_json",
+        "tool_name": "trivy",
+        "tool_version": "",
+        "scan_time": "2025-07-06T21:53:59Z",
+        "repository": "terrpan/test-repo",
+        "commit_sha": "5da17a7eccaf3590013b3400902e99929a44465b",
+        "scan_target": ".",
+        "schema_version": "2"
+    },
+    "vulnerabilities": [
+        {
+            "id": "CVE-2023-45857",
+            "severity": "MEDIUM",
+            "score": 6.5,
+            "package": {
+                "name": "axios",
+                "version": "0.21.1",
+                "ecosystem": "npm"
+            },
+            "location": {
+                "file": "package-lock.json"
+            },
+            "description": "An issue discovered in Axios 1.5.1 inadvertently reveals the confidential XSRF-TOKEN stored in cookies",
+            "fixed_version": "1.6.0, 0.28.0",
+            "references": [
+                "https://github.com/axios/axios/security/advisories/GHSA-xvch-5gv4-984h"
+            ]
+        },
+        {
+            "id": "CVE-2020-8203",
+            "severity": "LOW",
+            "score": 7.4,
+            "package": {
+                "name": "lodash",
+                "version": "4.17.15",
+                "ecosystem": "npm"
+            },
+            "location": {
+                "file": "package-lock.json"
+            },
+            "description": "Prototype pollution attack when using _.zipObjectDeep in lodash before 4.17.20.",
+            "fixed_version": "4.17.19",
+            "references": [
+                "https://github.com/lodash/lodash/commit/c84fe82760fb2d3e03a63379b297a1cc1a2fce12"
+            ]
+        }
+    ]
+}
