@@ -1,5 +1,9 @@
 # Polly
 
+[![Test](https://github.com/terrpan/polly/actions/workflows/test.yml/badge.svg)](https://github.com/terrpan/polly/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/terrpan/polly)](https://goreportcard.com/report/github.com/terrpan/polly)
+[![codecov](https://codecov.io/gh/terrpan/polly/branch/main/graph/badge.svg)](https://codecov.io/gh/terrpan/polly)
+
 A GitHub App that validates pull requests against Open Policy Agent (OPA) policies. Polly creates GitHub check runs based on policy evaluation results, helping enforce compliance requirements before merging.
 
 ## Quick Start
