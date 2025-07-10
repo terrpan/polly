@@ -2,13 +2,12 @@ package app
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 func TestServer_Structure(t *testing.T) {
@@ -108,7 +107,7 @@ func TestServer_Constants(t *testing.T) {
 
 func TestServer_HTTPServerConfiguration(t *testing.T) {
 	// Test HTTP server configuration values that NewServer sets
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	container := &Container{
 		Logger: logger,
 	}

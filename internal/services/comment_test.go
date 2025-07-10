@@ -2,16 +2,15 @@ package services
 
 import (
 	"context"
-	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 func TestNewCommentService(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 
 	service := NewCommentService(githubClient, logger)
@@ -22,7 +21,7 @@ func TestNewCommentService(t *testing.T) {
 }
 
 func TestCommentService_WriteComment_Structure(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewCommentService(githubClient, logger)
 
@@ -35,7 +34,7 @@ func TestCommentService_WriteComment_Structure(t *testing.T) {
 }
 
 func TestCommentService_WriteComment_Parameters(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewCommentService(githubClient, logger)
 
@@ -51,7 +50,7 @@ func TestCommentService_WriteComment_Parameters(t *testing.T) {
 }
 
 func TestCommentService_ErrorHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewCommentService(githubClient, logger)
 
@@ -67,7 +66,7 @@ func TestCommentService_ErrorHandling(t *testing.T) {
 }
 
 func TestCommentService_ContextHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewCommentService(githubClient, logger)
 

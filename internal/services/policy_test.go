@@ -5,15 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"log/slog"
-	"os"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 func TestNewPolicyService(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 
 	policyService := NewPolicyService(opaClient, logger)
@@ -56,7 +55,7 @@ func TestPolicyService_VulnerabilityPolicyResult_Structure(t *testing.T) {
 
 // TestPolicyService_EvaluatePolicy_ErrorHandling tests error scenarios in policy evaluation
 func TestPolicyService_EvaluatePolicy_ErrorHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	service := NewPolicyService(opaClient, logger)
 
@@ -74,7 +73,7 @@ func TestPolicyService_EvaluatePolicy_ErrorHandling(t *testing.T) {
 
 // TestPolicyService_CheckVulnerabilityPolicy_EdgeCases tests edge cases for vulnerability policy
 func TestPolicyService_CheckVulnerabilityPolicy_EdgeCases(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	service := NewPolicyService(opaClient, logger)
 
@@ -128,7 +127,7 @@ func TestPolicyService_CheckVulnerabilityPolicy_EdgeCases(t *testing.T) {
 
 // TestPolicyService_ContextTimeout tests context timeout handling
 func TestPolicyService_ContextTimeout(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	service := NewPolicyService(opaClient, logger)
 

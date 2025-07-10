@@ -2,17 +2,16 @@ package services
 
 import (
 	"context"
-	"log/slog"
-	"os"
 	"testing"
 
 	gogithub "github.com/google/go-github/v72/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 func TestNewCheckService(t *testing.T) {
-	logger := slog.Default()
+	logger := testutils.NewTestLogger()
 
 	// Create a real GitHub client for testing the constructor
 	realClient := clients.NewGitHubClient(context.Background())
@@ -160,7 +159,7 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 	t.Skip("Integration tests require GitHub API setup")
 
 	// Example of how integration tests would look:
-	// logger := slog.Default()
+	// logger := testutils.NewTestLogger()
 	// githubClient := clients.NewGitHubClient(context.Background())
 	// err := githubClient.Authenticate(context.Background(), "test-token")
 	// require.NoError(t, err)
@@ -174,7 +173,7 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 }
 
 func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewCheckService(githubClient, logger)
 
@@ -188,7 +187,7 @@ func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 }
 
 func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewCheckService(githubClient, logger)
 
@@ -202,7 +201,7 @@ func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 }
 
 func TestCheckService_ContextHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewCheckService(githubClient, logger)
 

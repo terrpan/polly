@@ -3,18 +3,18 @@ package app
 import (
 	"context"
 	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/handlers"
 	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 func TestContainer_Structure(t *testing.T) {
 	container := &Container{
-		Logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError})),
+		Logger: testutils.NewTestLogger(),
 	}
 
 	assert.NotNil(t, container)
@@ -44,7 +44,7 @@ func TestNewContainer_Structure(t *testing.T) {
 
 func TestContainer_Shutdown(t *testing.T) {
 	container := &Container{
-		Logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError})),
+		Logger: testutils.NewTestLogger(),
 	}
 
 	ctx := context.Background()
@@ -113,7 +113,7 @@ func TestContainer_Logger_Creation(t *testing.T) {
 	container := &Container{}
 
 	// Test logger creation from config
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	container.Logger = logger
 
 	assert.NotNil(t, container.Logger)
@@ -126,7 +126,7 @@ func TestContainer_Logger_Creation(t *testing.T) {
 
 func TestContainer_Shutdown_WithLogger(t *testing.T) {
 	// Test shutdown with actual logger
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	container := &Container{
 		Logger: logger,
 	}
@@ -143,7 +143,7 @@ func TestContainer_Shutdown_WithLogger(t *testing.T) {
 
 func TestContainer_NewLogger(t *testing.T) {
 	// Test creating a logger like NewContainer does
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 
 	assert.NotNil(t, logger)
 
@@ -164,7 +164,7 @@ func TestContainer_ErrorHandling(t *testing.T) {
 
 	// Test that we can create a basic container structure
 	container := &Container{
-		Logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError})),
+		Logger: testutils.NewTestLogger(),
 	}
 
 	// Test that basic operations work

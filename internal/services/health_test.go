@@ -2,17 +2,16 @@ package services
 
 import (
 	"context"
-	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 func TestNewHealthService(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 
 	service := NewHealthService(logger, opaClient)
@@ -23,7 +22,7 @@ func TestNewHealthService(t *testing.T) {
 }
 
 func TestHealthService_Structure(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	service := NewHealthService(logger, opaClient)
 
@@ -36,7 +35,7 @@ func TestHealthService_Structure(t *testing.T) {
 }
 
 func TestHealthService_CheckHealth_Execution(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
 	require.NoError(t, err)
 
@@ -60,7 +59,7 @@ func TestHealthService_CheckHealth_Execution(t *testing.T) {
 }
 
 func TestHealthService_ContextHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
 	require.NoError(t, err)
 
@@ -78,7 +77,7 @@ func TestHealthService_ContextHandling(t *testing.T) {
 }
 
 func TestHealthService_OPAClientIntegration(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
 	require.NoError(t, err)
 

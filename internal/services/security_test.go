@@ -2,16 +2,15 @@ package services
 
 import (
 	"context"
-	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 func TestNewSecurityService(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 
 	service := NewSecurityService(githubClient, logger)
@@ -52,7 +51,7 @@ func TestSecurityService_VulnerabilityPayload_Structure(t *testing.T) {
 }
 
 func TestSecurityService_ProcessWorkflowSecurityArtifacts_Parameters(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewSecurityService(githubClient, logger)
 
@@ -93,7 +92,7 @@ func TestSecurityService_VulnerabilityPayload_NewStructure(t *testing.T) {
 }
 
 func TestSecurityService_ContextHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewSecurityService(githubClient, logger)
 
@@ -106,7 +105,7 @@ func TestSecurityService_ContextHandling(t *testing.T) {
 }
 
 func TestSecurityService_DiscoverSecurityArtifacts(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewSecurityService(githubClient, logger)
 
@@ -119,7 +118,7 @@ func TestSecurityService_DiscoverSecurityArtifacts(t *testing.T) {
 
 // TestSecurityService_DetectSecurityContent tests content detection
 func TestSecurityService_DetectSecurityContent(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewSecurityService(githubClient, logger)
 
@@ -276,7 +275,7 @@ func TestSecurityService_DetectEcosystem(t *testing.T) {
 
 // TestSecurityService_BuildPayloadsFromArtifacts tests payload building
 func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewSecurityService(githubClient, logger)
 
@@ -336,7 +335,7 @@ func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
 
 // TestSecurityService_ContextCancellation tests context cancellation handling
 func TestSecurityService_ContextCancellation(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	githubClient := clients.NewGitHubClient(context.Background())
 	service := NewSecurityService(githubClient, logger)
 

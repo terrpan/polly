@@ -7,18 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	"log/slog"
-	"os"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/testutils"
 )
 
 // Test helper to create test services
 func createTestServices() (*services.CommentService, *services.CheckService, *services.PolicyService, *services.SecurityService) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 
 	// Create test GitHub client (will not make real API calls in tests)
 	githubClient := clients.NewGitHubClient(context.Background())
@@ -35,7 +33,7 @@ func createTestServices() (*services.CommentService, *services.CheckService, *se
 }
 
 func TestNewWebhookHandler(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	commentService, checkService, policyService, securityService := createTestServices()
 
 	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
@@ -46,7 +44,7 @@ func TestNewWebhookHandler(t *testing.T) {
 }
 
 func TestWebhookHandler_Structure(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	commentService, checkService, policyService, securityService := createTestServices()
 
 	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
@@ -62,7 +60,7 @@ func TestWebhookHandler_Structure(t *testing.T) {
 }
 
 func TestWebhookHandler_ServicesInitialization(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	commentService, checkService, policyService, securityService := createTestServices()
 
 	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
@@ -76,7 +74,7 @@ func TestWebhookHandler_ServicesInitialization(t *testing.T) {
 }
 
 func TestWebhookHandler_HandleWebhook_Structure(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	commentService, checkService, policyService, securityService := createTestServices()
 
 	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
@@ -96,7 +94,7 @@ func TestWebhookHandler_HandleWebhook_Structure(t *testing.T) {
 }
 
 func TestWebhookHandler_ContextStore(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	commentService, checkService, policyService, securityService := createTestServices()
 
 	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
@@ -115,7 +113,7 @@ func TestWebhookHandler_ContextStore(t *testing.T) {
 }
 
 func TestWebhookHandler_Services(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	commentService, checkService, policyService, securityService := createTestServices()
 
 	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
@@ -129,7 +127,7 @@ func TestWebhookHandler_Services(t *testing.T) {
 }
 
 func TestWebhookHandler_Mutexes(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	logger := testutils.NewTestLogger()
 	commentService, checkService, policyService, securityService := createTestServices()
 
 	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
@@ -151,7 +149,7 @@ func TestWebhookHandler_Mutexes(t *testing.T) {
 
 // TestWebhookHandler_HandleWebhook_RequestParsing tests webhook request parsing
 func TestWebhookHandler_HandleWebhook_RequestParsing(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := testutils.NewTestLogger()
 	commentService := &services.CommentService{}
 	checkService := &services.CheckService{}
 	policyService := &services.PolicyService{}
@@ -215,7 +213,7 @@ func TestWebhookHandler_HandleWebhook_RequestParsing(t *testing.T) {
 
 // TestWebhookHandler_BuildCheckRunResult tests check run result building
 func TestWebhookHandler_BuildCheckRunResult(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := testutils.NewTestLogger()
 	commentService := &services.CommentService{}
 	checkService := &services.CheckService{}
 	policyService := &services.PolicyService{}
@@ -267,7 +265,7 @@ func TestWebhookHandler_BuildCheckRunResult(t *testing.T) {
 
 // TestWebhookHandler_VulnerabilityCheckStore tests vulnerability check store operations
 func TestWebhookHandler_VulnerabilityCheckStore(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := testutils.NewTestLogger()
 	commentService := &services.CommentService{}
 	checkService := &services.CheckService{}
 	policyService := &services.PolicyService{}
@@ -298,7 +296,7 @@ func TestWebhookHandler_VulnerabilityCheckStore(t *testing.T) {
 
 // TestWebhookHandler_BuildVulnerabilityViolationComment tests vulnerability comment building
 func TestWebhookHandler_BuildVulnerabilityViolationComment(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := testutils.NewTestLogger()
 	commentService := &services.CommentService{}
 	checkService := &services.CheckService{}
 	policyService := &services.PolicyService{}
@@ -341,7 +339,7 @@ func TestWebhookHandler_BuildVulnerabilityViolationComment(t *testing.T) {
 
 // TestWebhookHandler_PRContextStore tests PR context store operations
 func TestWebhookHandler_PRContextStore(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := testutils.NewTestLogger()
 	commentService := &services.CommentService{}
 	checkService := &services.CheckService{}
 	policyService := &services.PolicyService{}
@@ -376,7 +374,7 @@ func TestWebhookHandler_PRContextStore(t *testing.T) {
 
 // TestWebhookHandler_CompleteVulnerabilityCheckAsNeutral tests neutral completion
 func TestWebhookHandler_CompleteVulnerabilityCheckAsNeutral(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := testutils.NewTestLogger()
 	commentService := &services.CommentService{}
 	checkService := &services.CheckService{}
 	policyService := &services.PolicyService{}
