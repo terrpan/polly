@@ -12,6 +12,25 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+// GitHubClientInterface defines the interface for GitHub API operations needed by services.
+// This allows for easy mocking and testing of service logic without making real API calls.
+type GitHubClientInterface interface {
+	// WriteComment writes a comment on a pull request or issue
+	WriteComment(ctx context.Context, owner, repo string, number int, comment string) error
+	
+	// CreateCheckRun creates a check run for a given commit SHA in a repository
+	CreateCheckRun(ctx context.Context, owner, repo, sha, name string) (*github.CheckRun, error)
+	
+	// UpdateCheckRun updates an existing check run with the given ID
+	UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, name, status string, conclusion *string, output *github.CheckRunOutput) error
+	
+	// ListWorkflowArtifacts lists all artifacts for a given workflow run in a repository
+	ListWorkflowArtifacts(ctx context.Context, owner, repo string, workflowID int64) ([]*github.Artifact, error)
+	
+	// DownloadArtifact downloads a specific artifact by its ID from a workflow run
+	DownloadArtifact(ctx context.Context, owner, repo string, artifactID int64) ([]byte, error)
+}
+
 type GitHubClient struct {
 	client *github.Client
 	// httpClient *http.Client

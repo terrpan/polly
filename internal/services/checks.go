@@ -11,7 +11,7 @@ import (
 )
 
 type CheckService struct {
-	githubClient *clients.GitHubClient
+	githubClient clients.GitHubClientInterface
 	logger       *slog.Logger
 }
 
@@ -47,7 +47,7 @@ type CheckRunResult struct {
 }
 
 // NewCheckService initializes a new CheckService with the provided GitHub client and logger.
-func NewCheckService(githubClient *clients.GitHubClient, logger *slog.Logger) *CheckService {
+func NewCheckService(githubClient clients.GitHubClientInterface, logger *slog.Logger) *CheckService {
 	return &CheckService{
 		githubClient: githubClient,
 		logger:       logger,

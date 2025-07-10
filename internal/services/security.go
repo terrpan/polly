@@ -21,7 +21,7 @@ import (
 )
 
 type SecurityService struct {
-	githubClient *clients.GitHubClient
+	githubClient clients.GitHubClientInterface
 	logger       *slog.Logger
 }
 
@@ -137,7 +137,7 @@ const (
 var cvssPriority = []dbtypes.SourceID{"nvd", "redhat", "ghsa"}
 
 // NewSecurityService initializes a new SecurityService with the provided logger.
-func NewSecurityService(githubClient *clients.GitHubClient, logger *slog.Logger) *SecurityService {
+func NewSecurityService(githubClient clients.GitHubClientInterface, logger *slog.Logger) *SecurityService {
 	return &SecurityService{
 		githubClient: githubClient,
 		logger:       logger,
