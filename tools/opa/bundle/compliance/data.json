@@ -1,0 +1,18 @@
+{
+    "vulnerability_config": {
+        "severity_order": {
+            "CRITICAL": 4,
+            "HIGH": 3,
+            "MEDIUM": 2,
+            "LOW": 1,
+            "NEGLIGIBLE": 0
+        },
+        "blocked_cves": [
+            "CVE-2021-23369",
+            "CVE-2025-27152",
+            "CVE-2021-44906",
+            "CVE-2020-7788",
+            "CVE-2022-24999"
+        ]
+    }
+}

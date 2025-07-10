@@ -1,0 +1,55 @@
+{
+    "type": "vulnerability_scan",
+    "metadata": {
+        "source_format": "trivy_json",
+        "tool_name": "trivy",
+        "tool_version": "",
+        "scan_time": "2025-07-06T21:53:59Z",
+        "repository": "terrpan/test-repo",
+        "commit_sha": "5da17a7eccaf3590013b3400902e99929a44465b",
+        "scan_target": ".",
+        "schema_version": "2"
+    },
+    "vulnerabilities": [
+        {
+            "id": "CVE-2025-27152",
+            "severity": "HIGH",
+            "score": 5.3,
+            "package": {
+                "name": "axios",
+                "version": "0.21.1",
+                "ecosystem": "npm"
+            },
+            "location": {
+                "file": "package-lock.json"
+            },
+            "description": "axios is a promise based HTTP client for the browser and node.js",
+            "fixed_version": "1.8.2, 0.30.0"
+        },
+        {
+            "id": "CVE-2021-23369",
+            "severity": "CRITICAL",
+            "score": 9.8,
+            "package": {
+                "name": "handlebars",
+                "version": "4.7.6",
+                "ecosystem": "npm"
+            },
+            "location": {
+                "file": "package-lock.json"
+            },
+            "description": "Remote Code Execution (RCE) when selecting certain compiling options",
+            "fixed_version": "4.7.7"
+        },
+        {
+            "id": "INVALID-2025-0001",
+            "severity": "LOW",
+            "package": {
+                "name": "test-package",
+                "version": "1.0.0",
+                "ecosystem": "npm"
+            },
+            "description": "Invalid CVE ID format test"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+{
+    "revision": "1.0.0",
+    "roots": [
+        "compliance",
+        "compliance_test"
+    ]
+}

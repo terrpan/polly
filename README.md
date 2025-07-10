@@ -48,9 +48,13 @@ GitHub Webhook → Policy Validation → Check Run Result
 ### Policy Integration
 Polly evaluates OPA policies at `/v1/data/{bundle}/{rule}` with webhook payloads as input. Policy results determine GitHub check run status (success/failure).
 
+See [`opa/opa.md`](tools/opa/opa.md) for policy details and examples.
+
 ## Development
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for detailed design documentation.
+
+See [`docs/opa/opa.md`](docs/opa/opa.md) for OPA-specific information.
 
 ## Observability
 
@@ -67,3 +71,30 @@ export POLLY_OTLP_ENABLED=false
 ```
 
 See [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) for complete setup with Jaeger, trace attributes, and performance monitoring.
+
+## Project Directory Structure
+
+```
+polly/
+├── cmd/                  # Application entrypoints (main.go)
+├── internal/             # Private application and business logic
+│   ├── app/              # App container, middleware, server setup
+│   ├── clients/          # External service clients (GitHub, OPA)
+│   ├── config/           # Configuration and logger
+│   ├── handlers/         # HTTP handlers (webhook, health)
+│   ├── otel/             # OpenTelemetry integration
+│   └── services/         # Core business logic (checks, policy, security)
+├── pkg/                  # Public Go packages (if any)
+├── tools/                # Development tools, local infrastructure configs, and OPA policies
+│   ├── docker-compose.yml
+│   ├── otelcol.yaml
+│   └── opa/              # OPA policies and related files
+├── docs/                 # Documentation and architecture decision records
+├── .github/              # GitHub Actions workflows, PR templates
+├── go.mod, go.sum        # Go module files
+├── README.md             # Project overview and badges
+└── ...                   # Other project files
+```
+
+- Place all development and infrastructure tools (Docker Compose, OTel config, OPA policies, etc.) in the `tools/` directory.
+- See `docs/` for architecture and CI documentation.
