@@ -4,6 +4,7 @@ go 1.24.4
 
 require (
 	github.com/aquasecurity/trivy v0.64.1
+	github.com/aquasecurity/trivy-db v0.0.0-20250627124416-ca81c496a932
 	github.com/bradleyfalzon/ghinstallation/v2 v2.16.0
 	github.com/go-playground/webhooks/v6 v6.4.0
 	github.com/google/go-github/v72 v72.0.0
@@ -16,7 +17,6 @@ require (
 require (
 	github.com/anchore/go-struct-converter v0.0.0-20221118182256-c68fdcfa2092 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/aquasecurity/trivy-db v0.0.0-20250627124416-ca81c496a932 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
