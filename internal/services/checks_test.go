@@ -31,14 +31,14 @@ func TestCheckService_CheckRunTypes(t *testing.T) {
 		expectedName string
 	}{
 		{
-			name:         "policy check type",
-			checkType:    CheckRunTypePolicy,
-			expectedName: "OPA Policy Check",
-		},
-		{
 			name:         "vulnerability check type",
 			checkType:    CheckRunTypeVulnerability,
 			expectedName: "Vulnerability Scan Check",
+		},
+		{
+			name:         "license check type",
+			checkType:    CheckRunTypeLicense,
+			expectedName: "License Check",
 		},
 	}
 
@@ -182,7 +182,7 @@ func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 
 	// Test with empty parameters (will likely fail but tests method signature)
 	assert.NotPanics(t, func() {
-		_, err := service.CreateCheckRun(ctx, "", "", "", CheckRunTypePolicy)
+		_, err := service.CreateCheckRun(ctx, "", "", "", CheckRunTypeVulnerability)
 		assert.Error(t, err, "Should return error for empty parameters")
 	})
 }
@@ -196,7 +196,7 @@ func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 
 	// Test with invalid parameters
 	assert.NotPanics(t, func() {
-		err := service.CompleteCheckRun(ctx, "", "", 0, CheckRunTypePolicy, ConclusionSuccess, CheckRunResult{})
+		err := service.CompleteCheckRun(ctx, "", "", 0, CheckRunTypeVulnerability, ConclusionSuccess, CheckRunResult{})
 		assert.Error(t, err, "Should return error for invalid parameters")
 	})
 }
@@ -210,6 +210,6 @@ func TestCheckService_ContextHandling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := service.CreateCheckRun(ctx, "owner", "repo", "sha", CheckRunTypePolicy)
+	_, err := service.CreateCheckRun(ctx, "owner", "repo", "sha", CheckRunTypeVulnerability)
 	assert.Error(t, err, "Should handle cancelled context")
 }

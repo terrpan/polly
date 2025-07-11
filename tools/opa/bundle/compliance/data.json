@@ -13,6 +13,36 @@
             "CVE-2021-44906",
             "CVE-2020-7788",
             "CVE-2022-24999"
+        ],
+        "max_allowed_severity": "MEDIUM"
+    },
+    "license_config": {
+        "allowed_licenses": [
+            "MIT",
+            "Apache-1.0",
+            "Apache-2.0",
+            "BSD-2-Clause",
+            "BSD-3-Clause",
+            "BSD-4-Clause",
+            "EPL-1.0",
+            "EPL-2.0",
+            "LGPL-2.1",
+            "LGPL-3.0"
+        ],
+        "blocked_licenses": [
+            "CC-BY-NC-4.0",
+            "CC-BY-ND-4.0",
+            "CC-BY-NC-SA-4.0",
+            "CC-BY-SA-4.0",
+            "CC0-1.0",
+            "Proprietary",
+            "Unlicense",
+            "WTFPL"
+        ],
+        "conditionally_allowed_licenses": [
+            "AGPL-3.0",
+            "GPL-3.0",
+            "GPL-2.0"
         ]
     }
 }

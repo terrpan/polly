@@ -215,15 +215,6 @@ func TestWebhookHandler_HandleWebhook_RequestParsing(t *testing.T) {
 
 // TestWebhookHandler_BuildCheckRunResult tests check run result building
 func TestWebhookHandler_BuildCheckRunResult(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService := &services.CommentService{}
-	checkService := &services.CheckService{}
-	policyService := &services.PolicyService{}
-	securityService := &services.SecurityService{}
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
-	require.NoError(t, err)
-
 	tests := []struct {
 		name          string
 		policyPassed  bool
@@ -256,7 +247,7 @@ func TestWebhookHandler_BuildCheckRunResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conclusion, result := handler.buildCheckRunResult(tt.policyPassed, tt.policyError)
+			conclusion, result := buildCheckRunResult(tt.policyPassed, tt.policyError)
 			assert.Equal(t, tt.expectedConc, conclusion)
 			assert.Equal(t, tt.expectedTitle, result.Title)
 			assert.NotEmpty(t, result.Summary)
@@ -298,33 +289,26 @@ func TestWebhookHandler_VulnerabilityCheckStore(t *testing.T) {
 
 // TestWebhookHandler_BuildVulnerabilityViolationComment tests vulnerability comment building
 func TestWebhookHandler_BuildVulnerabilityViolationComment(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService := &services.CommentService{}
-	checkService := &services.CheckService{}
-	policyService := &services.PolicyService{}
-	securityService := &services.SecurityService{}
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService)
-	require.NoError(t, err)
-
 	vulns := []services.VulnerabilityPolicyVuln{
 		{
-			ID:       "CVE-2024-1234",
-			Package:  "lodash",
-			Version:  "4.17.20",
-			Severity: "HIGH",
-			Score:    7.5,
+			ID:           "CVE-2024-1234",
+			Package:      "lodash",
+			Version:      "4.17.20",
+			Severity:     "HIGH",
+			Score:        7.5,
+			FixedVersion: "4.17.21",
 		},
 		{
-			ID:       "CVE-2024-5678",
-			Package:  "axios",
-			Version:  "0.21.1",
-			Severity: "CRITICAL",
-			Score:    9.8,
+			ID:           "CVE-2024-5678",
+			Package:      "axios",
+			Version:      "0.21.1",
+			Severity:     "CRITICAL",
+			Score:        9.8,
+			FixedVersion: "0.21.2",
 		},
 	}
 
-	comment := handler.buildVulnerabilityViolationComment(vulns)
+	comment := buildVulnerabilityViolationComment(vulns)
 
 	assert.Contains(t, comment, "🚨 **Vulnerability Policy Violation - 2 vulnerabilities blocked**")
 	assert.Contains(t, comment, "CVE-2024-1234")
@@ -335,6 +319,49 @@ func TestWebhookHandler_BuildVulnerabilityViolationComment(t *testing.T) {
 	assert.Contains(t, comment, "CRITICAL")
 	assert.Contains(t, comment, "7.5")
 	assert.Contains(t, comment, "9.8")
+	assert.Contains(t, comment, "**Fixed Version:** `4.17.21`")
+	assert.Contains(t, comment, "**Fixed Version:** `0.21.2`")
+	assert.Contains(t, comment, "<details>")
+	assert.Contains(t, comment, "</details>")
+}
+
+// TestWebhookHandler_BuildVulnerabilityViolationComment_NoFixedVersion tests vulnerability comment building without fixed versions
+func TestWebhookHandler_BuildVulnerabilityViolationComment_NoFixedVersion(t *testing.T) {
+	vulns := []services.VulnerabilityPolicyVuln{
+		{
+			ID:       "CVE-2024-9999",
+			Package:  "example-pkg",
+			Version:  "1.0.0",
+			Severity: "MEDIUM",
+			Score:    5.0,
+			// No FixedVersion set
+		},
+	}
+
+	comment := buildVulnerabilityViolationComment(vulns)
+
+	assert.Contains(t, comment, "🚨 **Vulnerability Policy Violation - 1 vulnerabilities blocked**")
+	assert.Contains(t, comment, "CVE-2024-9999")
+	assert.Contains(t, comment, "example-pkg")
+	assert.Contains(t, comment, "MEDIUM")
+	assert.Contains(t, comment, "5.0")
+	assert.NotContains(t, comment, "**Fixed Version:**")
+	assert.Contains(t, comment, "<details>")
+	assert.Contains(t, comment, "</details>")
+}
+
+// TestWebhookHandler_BuildLicenseViolationComment tests license violation comment building
+func TestWebhookHandler_BuildLicenseViolationComment(t *testing.T) {
+	licenses := []string{
+		"GPL-3.0",
+		"AGPL-3.0",
+	}
+
+	comment := buildLicenseViolationComment(licenses)
+
+	assert.Contains(t, comment, "🚨 **License Policy Violation - 2 licenses blocked**")
+	assert.Contains(t, comment, "GPL-3.0")
+	assert.Contains(t, comment, "AGPL-3.0")
 	assert.Contains(t, comment, "<details>")
 	assert.Contains(t, comment, "</details>")
 }

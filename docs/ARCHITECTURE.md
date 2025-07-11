@@ -47,16 +47,32 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
 #### 4. Check Service (`internal/services/checks.go`)
 - **Purpose**: GitHub check run lifecycle management
 - **Responsibilities**:
-  - Create policy check runs for commits
+  - Create security check runs for commits (vulnerability and license checks)
   - Update check run status (queued → in_progress → completed)
-  - Set check run conclusions (success/failure/error)
+  - Set check run conclusions (success/failure/neutral)
   - Format check run results with titles, summaries, and details
+- **Key Features**:
+  - Dual-track security validation (vulnerability + license)
+  - Generic check run management with type safety
+  - Support for concurrent check run processing
 
-#### 5. External Clients (`internal/clients/`)
+#### 5. Security Service (`internal/services/security.go`)
+- **Purpose**: Security artifact processing and normalization
+- **Responsibilities**:
+  - Download and analyze GitHub workflow artifacts
+  - Parse Trivy vulnerability reports and SPDX SBOM files
+  - Convert security data into normalized payloads
+  - Detect and classify security content types
+- **Key Features**:
+  - Multi-format artifact support (Trivy JSON, SPDX)
+  - Concurrent artifact processing
+  - Ecosystem detection for vulnerability context
+
+#### 6. External Clients (`internal/clients/`)
 - **GitHub Client** (`github.go`): GitHub API integration with app authentication
 - **OPA Client** (`opa.go`): OPA server communication with generic policy evaluation
 
-#### 6. Configuration (`internal/config/config.go`)
+#### 7. Configuration (`internal/config/config.go`)
 - **Purpose**: Environment-based configuration with validation
 - **Features**:
   - Automatic environment variable binding using reflection
@@ -64,19 +80,33 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - GitHub App and OPA server configuration
   - Build-time version information injection
 
+## Security Check Run System
+
+Polly implements a **dual-track security validation system** where vulnerability and license checks operate independently but in parallel. For detailed information about the check run flow, see [CHECK-RUN-FLOW.md](./CHECK-RUN-FLOW.md).
+
+### Quick Overview
+- **Two Check Types**: Vulnerability checks (Trivy reports) and License checks (SPDX SBOM)
+- **Event-Driven**: Triggered by GitHub PR and workflow events
+- **Concurrent Processing**: Parallel evaluation and completion of security checks
+- **Policy-Based**: Uses OPA for configurable security policy enforcement
+
 ## Data Flow Patterns
 
-### 1. Pull Request Event Processing
+### 1. Security Check Run Processing
 ```
 GitHub PR opened/reopened
     ↓
 handlers.WebhookHandler.handlePullRequestEvent()
     ↓
-services.CheckService.CreatePolicyCheck()
+Create Vulnerability + License Check Runs (Concurrent)
     ↓
-services.CheckService.StartPolicyCheck()
+GitHub Workflow completed
     ↓
-services.PolicyService.CheckHelloPolicy()
+handlers.WebhookHandler.handleWorkflowCompleted()
+    ↓
+services.SecurityService.ProcessWorkflowSecurityArtifacts()
+    ↓
+services.PolicyService.CheckVulnerabilityPolicy() + CheckSBOMPolicy() (Concurrent)
     ↓
 clients.OPAClient.EvaluatePolicy()
     ↓

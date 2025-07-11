@@ -34,8 +34,8 @@ const (
 	ConclusionTimedOut  CheckRunConclusion = "timed_out"
 
 	// Check Run Types
-	CheckRunTypePolicy        CheckRunType = "OPA Policy Check"
 	CheckRunTypeVulnerability CheckRunType = "Vulnerability Scan Check"
+	CheckRunTypeLicense       CheckRunType = "License Check"
 )
 
 type CheckRunResult struct {
@@ -108,14 +108,14 @@ func (s *CheckService) StartCheckRun(ctx context.Context, owner, repo string, ch
 	// Customize output based on check type
 	var title, summary, text string
 	switch checkType {
-	case CheckRunTypePolicy:
-		title = "OPA Policy Check - In Progress"
-		summary = "OPA Policy validation is in progress"
-		text = "The OPA Policy validation is currently being processed. Please wait for the results."
 	case CheckRunTypeVulnerability:
 		title = "Vulnerability Scan Check - In Progress"
 		summary = "Vulnerability scan is in progress"
 		text = "The vulnerability scan is currently being processed. Please wait for the results."
+	case CheckRunTypeLicense:
+		title = "License Check - In Progress"
+		summary = "License scan is in progress"
+		text = "The license scan is currently being processed. Please wait for the results."
 	}
 
 	output := &gogithub.CheckRunOutput{
@@ -197,24 +197,13 @@ func (s *CheckService) CompleteCheckRun(ctx context.Context, owner, repo string,
 }
 
 // Convenience methods for backward compatibility
-func (s *CheckService) CreatePolicyCheck(ctx context.Context, owner, repo, sha string) (*gogithub.CheckRun, error) {
-	return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypePolicy)
-}
 
 func (s *CheckService) CreateVulnerabilityCheck(ctx context.Context, owner, repo, sha string) (*gogithub.CheckRun, error) {
 	return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypeVulnerability)
 }
 
-func (s *CheckService) StartPolicyCheck(ctx context.Context, owner, repo string, checkRunID int64) error {
-	return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypePolicy)
-}
-
 func (s *CheckService) StartVulnerabilityCheck(ctx context.Context, owner, repo string, checkRunID int64) error {
 	return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability)
-}
-
-func (s *CheckService) CompletePolicyCheck(ctx context.Context, owner, repo string, checkRunID int64, conclusion CheckRunConclusion, result CheckRunResult) error {
-	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypePolicy, conclusion, result)
 }
 
 func (s *CheckService) CompleteVulnerabilityCheck(ctx context.Context, owner, repo string, checkRunID int64, conclusion CheckRunConclusion, result CheckRunResult) error {
@@ -228,4 +217,25 @@ func (s *CheckService) CompleteVulnerabilityCheckWithNoArtifacts(ctx context.Con
 		Text:    "The workflow completed successfully but no vulnerability scan reports (Trivy, SARIF, SBOM) were found to analyze. This may indicate that no security scanning tools were configured in the workflow.",
 	}
 	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability, ConclusionNeutral, result)
+}
+
+func (s *CheckService) CreateLicenseCheck(ctx context.Context, owner, repo, sha string) (*gogithub.CheckRun, error) {
+	return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypeLicense)
+}
+
+func (s *CheckService) StartLicenseCheck(ctx context.Context, owner, repo string, checkRunID int64) error {
+	return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense)
+}
+
+func (s *CheckService) CompleteLicenseCheck(ctx context.Context, owner, repo string, checkRunID int64, conclusion CheckRunConclusion, result CheckRunResult) error {
+	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense, conclusion, result)
+}
+
+func (s *CheckService) CompleteLicenseCheckWithNoArtifacts(ctx context.Context, owner, repo string, checkRunID int64) error {
+	result := CheckRunResult{
+		Title:   "License Check - No Reports Found",
+		Summary: "No license scan reports were found to analyze",
+		Text:    "The workflow completed successfully but no license scan reports (SBOM) were found to analyze. This may indicate that no license scanning tools were configured in the workflow.",
+	}
+	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense, ConclusionNeutral, result)
 }
