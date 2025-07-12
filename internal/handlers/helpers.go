@@ -53,9 +53,33 @@ func buildVulnerabilityViolationComment(vulns []services.VulnerabilityPolicyVuln
 }
 
 // buildLicenseViolationComment generates a markdown comment for license policy violations.
-func buildLicenseViolationComment(licenses []string) string {
-	return fmt.Sprintf("🚨 **License Policy Violation - %d licenses blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
-		len(licenses), strings.Join(licenses, "\n\n---\n\n"))
+func buildLicenseViolationComment(components []services.SBOMPolicyComponent) string {
+	componentComments := make([]string, 0, len(components))
+	for _, component := range components {
+		comment := fmt.Sprintf("**Package:** `%s`", component.Name)
+
+		if component.VersionInfo != "" {
+			comment += fmt.Sprintf("@%s", component.VersionInfo)
+		}
+
+		if component.LicenseDeclared != "" {
+			comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
+		} else if component.LicenseConcluded != "" {
+			comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
+		}
+
+		if component.Supplier != "" {
+			comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
+		}
+
+		if component.SPDXID != "" {
+			comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
+		}
+
+		componentComments = append(componentComments, comment)
+	}
+	return fmt.Sprintf("🚨 **License Policy Violation - %d packages blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
+		len(componentComments), strings.Join(componentComments, "\n\n---\n\n"))
 }
 
 // getEventInfo extracts common event information for logging using generics

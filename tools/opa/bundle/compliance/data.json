@@ -24,25 +24,29 @@
             "BSD-2-Clause",
             "BSD-3-Clause",
             "BSD-4-Clause",
-            "EPL-1.0",
-            "EPL-2.0",
-            "LGPL-2.1",
-            "LGPL-3.0"
+            "ISC",
+            "0BSD",
+            "CC0-1.0"
         ],
         "blocked_licenses": [
-            "CC-BY-NC-4.0",
-            "CC-BY-ND-4.0",
-            "CC-BY-NC-SA-4.0",
+            "GPL-2.0",
+            "GPL-3.0",
+            "AGPL-3.0",
             "CC-BY-SA-4.0",
-            "CC0-1.0",
-            "Proprietary",
-            "Unlicense",
-            "WTFPL"
+            "CC-BY-NC-4.0",
+            "CC-BY-NC-SA-4.0",
+            "WTFPL",
+            "Proprietary"
         ],
         "conditionally_allowed_licenses": [
-            "AGPL-3.0",
-            "GPL-3.0",
-            "GPL-2.0"
+            "LGPL-2.1",
+            "LGPL-3.0",
+            "MPL-2.0",
+            "EPL-1.0",
+            "EPL-2.0",
+            "CC-BY-4.0",
+            "CC-BY-ND-4.0",
+            "NOASSERTION"
         ]
     }
 }

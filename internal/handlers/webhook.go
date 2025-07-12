@@ -29,9 +29,11 @@ type WebhookHandler struct {
 	prContextStore          map[string]int64 // sha -> pr_number
 	vulnerabilityCheckStore map[string]int64 // sha -> vulnerability_check_id
 	licenseCheckStore       map[string]int64 // sha -> license_check_id
+	artifactStore           map[string]int64 // sha -> workflow_run_id (for artifact lookup)
 	prContextMutex          sync.RWMutex     // RWMutex to protect the context store
 	vulnerabilityCheckMutex sync.RWMutex     // RWMutex to protect the vulnerability check store
 	licenseCheckMutex       sync.RWMutex     // RWMutex to protect the license check store
+	artifactMutex           sync.RWMutex     // RWMutex to protect the artifact store
 
 }
 
@@ -90,6 +92,21 @@ func (h *WebhookHandler) storePRNumberForSHA(sha string, prNumber int64) {
 	h.prContextMutex.Lock()
 	defer h.prContextMutex.Unlock()
 	h.prContextStore[sha] = prNumber
+}
+
+// getWorkflowRunIDForSHA retrieves the workflow run ID associated with a given SHA from the artifact store
+func (h *WebhookHandler) getWorkflowRunIDForSHA(sha string) (int64, bool) {
+	h.artifactMutex.RLock()
+	defer h.artifactMutex.RUnlock()
+	workflowRunID, exists := h.artifactStore[sha]
+	return workflowRunID, exists
+}
+
+// storeWorkflowRunIDForSHA stores the workflow run ID for a given SHA in the artifact store
+func (h *WebhookHandler) storeWorkflowRunIDForSHA(sha string, workflowRunID int64) {
+	h.artifactMutex.Lock()
+	defer h.artifactMutex.Unlock()
+	h.artifactStore[sha] = workflowRunID
 }
 
 // createSecurityCheckRuns creates and starts security check runs concurrently
@@ -155,6 +172,7 @@ func NewWebhookHandler(logger *slog.Logger, commentService *services.CommentServ
 		prContextStore:          make(map[string]int64), // Initialize the PR context store
 		vulnerabilityCheckStore: make(map[string]int64), // Initialize the vulnerability check store
 		licenseCheckStore:       make(map[string]int64), // Initialize the license check store
+		artifactStore:           make(map[string]int64), // Initialize the artifact store
 	}, nil
 }
 
@@ -165,7 +183,14 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracer.Start(ctx, "webhook.handle")
 	defer span.End()
 
-	payload, err := h.hook.Parse(r, github.PullRequestEvent, github.CheckRunEvent, github.WorkflowRunEvent)
+	payload, err := h.hook.Parse(r,
+		github.PullRequestEvent,
+		github.CheckRunEvent,
+		github.WorkflowRunEvent,
+		github.CheckSuiteEvent,
+		github.WorkflowJobEvent,
+		github.PushEvent,
+	)
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		h.logger.Error("Failed to parse webhook", "error", err)
@@ -204,11 +229,15 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+	case github.CheckSuitePayload, github.WorkflowJobPayload, github.PushPayload:
+		span.SetAttributes(attribute.String("event.type", eventType))
+		h.logger.DebugContext(ctx, "Ignoring non-essential event type", "event_type", eventType)
+		// These events are parsed but not processed - just return success
+
 	default:
 		span.SetAttributes(attribute.String("event.type", eventType))
-		h.logger.Warn("Unsupported event type", "event_type", eventType)
-		http.Error(w, "Unsupported event type", http.StatusBadRequest)
-		return
+		h.logger.DebugContext(ctx, "Unsupported event type", "event_type", eventType)
+		// Don't return an error for unsupported events - just log and continue
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -232,8 +261,8 @@ func (h *WebhookHandler) handlePullRequestEvent(ctx context.Context, event githu
 		"pr_number", event.Number,
 	)
 
-	if event.Action != "opened" && event.Action != "reopened" {
-		h.logger.DebugContext(ctx, "Ignoring non-opened/reopened pull request event",
+	if event.Action != "opened" && event.Action != "reopened" && event.Action != "synchronize" {
+		h.logger.DebugContext(ctx, "Ignoring non-opened/reopened/synchronize pull request event",
 			"action", event.Action,
 		)
 		span.SetAttributes(attribute.String("result", "skipped"))
@@ -308,19 +337,61 @@ func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.C
 		"check_run_id", checkRunID,
 	)
 
-	// For rerequested check runs, we need to determine what type of check this is
-	// and restart it appropriately. For now, we'll log and skip since restarting
-	// individual security checks requires more complex logic to identify the check type.
-	h.logger.InfoContext(ctx, "Check run rerun requested - skipping for now",
+	// Determine the type of security check based on the check run name
+	checkName := event.CheckRun.Name
+	h.logger.InfoContext(ctx, "Check run rerun requested",
 		"owner", owner,
 		"repo", repo,
 		"sha", sha,
 		"check_run_id", checkRunID,
+		"check_name", checkName,
 	)
 
-	// TODO: Implement logic to determine if this is a vulnerability or license check
-	// and restart the appropriate check type
-	return nil
+	// Store the PR number for this SHA if we can find it from the check run
+	if len(event.CheckRun.PullRequests) > 0 {
+		prNumber := int64(event.CheckRun.PullRequests[0].Number)
+		h.storePRNumberForSHA(sha, prNumber)
+		h.logger.DebugContext(ctx, "Stored PR context from check run",
+			"sha", sha,
+			"pr_number", prNumber,
+		)
+	}
+
+	// Determine check type and restart the appropriate security check
+	switch {
+	case strings.Contains(checkName, "Vulnerability"):
+		h.logger.InfoContext(ctx, "Restarting vulnerability check",
+			"check_run_id", checkRunID,
+			"sha", sha,
+		)
+		// Store the check run ID for this SHA
+		h.vulnerabilityCheckMutex.Lock()
+		h.vulnerabilityCheckStore[sha] = checkRunID
+		h.vulnerabilityCheckMutex.Unlock()
+
+		// Start the vulnerability check and process artifacts if available
+		return h.restartVulnerabilityCheck(ctx, owner, repo, sha, checkRunID)
+
+	case strings.Contains(checkName, "License"):
+		h.logger.InfoContext(ctx, "Restarting license check",
+			"check_run_id", checkRunID,
+			"sha", sha,
+		)
+		// Store the check run ID for this SHA
+		h.licenseCheckMutex.Lock()
+		h.licenseCheckStore[sha] = checkRunID
+		h.licenseCheckMutex.Unlock()
+
+		// Start the license check and process artifacts if available
+		return h.restartLicenseCheck(ctx, owner, repo, sha, checkRunID)
+
+	default:
+		h.logger.DebugContext(ctx, "Unknown check type for rerun - skipping",
+			"check_name", checkName,
+			"check_run_id", checkRunID,
+		)
+		return nil
+	}
 }
 
 // handleWorkflowRunEvent processes workflow run events.
@@ -416,6 +487,13 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 		)
 		return h.completeSecurityChecksAsNeutral(ctx, owner, repo, sha)
 	}
+
+	// Store the workflow run ID for this SHA to enable check reruns
+	h.storeWorkflowRunIDForSHA(sha, workflowRunID)
+	h.logger.DebugContext(ctx, "Stored workflow run ID for SHA",
+		"sha", sha,
+		"workflow_run_id", workflowRunID,
+	)
 
 	h.logger.InfoContext(ctx, "Processing workflow security artifacts",
 		"owner", owner,
@@ -590,6 +668,110 @@ func (h *WebhookHandler) findLicenseCheckRun(ctx context.Context, owner, repo, s
 	return checkRunID, nil
 }
 
+// restartVulnerabilityCheck restarts a vulnerability check by processing stored artifacts
+func (h *WebhookHandler) restartVulnerabilityCheck(ctx context.Context, owner, repo, sha string, checkRunID int64) error {
+	// Start the check run in progress state
+	if err := h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRunID); err != nil {
+		return fmt.Errorf("failed to start vulnerability check: %w", err)
+	}
+
+	// Look for stored artifacts for this SHA
+	workflowRunID, exists := h.getWorkflowRunIDForSHA(sha)
+	if !exists {
+		h.logger.DebugContext(ctx, "No stored artifacts found for SHA - completing as neutral",
+			"sha", sha,
+		)
+		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+	}
+
+	h.logger.InfoContext(ctx, "Processing stored artifacts for vulnerability check rerun",
+		"sha", sha,
+		"workflow_run_id", workflowRunID,
+		"check_run_id", checkRunID,
+	)
+
+	// Process the security artifacts from the stored workflow run
+	vulnPayloads, _, err := h.securityService.ProcessWorkflowSecurityArtifacts(ctx, owner, repo, sha, workflowRunID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to process stored security artifacts",
+			"error", err,
+			"workflow_run_id", workflowRunID,
+		)
+		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+	}
+
+	if len(vulnPayloads) == 0 {
+		h.logger.InfoContext(ctx, "No vulnerability artifacts found in stored workflow run",
+			"workflow_run_id", workflowRunID,
+		)
+		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+	}
+
+	// Get PR number for comments
+	prNumber, exists := h.getPRNumberForSHA(sha)
+	if !exists {
+		h.logger.DebugContext(ctx, "No PR context found for SHA",
+			"sha", sha,
+		)
+		prNumber = 0 // Process without PR comments
+	}
+
+	// Process vulnerability payloads
+	return h.processVulnerabilityChecks(ctx, vulnPayloads, owner, repo, sha, prNumber, checkRunID)
+}
+
+// restartLicenseCheck restarts a license check by processing stored artifacts
+func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, sha string, checkRunID int64) error {
+	// Start the check run in progress state
+	if err := h.checkService.StartLicenseCheck(ctx, owner, repo, checkRunID); err != nil {
+		return fmt.Errorf("failed to start license check: %w", err)
+	}
+
+	// Look for stored artifacts for this SHA
+	workflowRunID, exists := h.getWorkflowRunIDForSHA(sha)
+	if !exists {
+		h.logger.DebugContext(ctx, "No stored artifacts found for SHA - completing as neutral",
+			"sha", sha,
+		)
+		return h.checkService.CompleteLicenseCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+	}
+
+	h.logger.InfoContext(ctx, "Processing stored artifacts for license check rerun",
+		"sha", sha,
+		"workflow_run_id", workflowRunID,
+		"check_run_id", checkRunID,
+	)
+
+	// Process the security artifacts from the stored workflow run
+	_, sbomPayloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(ctx, owner, repo, sha, workflowRunID)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to process stored security artifacts",
+			"error", err,
+			"workflow_run_id", workflowRunID,
+		)
+		return h.checkService.CompleteLicenseCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+	}
+
+	if len(sbomPayloads) == 0 {
+		h.logger.InfoContext(ctx, "No SBOM artifacts found in stored workflow run",
+			"workflow_run_id", workflowRunID,
+		)
+		return h.checkService.CompleteLicenseCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+	}
+
+	// Get PR number for comments
+	prNumber, exists := h.getPRNumberForSHA(sha)
+	if !exists {
+		h.logger.DebugContext(ctx, "No PR context found for SHA",
+			"sha", sha,
+		)
+		prNumber = 0 // Process without PR comments
+	}
+
+	// Process SBOM payloads
+	return h.processLicenseChecks(ctx, sbomPayloads, owner, repo, sha, prNumber, checkRunID)
+}
+
 // createCheckRun is a helper function to create a check run for the pull request.
 
 // processVulnerabilityChecks processes vulnerability payloads, posts comments for violations, and completes the check run.
@@ -657,14 +839,15 @@ func (h *WebhookHandler) processVulnerabilityChecks(ctx context.Context, payload
 func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*services.SBOMPayload, owner, repo, sha string, prNumber int64, checkRunID int64) error {
 	allPassed := true
 	var failureDetails []string
-	var allNonCompliantLicenses []string
+	var allNonCompliantComponents []services.SBOMPolicyComponent
 
+	// Iterate through SBOM payloads and evaluate license policies
 	for _, payload := range payloads {
 		h.logger.DebugContext(ctx, "Processing SBOM payload",
 			"owner", owner,
 			"repo", repo,
 			"sha", sha,
-			"payload_sbom_summary", payload.Summary,
+			"package_count", payload.Summary.TotalPackages,
 		)
 
 		policyResult, err := h.policyService.CheckSBOMPolicy(ctx, payload)
@@ -684,12 +867,12 @@ func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*s
 			failureDetails = append(failureDetails,
 				fmt.Sprintf("SBOM policy violation: %d non-compliant components out of %d total",
 					policyResult.TotalComponents-policyResult.CompliantComponents, policyResult.TotalComponents))
-			allNonCompliantLicenses = append(allNonCompliantLicenses, policyResult.NonCompliantLicenses...)
+			allNonCompliantComponents = append(allNonCompliantComponents, policyResult.NonCompliantComponents...)
 		}
 	}
 
-	if len(allNonCompliantLicenses) > 0 {
-		licenseComment := buildLicenseViolationComment(allNonCompliantLicenses)
+	if len(allNonCompliantComponents) > 0 {
+		licenseComment := buildLicenseViolationComment(allNonCompliantComponents)
 		if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), licenseComment); err != nil {
 			h.logger.ErrorContext(ctx, "Failed to post license comment", "error", err)
 		}

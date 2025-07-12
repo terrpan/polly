@@ -52,7 +52,7 @@ func TestPolicyService_SBOMPolicyResult_Structure(t *testing.T) {
 		TotalComponents:        10,
 		CompliantComponents:    8,
 		NonCompliantLicenses:   []string{"GPL-2.0-only"},
-		NonCompliantComponents: []interface{}{},
+		NonCompliantComponents: []SBOMPolicyComponent{},
 		AllowedLicenses:        []string{"MIT", "Apache-2.0"},
 	}
 
