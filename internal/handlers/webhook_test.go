@@ -394,7 +394,7 @@ func TestWebhookHandler_BuildVulnerabilityViolationComment_NoFixedVersion(t *tes
 
 	comment := buildVulnerabilityViolationComment(vulns)
 
-	assert.Contains(t, comment, "🚨 **Vulnerability Policy Violation - 1 vulnerabilities blocked**")
+	assert.Contains(t, comment, "❌ **Vulnerability Policy Violation - 1 vulnerabilities blocked**")
 	assert.Contains(t, comment, "CVE-2024-9999")
 	assert.Contains(t, comment, "example-pkg")
 	assert.Contains(t, comment, "MEDIUM")
