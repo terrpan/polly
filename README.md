@@ -105,3 +105,11 @@ polly/
 - **[Check Run Flow](docs/CHECK-RUN-FLOW.md)** - Detailed explanation of the security check run system
 - **[Observability](docs/OBSERVABILITY.md)** - OpenTelemetry setup and monitoring
 - **[CI Pipeline](docs/CI-PIPELINE.md)** - Continuous integration configuration
+
+## TODOs and Future Work
+- [ ] Implement ValKey for persistent PR context storage
+- [ ] Improve Observability with Prometheus metrics
+- [ ] Add integration tests
+- [ ] Implement event queuing for better event handling
+- [ ] Split server/reception and worker into separate components for scalability
+- [ ] Add support for validating workflow settings and inputs
