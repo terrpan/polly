@@ -82,6 +82,36 @@ func buildLicenseViolationComment(components []services.SBOMPolicyComponent) str
 		len(componentComments), strings.Join(componentComments, "\n\n---\n\n"))
 }
 
+// buildConditionalLicenseComment generates a markdown comment for conditional license checks.
+func buildConditionalLicenseComment(components []services.SBOMPolicyComponent) string {
+	componentComments := make([]string, 0, len(components))
+	for _, component := range components {
+		comment := fmt.Sprintf("**Package:** `%s`", component.Name)
+
+		if component.VersionInfo != "" {
+			comment += fmt.Sprintf("@%s", component.VersionInfo)
+		}
+
+		if component.LicenseDeclared != "" {
+			comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
+		} else if component.LicenseConcluded != "" {
+			comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
+		}
+
+		if component.Supplier != "" {
+			comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
+		}
+
+		if component.SPDXID != "" {
+			comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
+		}
+
+		componentComments = append(componentComments, comment)
+	}
+	return fmt.Sprintf("⚠️ **Conditionally Allowed Licenses Found - %d packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements.\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n%s\n\n</details>",
+		len(componentComments), strings.Join(componentComments, "\n\n---\n\n"))
+}
+
 // getEventInfo extracts common event information for logging using generics
 func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](event T) (owner, repo, sha string, ID int64) {
 	// We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.

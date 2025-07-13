@@ -840,6 +840,7 @@ func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*s
 	allPassed := true
 	var failureDetails []string
 	var allNonCompliantComponents []services.SBOMPolicyComponent
+	var allConditionalComponents []services.SBOMPolicyComponent
 
 	// Iterate through SBOM payloads and evaluate license policies
 	for _, payload := range payloads {
@@ -869,12 +870,21 @@ func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*s
 					policyResult.TotalComponents-policyResult.CompliantComponents, policyResult.TotalComponents))
 			allNonCompliantComponents = append(allNonCompliantComponents, policyResult.NonCompliantComponents...)
 		}
+
+		allConditionalComponents = append(allConditionalComponents, policyResult.ConditionalComponents...)
 	}
 
 	if len(allNonCompliantComponents) > 0 {
 		licenseComment := buildLicenseViolationComment(allNonCompliantComponents)
 		if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), licenseComment); err != nil {
 			h.logger.ErrorContext(ctx, "Failed to post license comment", "error", err)
+		}
+	}
+
+	if len(allConditionalComponents) > 0 {
+		conditionalComment := buildConditionalLicenseComment(allConditionalComponents)
+		if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), conditionalComment); err != nil {
+			h.logger.ErrorContext(ctx, "Failed to post conditional license comment", "error", err)
 		}
 	}
 

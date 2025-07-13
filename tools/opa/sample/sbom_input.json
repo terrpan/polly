@@ -61,6 +61,17 @@
             "licenseConcluded": "GPL-2.0-only",
             "licenseDeclared": "GPL-2.0-only",
             "copyrightText": "Copyright (c) 2025 Bad Company"
+        },
+        {
+            "name": "github.com/conditional/license-lib",
+            "SPDXID": "SPDXRef-Package-conditional-lib",
+            "versionInfo": "v1.0.0",
+            "supplier": "Organization: Conditional Contributors",
+            "downloadLocation": "https://github.com/conditional/license-lib",
+            "filesAnalyzed": false,
+            "licenseConcluded": "CC-BY-ND-4.0",
+            "licenseDeclared": "CC-BY-ND-4.0",
+            "copyrightText": "Copyright (c) 2025 Conditional Contributors"
         }
     ]
 }

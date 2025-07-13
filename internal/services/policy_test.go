@@ -53,6 +53,7 @@ func TestPolicyService_SBOMPolicyResult_Structure(t *testing.T) {
 		CompliantComponents:    8,
 		NonCompliantLicenses:   []string{"GPL-2.0-only"},
 		NonCompliantComponents: []SBOMPolicyComponent{},
+		ConditionalComponents:  []SBOMPolicyComponent{},
 		AllowedLicenses:        []string{"MIT", "Apache-2.0"},
 	}
 
@@ -297,6 +298,7 @@ func TestPolicyService_PolicyResult_DefaultValues(t *testing.T) {
 	assert.Zero(t, sbomResult.CompliantComponents)
 	assert.Nil(t, sbomResult.NonCompliantLicenses)
 	assert.Nil(t, sbomResult.NonCompliantComponents)
+	assert.Nil(t, sbomResult.ConditionalComponents)
 	assert.Nil(t, sbomResult.AllowedLicenses)
 }
 

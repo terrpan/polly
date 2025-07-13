@@ -53,6 +53,44 @@ test_sbom_all_compliant if {
 	policy.sbom_compliant with input as compliant_sbom
 }
 
+test_sbom_condtional_compliant if {
+	# Test new SBOMPayload format with conditionally allowed licenses
+	conditional_sbom := {
+		"metadata": {
+			"source_format": "spdx_json",
+			"tool_name": "spdx-tools",
+			"scan_time": "2025-01-15T10:30:00Z",
+			"repository": "test/repo",
+			"commit_sha": "abc123",
+			"scan_target": "test.spdx.json",
+			"schema_version": "SPDX-2.3",
+		},
+		"summary": {
+			"total_packages": 2,
+			"all_licenses": ["MIT", "GPL-2.0-only"],
+			"license_distribution": {"MIT": 1, "GPL-2.0-only": 1},
+			"packages_without_license": 0,
+		},
+		"packages": [
+			{
+				"name": "express",
+				"SPDXID": "SPDXRef-Package-express",
+				"versionInfo": "4.18.0",
+				"licenseConcluded": "MIT",
+				"licenseDeclared": "MIT",
+			},
+			{
+				"name": "conditionally-allowed-lib",
+				"SPDXID": "SPDXRef-Package-conditionally-allowed-lib",
+				"versionInfo": "1.0.0",
+				"licenseConcluded": "CC-BY-ND-4.0",
+				"licenseDeclared": "CC-BY-ND-4.0",
+			},
+		],
+	}
+	policy.sbom_compliant with input as conditional_sbom
+}
+
 test_sbom_non_compliant if {
 	# Test new SBOMPayload format with non-compliant license
 	non_compliant_sbom := {

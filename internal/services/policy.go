@@ -47,6 +47,7 @@ type SBOMPolicyResult struct {
 	CompliantComponents    int                   `json:"compliant_components"`
 	NonCompliantLicenses   []string              `json:"non_compliant_licenses"`
 	NonCompliantComponents []SBOMPolicyComponent `json:"non_compliant_components"`
+	ConditionalComponents  []SBOMPolicyComponent `json:"conditional_components"`
 	AllowedLicenses        []string              `json:"allowed_licenses"`
 }
 

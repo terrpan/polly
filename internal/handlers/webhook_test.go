@@ -458,6 +458,29 @@ func TestWebhookHandler_BuildLicenseViolationComment_EdgeCases(t *testing.T) {
 	assert.NotContains(t, comment, "**Supplier:**")          // No supplier info for minimal package
 }
 
+// TestWebhookHandler_BuildLicenseViolationComment_Conditional tests conditional license comments
+func TestWebhookHandler_BuildLicenseViolationComment_Conditional(t *testing.T) {
+	components := []services.SBOMPolicyComponent{
+		{
+			Name:             "conditionally-allowed-package",
+			VersionInfo:      "1.0.0",
+			LicenseConcluded: "MIT",
+			Supplier:         "Conditional Corp",
+			SPDXID:           "SPDXRef-Package-conditionally-allowed",
+		},
+	}
+
+	comment := buildConditionalLicenseComment(components)
+
+	assert.Contains(t, comment, "⚠️ **Conditionally Allowed Licenses Found - 1 packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements.\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n**Package:** `conditionally-allowed-package`@1.0.0\n**License Concluded:** MIT\n**Supplier:** Conditional Corp\n**SPDX ID:**")
+	assert.Contains(t, comment, "**Package:** `conditionally-allowed-package`@1.0.0")
+	assert.Contains(t, comment, "**License Concluded:** MIT")
+	assert.Contains(t, comment, "**Supplier:** Conditional Corp")
+	assert.Contains(t, comment, "**SPDX ID:** `SPDXRef-Package-conditionally-allowed`")
+}
+
+//
+
 // TestWebhookHandler_PRContextStore tests PR context store operations
 func TestWebhookHandler_PRContextStore(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))

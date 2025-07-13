@@ -62,6 +62,16 @@ non_compliant_components contains pkg if {
 	not license in allowed_licenses
 }
 
+# Get all conditional components (conditionally allowed licenses)
+conditional_components contains pkg if {
+	# New SBOMPayload format
+	some pkg in input.packages
+	license := package_license(pkg)
+	license in data.compliance.license_config.conditionally_allowed_licenses
+	not license in data.compliance.license_config.blocked_licenses
+	license != "UNKNOWN"
+}
+
 # Check if a specific component is compliant
 component_compliant(component) if {
 	license := package_license(component)
@@ -82,6 +92,7 @@ license_report := {
 	"non_compliant_licenses": non_compliant_licenses,
 	"non_compliant_components": non_compliant_components,
 	"allowed_licenses": allowed_licenses,
+	"conditional_components": conditional_components,
 }
 
 # Vulnerability Policy - Combined severity and blocklist-based compliance
