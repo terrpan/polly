@@ -48,68 +48,77 @@ func buildVulnerabilityViolationComment(vulns []services.VulnerabilityPolicyVuln
 
 		vulnComments = append(vulnComments, comment)
 	}
-	return fmt.Sprintf("🚨 **Vulnerability Policy Violation - %d vulnerabilities blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
+	return fmt.Sprintf("❌ **Vulnerability Policy Violation - %d vulnerabilities blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
 		len(vulnComments), strings.Join(vulnComments, "\n\n---\n\n"))
 }
 
-// buildLicenseViolationComment generates a markdown comment for license policy violations.
-func buildLicenseViolationComment(components []services.SBOMPolicyComponent) string {
-	componentComments := make([]string, 0, len(components))
-	for _, component := range components {
-		comment := fmt.Sprintf("**Package:** `%s`", component.Name)
+// buildLicenseComment generates a single markdown comment for both license violations and conditional licenses.
+func buildLicenseComment(violations []services.SBOMPolicyComponent, conditionals []services.SBOMPolicyComponent) string {
+	var sections []string
 
-		if component.VersionInfo != "" {
-			comment += fmt.Sprintf("@%s", component.VersionInfo)
+	// Add violations section if there are any
+	if len(violations) > 0 {
+		violationComments := make([]string, 0, len(violations))
+		for _, component := range violations {
+			comment := fmt.Sprintf("**Package:** `%s`", component.Name)
+
+			if component.VersionInfo != "" {
+				comment += fmt.Sprintf("@%s", component.VersionInfo)
+			}
+
+			if component.LicenseDeclared != "" {
+				comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
+			} else if component.LicenseConcluded != "" {
+				comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
+			}
+
+			if component.Supplier != "" {
+				comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
+			}
+
+			if component.SPDXID != "" {
+				comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
+			}
+
+			violationComments = append(violationComments, comment)
 		}
 
-		if component.LicenseDeclared != "" {
-			comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
-		} else if component.LicenseConcluded != "" {
-			comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
-		}
-
-		if component.Supplier != "" {
-			comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
-		}
-
-		if component.SPDXID != "" {
-			comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
-		}
-
-		componentComments = append(componentComments, comment)
+		sections = append(sections, fmt.Sprintf("❌ **License Violations Found - %d packages**\n\nThe following packages have licenses that violate our policy and must be addressed:\n\n<details>\n<summary>Click to view license violations</summary>\n\n%s\n\n</details>",
+			len(violationComments), strings.Join(violationComments, "\n\n---\n\n")))
 	}
-	return fmt.Sprintf("🚨 **License Policy Violation - %d packages blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
-		len(componentComments), strings.Join(componentComments, "\n\n---\n\n"))
-}
 
-// buildConditionalLicenseComment generates a markdown comment for conditional license checks.
-func buildConditionalLicenseComment(components []services.SBOMPolicyComponent) string {
-	componentComments := make([]string, 0, len(components))
-	for _, component := range components {
-		comment := fmt.Sprintf("**Package:** `%s`", component.Name)
+	// Add conditionals section if there are any
+	if len(conditionals) > 0 {
+		conditionalComments := make([]string, 0, len(conditionals))
+		for _, component := range conditionals {
+			comment := fmt.Sprintf("**Package:** `%s`", component.Name)
 
-		if component.VersionInfo != "" {
-			comment += fmt.Sprintf("@%s", component.VersionInfo)
+			if component.VersionInfo != "" {
+				comment += fmt.Sprintf("@%s", component.VersionInfo)
+			}
+
+			if component.LicenseDeclared != "" {
+				comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
+			} else if component.LicenseConcluded != "" {
+				comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
+			}
+
+			if component.Supplier != "" {
+				comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
+			}
+
+			if component.SPDXID != "" {
+				comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
+			}
+
+			conditionalComments = append(conditionalComments, comment)
 		}
 
-		if component.LicenseDeclared != "" {
-			comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
-		} else if component.LicenseConcluded != "" {
-			comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
-		}
-
-		if component.Supplier != "" {
-			comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
-		}
-
-		if component.SPDXID != "" {
-			comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
-		}
-
-		componentComments = append(componentComments, comment)
+		sections = append(sections, fmt.Sprintf("ℹ️ **Conditionally Allowed Licenses Found - %d packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements:\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n%s\n\n</details>",
+			len(conditionalComments), strings.Join(conditionalComments, "\n\n---\n\n")))
 	}
-	return fmt.Sprintf("⚠️ **Conditionally Allowed Licenses Found - %d packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements.\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n%s\n\n</details>",
-		len(componentComments), strings.Join(componentComments, "\n\n---\n\n"))
+
+	return strings.Join(sections, "\n\n")
 }
 
 // getEventInfo extracts common event information for logging using generics

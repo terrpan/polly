@@ -874,17 +874,11 @@ func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*s
 		allConditionalComponents = append(allConditionalComponents, policyResult.ConditionalComponents...)
 	}
 
-	if len(allNonCompliantComponents) > 0 {
-		licenseComment := buildLicenseViolationComment(allNonCompliantComponents)
+	// Post a combined comment if there are any violations or conditional licenses
+	if len(allNonCompliantComponents) > 0 || len(allConditionalComponents) > 0 {
+		licenseComment := buildLicenseComment(allNonCompliantComponents, allConditionalComponents)
 		if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), licenseComment); err != nil {
 			h.logger.ErrorContext(ctx, "Failed to post license comment", "error", err)
-		}
-	}
-
-	if len(allConditionalComponents) > 0 {
-		conditionalComment := buildConditionalLicenseComment(allConditionalComponents)
-		if err := h.commentService.WriteComment(ctx, owner, repo, int(prNumber), conditionalComment); err != nil {
-			h.logger.ErrorContext(ctx, "Failed to post conditional license comment", "error", err)
 		}
 	}
 

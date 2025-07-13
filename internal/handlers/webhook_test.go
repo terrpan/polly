@@ -404,9 +404,9 @@ func TestWebhookHandler_BuildVulnerabilityViolationComment_NoFixedVersion(t *tes
 	assert.Contains(t, comment, "</details>")
 }
 
-// TestWebhookHandler_BuildLicenseViolationComment tests license violation comment building
-func TestWebhookHandler_BuildLicenseViolationComment(t *testing.T) {
-	components := []services.SBOMPolicyComponent{
+// TestWebhookHandler_BuildLicenseComment tests combined license comment building with violations only
+func TestWebhookHandler_BuildLicenseComment_ViolationsOnly(t *testing.T) {
+	violations := []services.SBOMPolicyComponent{
 		{
 			Name:             "example-package",
 			VersionInfo:      "1.0.0",
@@ -421,10 +421,11 @@ func TestWebhookHandler_BuildLicenseViolationComment(t *testing.T) {
 			SPDXID:          "SPDXRef-Package-another-package",
 		},
 	}
+	var conditionals []services.SBOMPolicyComponent
 
-	comment := buildLicenseViolationComment(components)
+	comment := buildLicenseComment(violations, conditionals)
 
-	assert.Contains(t, comment, "🚨 **License Policy Violation - 2 packages blocked**")
+	assert.Contains(t, comment, "❌ **License Violations Found - 2 packages**")
 	assert.Contains(t, comment, "**Package:** `example-package`@1.0.0")
 	assert.Contains(t, comment, "**License Concluded:** GPL-3.0")
 	assert.Contains(t, comment, "**Package:** `another-package`@2.1.0")
@@ -433,11 +434,67 @@ func TestWebhookHandler_BuildLicenseViolationComment(t *testing.T) {
 	assert.Contains(t, comment, "**SPDX ID:** `SPDXRef-Package-example-package`")
 	assert.Contains(t, comment, "<details>")
 	assert.Contains(t, comment, "</details>")
+	assert.NotContains(t, comment, "ℹ️ **Conditionally Allowed Licenses Found")
 }
 
-// TestWebhookHandler_BuildLicenseViolationComment_EdgeCases tests license violation comment building with missing fields
-func TestWebhookHandler_BuildLicenseViolationComment_EdgeCases(t *testing.T) {
-	components := []services.SBOMPolicyComponent{
+// TestWebhookHandler_BuildLicenseComment tests combined license comment building with conditionals only
+func TestWebhookHandler_BuildLicenseComment_ConditionalsOnly(t *testing.T) {
+	var violations []services.SBOMPolicyComponent
+	conditionals := []services.SBOMPolicyComponent{
+		{
+			Name:             "conditionally-allowed-package",
+			VersionInfo:      "1.0.0",
+			LicenseConcluded: "MIT",
+			Supplier:         "Conditional Corp",
+			SPDXID:           "SPDXRef-Package-conditionally-allowed",
+		},
+	}
+
+	comment := buildLicenseComment(violations, conditionals)
+
+	assert.Contains(t, comment, "ℹ️ **Conditionally Allowed Licenses Found - 1 packages require consideration**")
+	assert.Contains(t, comment, "**Package:** `conditionally-allowed-package`@1.0.0")
+	assert.Contains(t, comment, "**License Concluded:** MIT")
+	assert.Contains(t, comment, "**Supplier:** Conditional Corp")
+	assert.Contains(t, comment, "**SPDX ID:** `SPDXRef-Package-conditionally-allowed`")
+	assert.NotContains(t, comment, "❌ **License Violations Found")
+}
+
+// TestWebhookHandler_BuildLicenseComment tests combined license comment building with both violations and conditionals
+func TestWebhookHandler_BuildLicenseComment_Both(t *testing.T) {
+	violations := []services.SBOMPolicyComponent{
+		{
+			Name:             "violation-package",
+			VersionInfo:      "1.0.0",
+			LicenseConcluded: "GPL-3.0",
+			Supplier:         "Example Corp",
+			SPDXID:           "SPDXRef-Package-violation",
+		},
+	}
+	conditionals := []services.SBOMPolicyComponent{
+		{
+			Name:            "conditional-package",
+			VersionInfo:     "2.0.0",
+			LicenseDeclared: "MIT",
+			Supplier:        "Conditional Corp",
+			SPDXID:          "SPDXRef-Package-conditional",
+		},
+	}
+
+	comment := buildLicenseComment(violations, conditionals)
+
+	// Should contain both sections
+	assert.Contains(t, comment, "❌ **License Violations Found - 1 packages**")
+	assert.Contains(t, comment, "ℹ️ **Conditionally Allowed Licenses Found - 1 packages require consideration**")
+	assert.Contains(t, comment, "**Package:** `violation-package`@1.0.0")
+	assert.Contains(t, comment, "**Package:** `conditional-package`@2.0.0")
+	assert.Contains(t, comment, "**License Concluded:** GPL-3.0")
+	assert.Contains(t, comment, "**License Declared:** MIT")
+}
+
+// TestWebhookHandler_BuildLicenseComment tests combined license comment building with edge cases
+func TestWebhookHandler_BuildLicenseComment_EdgeCases(t *testing.T) {
+	violations := []services.SBOMPolicyComponent{
 		{
 			Name: "minimal-package", // Only name provided
 		},
@@ -448,35 +505,15 @@ func TestWebhookHandler_BuildLicenseViolationComment_EdgeCases(t *testing.T) {
 			SPDXID:          "SPDXRef-Package-no-concluded",
 		},
 	}
+	var conditionals []services.SBOMPolicyComponent
 
-	comment := buildLicenseViolationComment(components)
+	comment := buildLicenseComment(violations, conditionals)
 
-	assert.Contains(t, comment, "🚨 **License Policy Violation - 2 packages blocked**")
+	assert.Contains(t, comment, "❌ **License Violations Found - 2 packages**")
 	assert.Contains(t, comment, "**Package:** `minimal-package`") // No version info
 	assert.Contains(t, comment, "**Package:** `no-concluded-license`@1.0.0")
 	assert.Contains(t, comment, "**License Declared:** MIT") // Uses declared license
 	assert.NotContains(t, comment, "**Supplier:**")          // No supplier info for minimal package
-}
-
-// TestWebhookHandler_BuildLicenseViolationComment_Conditional tests conditional license comments
-func TestWebhookHandler_BuildLicenseViolationComment_Conditional(t *testing.T) {
-	components := []services.SBOMPolicyComponent{
-		{
-			Name:             "conditionally-allowed-package",
-			VersionInfo:      "1.0.0",
-			LicenseConcluded: "MIT",
-			Supplier:         "Conditional Corp",
-			SPDXID:           "SPDXRef-Package-conditionally-allowed",
-		},
-	}
-
-	comment := buildConditionalLicenseComment(components)
-
-	assert.Contains(t, comment, "⚠️ **Conditionally Allowed Licenses Found - 1 packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements.\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n**Package:** `conditionally-allowed-package`@1.0.0\n**License Concluded:** MIT\n**Supplier:** Conditional Corp\n**SPDX ID:**")
-	assert.Contains(t, comment, "**Package:** `conditionally-allowed-package`@1.0.0")
-	assert.Contains(t, comment, "**License Concluded:** MIT")
-	assert.Contains(t, comment, "**Supplier:** Conditional Corp")
-	assert.Contains(t, comment, "**SPDX ID:** `SPDXRef-Package-conditionally-allowed`")
 }
 
 //
