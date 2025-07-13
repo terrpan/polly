@@ -14,22 +14,13 @@ import (
 )
 
 const (
-	helloPolicyPath         = "/v1/data/playground/hello"
-	licensePolicyPath       = "/v1/data/playground/license"
-	vulnerabilityPolicyPath = "/v1/data/playground/vulnerability"
+	licensePolicyPath       = "/v1/data/compliance/license_report"
+	vulnerabilityPolicyPath = "/v1/data/compliance/vulnerability_report"
 )
 
 type PolicyService struct {
 	opaClient *clients.OPAClient
 	logger    *slog.Logger
-}
-
-type PolicyCheckResult struct {
-	Result bool `json:"result"`
-}
-
-type HelloInput struct {
-	Message string `json:"message"`
 }
 
 type VulnerabilityPolicyVuln struct {
@@ -47,6 +38,29 @@ type VulnerabilityPolicyResult struct {
 	NonCompliantCount           int                       `json:"non_compliant_count"`
 	NonCompliantVulnerabilities []VulnerabilityPolicyVuln `json:"non_compliant_vulnerabilities"`
 	TotalVulnerabilities        int                       `json:"total_vulnerabilities"`
+}
+
+// SBOMPolicyResult represents the result of SBOM policy evaluation
+type SBOMPolicyResult struct {
+	Compliant              bool                  `json:"compliant"`
+	TotalComponents        int                   `json:"total_components"`
+	CompliantComponents    int                   `json:"compliant_components"`
+	NonCompliantLicenses   []string              `json:"non_compliant_licenses"`
+	NonCompliantComponents []SBOMPolicyComponent `json:"non_compliant_components"`
+	ConditionalComponents  []SBOMPolicyComponent `json:"conditional_components"`
+	AllowedLicenses        []string              `json:"allowed_licenses"`
+}
+
+type SBOMPolicyComponent struct {
+	SPDXID           string `json:"SPDXID"`
+	CopyrightText    string `json:"copyrightText,omitempty"`
+	DownloadLocation string `json:"downloadLocation,omitempty"`
+	FilesAnalyzed    bool   `json:"filesAnalyzed,omitempty"`
+	LicenseConcluded string `json:"licenseConcluded,omitempty"`
+	LicenseDeclared  string `json:"licenseDeclared,omitempty"`
+	Name             string `json:"name"`
+	Supplier         string `json:"supplier"`
+	VersionInfo      string `json:"versionInfo"`
 }
 
 // NewPolicyService initializes a new PolicyService with the provided OPA client and logger.
@@ -74,14 +88,13 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 		"input": input,
 	}
 
-	service.logger.DebugContext(ctx, "Evaluating policy", "path", policyPath, "input", input, "payload", opaPayload)
+	service.logger.DebugContext(ctx, "Evaluating policy", "path", policyPath)
 	resp, err := service.opaClient.EvaluatePolicy(ctx, policyPath, opaPayload)
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		service.logger.ErrorContext(ctx, "Failed to evaluate policy",
 			"error", err,
-			"path", policyPath,
-			"input", input)
+			"path", policyPath)
 		return zero, err
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -91,8 +104,7 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 		span.SetAttributes(attribute.String("error", "policy evaluation failed"))
 		service.logger.ErrorContext(ctx, "Policy evaluation failed",
 			"status", resp.Status,
-			"path", policyPath,
-			"input", input)
+			"path", policyPath)
 		return zero, fmt.Errorf("policy evaluation failed: status %s", resp.Status)
 	}
 
@@ -101,8 +113,7 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 		span.SetAttributes(attribute.String("error", err.Error()))
 		service.logger.ErrorContext(ctx, "Failed to read response body",
 			"error", err,
-			"path", policyPath,
-			"input", input)
+			"path", policyPath)
 		return zero, err
 	}
 
@@ -113,37 +124,11 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 		span.SetAttributes(attribute.String("error", err.Error()))
 		service.logger.ErrorContext(ctx, "Failed to unmarshal policy response",
 			"error", err,
-			"path", policyPath,
-			"input", input)
+			"path", policyPath)
 		return zero, err
 	}
 
 	return policyResponse.Result, nil
-}
-
-// CheckHelloPolicy evaluates the hello policy with the given input.
-func (s *PolicyService) CheckHelloPolicy(ctx context.Context, input HelloInput) (bool, error) {
-	tracer := otel.Tracer("polly/services")
-	ctx, span := tracer.Start(ctx, "policy.check_hello")
-	defer span.End()
-
-	span.SetAttributes(
-		attribute.String("policy.type", "hello"),
-		attribute.String("input.message", input.Message),
-	)
-
-	s.logger.DebugContext(ctx, "Checking hello policy", "input", input)
-
-	result, err := evaluatePolicy[HelloInput, bool](ctx, s, helloPolicyPath, input)
-	if err != nil {
-		span.SetAttributes(attribute.String("error", err.Error()))
-		s.logger.ErrorContext(ctx, "Failed to check hello policy", "error", err)
-		return false, err
-	}
-
-	span.SetAttributes(attribute.Bool("policy.result", result))
-	s.logger.InfoContext(ctx, "Hello policy check completed", "result", result)
-	return result, nil
 }
 
 // CheckVulnerabilityPolicy evaluates the vulnerability policy with the given payload.
@@ -180,5 +165,44 @@ func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, input *Vul
 		"compliant", result.Compliant,
 		"total_vulnerabilities", result.TotalVulnerabilities,
 		"non_compliant_count", result.NonCompliantCount)
+	return result, nil
+}
+
+// CheckSBOMPolicy evaluates the SBOM policy with the given payload.
+func (s *PolicyService) CheckSBOMPolicy(ctx context.Context, input *SBOMPayload) (SBOMPolicyResult, error) {
+	tracer := otel.Tracer("polly/services")
+	ctx, span := tracer.Start(ctx, "policy.check_sbom")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("policy.type", "sbom"),
+		attribute.Int("input.package_count", len(input.Packages)),
+		attribute.String("input.scan_target", input.Metadata.ScanTarget),
+		attribute.String("input.tool_name", input.Metadata.ToolName),
+	)
+
+	s.logger.DebugContext(ctx, "Checking SBOM policy",
+		"package_count", len(input.Packages),
+		"scan_target", input.Metadata.ScanTarget,
+		"tool_name", input.Metadata.ToolName)
+
+	result, err := evaluatePolicy[*SBOMPayload, SBOMPolicyResult](ctx, s, licensePolicyPath, input)
+	if err != nil {
+		span.SetAttributes(attribute.String("error", err.Error()))
+		s.logger.ErrorContext(ctx, "Failed to check SBOM policy", "error", err)
+		return SBOMPolicyResult{}, err
+	}
+
+	span.SetAttributes(
+		attribute.Bool("policy.compliant", result.Compliant),
+		attribute.Int("policy.total_components", result.TotalComponents),
+		attribute.Int("policy.compliant_components", result.CompliantComponents),
+		attribute.Int("policy.non_compliant_licenses", len(result.NonCompliantLicenses)),
+	)
+	s.logger.InfoContext(ctx, "SBOM policy check completed",
+		"compliant", result.Compliant,
+		"total_components", result.TotalComponents,
+		"compliant_components", result.CompliantComponents,
+		"non_compliant_licenses", len(result.NonCompliantLicenses))
 	return result, nil
 }

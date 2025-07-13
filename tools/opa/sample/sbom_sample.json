@@ -1,0 +1,111 @@
+{
+    "input": {
+        "metadata": {
+            "source_format": "spdx_json",
+            "tool_name": "spdx-tools",
+            "tool_version": "v0.5.5",
+            "scan_time": "2025-01-15T10:30:00Z",
+            "repository": "terrpan/polly",
+            "commit_sha": "abc123def456",
+            "pr_number": 42,
+            "scan_target": "app.spdx.json",
+            "schema_version": "SPDX-2.3"
+        },
+        "summary": {
+            "total_packages": 5,
+            "all_licenses": [
+                "MIT",
+                "Apache-2.0",
+                "BSD-3-Clause",
+                "GPL-2.0-only",
+                "LGPL-2.1"
+            ],
+            "license_distribution": {
+                "MIT": 2,
+                "Apache-2.0": 1,
+                "BSD-3-Clause": 1,
+                "GPL-2.0-only": 1,
+                "LGPL-2.1": 1
+            },
+            "packages_without_license": 1
+        },
+        "packages": [
+            {
+                "name": "github.com/gin-gonic/gin",
+                "SPDXID": "SPDXRef-Package-gin",
+                "versionInfo": "v1.9.1",
+                "supplier": "Organization: Gin Contributors",
+                "downloadLocation": "https://github.com/gin-gonic/gin",
+                "filesAnalyzed": false,
+                "licenseConcluded": "MIT",
+                "licenseDeclared": "MIT",
+                "copyrightText": "Copyright (c) 2014 Manuel Martínez-Almeida"
+            },
+            {
+                "name": "github.com/sirupsen/logrus",
+                "SPDXID": "SPDXRef-Package-logrus",
+                "versionInfo": "v1.9.3",
+                "supplier": "Organization: Sirupsen",
+                "downloadLocation": "https://github.com/sirupsen/logrus",
+                "filesAnalyzed": false,
+                "licenseConcluded": "MIT",
+                "licenseDeclared": "MIT",
+                "copyrightText": "Copyright (c) 2014 Simon Eskildsen"
+            },
+            {
+                "name": "github.com/stretchr/testify",
+                "SPDXID": "SPDXRef-Package-testify",
+                "versionInfo": "v1.8.4",
+                "supplier": "Organization: Stretchr",
+                "downloadLocation": "https://github.com/stretchr/testify",
+                "filesAnalyzed": false,
+                "licenseConcluded": "Apache-2.0",
+                "licenseDeclared": "Apache-2.0",
+                "copyrightText": "Copyright (c) 2012-2020 Mat Ryer, Tyler Bunnell and contributors"
+            },
+            {
+                "name": "github.com/gorilla/mux",
+                "SPDXID": "SPDXRef-Package-mux",
+                "versionInfo": "v1.8.0",
+                "supplier": "Organization: Gorilla",
+                "downloadLocation": "https://github.com/gorilla/mux",
+                "filesAnalyzed": false,
+                "licenseConcluded": "BSD-3-Clause",
+                "licenseDeclared": "BSD-3-Clause",
+                "copyrightText": "Copyright (c) 2012-2018 The Gorilla Authors"
+            },
+            {
+                "name": "example.com/bad-license-lib",
+                "SPDXID": "SPDXRef-Package-bad-lib",
+                "versionInfo": "v1.0.0",
+                "supplier": "Organization: Bad Company",
+                "downloadLocation": "https://example.com/bad-license-lib",
+                "filesAnalyzed": false,
+                "licenseConcluded": "GPL-2.0-only",
+                "licenseDeclared": "GPL-2.0-only",
+                "copyrightText": "Copyright (c) 2025 Bad Company"
+            },
+            {
+                "name": "github.com/conditional/license-lib",
+                "SPDXID": "SPDXRef-Package-conditional-lib",
+                "versionInfo": "v1.0.0",
+                "supplier": "Organization: Conditional Contributors",
+                "downloadLocation": "https://github.com/conditional/license-lib",
+                "filesAnalyzed": false,
+                "licenseConcluded": "CC-BY-ND-4.0",
+                "licenseDeclared": "CC-BY-ND-4.0",
+                "copyrightText": "Copyright (c) 2025 Conditional Contributors"
+            }
+        ]
+    },
+    "expected": {
+        "compliant": false,
+        "total_components": 5,
+        "compliant_components": 4,
+    
+        "non_compliant_licenses": [
+            "GPL-2.0-only"
+        ],
+        "reason": "GPL-2.0-only is in the blocked licenses list from data.json"
+    }
+}

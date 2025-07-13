@@ -13,6 +13,7 @@ func NewLogger() *slog.Logger {
 		Level:     level,
 		AddSource: AppConfig.Logger.AddSource,
 	}
+	
 	var handler slog.Handler
 	if AppConfig.Logger.JSONOutput {
 		handler = slog.NewJSONHandler(os.Stdout, opts)

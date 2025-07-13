@@ -98,3 +98,10 @@ polly/
 
 - Place all development and infrastructure tools (Docker Compose, OTel config, OPA policies, etc.) in the `tools/` directory.
 - See `docs/` for architecture and CI documentation.
+
+## Documentation
+
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - System architecture and component overview
+- **[Check Run Flow](docs/CHECK-RUN-FLOW.md)** - Detailed explanation of the security check run system
+- **[Observability](docs/OBSERVABILITY.md)** - OpenTelemetry setup and monitoring
+- **[CI Pipeline](docs/CI-PIPELINE.md)** - Continuous integration configuration

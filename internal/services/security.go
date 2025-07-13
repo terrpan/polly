@@ -15,65 +15,27 @@ import (
 
 	dbtypes "github.com/aquasecurity/trivy-db/pkg/types"
 	spdxjson "github.com/spdx/tools-golang/json"
+	"github.com/spdx/tools-golang/spdx/v2/v2_3"
 	"github.com/terrpan/polly/internal/clients"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
 
+// SecurityService provides methods to process security artifacts from GitHub workflows.
 type SecurityService struct {
 	githubClient *clients.GitHubClient
 	logger       *slog.Logger
 }
 
+// SecurityArtifact represents a security-related artifact found in a workflow.
 type SecurityArtifact struct {
-	ArtifactName string            `json:"artifact_name"`
-	FileName     string            `json:"file_name"`
-	Content      []byte            `json:"content"`
-	Type         ArtifactType      `json:"type"`
-	Metadata     *SecurityMetadata `json:"metadata,omitempty"`
+	ArtifactName string       `json:"artifact_name"`
+	FileName     string       `json:"file_name"`
+	Content      []byte       `json:"content"`
+	Type         ArtifactType `json:"type"`
 }
 
-type SecurityMetadata struct {
-	SPDXMetadata          *SPDXMetadata          `json:"spdx_metadata,omitempty"`
-	VulnerabilityMetadata *VulnerabilityMetadata `json:"vulnerability_metadata,omitempty"`
-}
-
-type SPDXMetadata struct {
-	DocumentName      string           `json:"document_name"`
-	DocumentNamespace string           `json:"document_namespace"`
-	SPDXVersion       string           `json:"spdx_version"`
-	DataLicense       string           `json:"data_license"`
-	Packages          []PackageInfo    `json:"packages"`
-	LicensesSummary   *LicensesSummary `json:"licenses_summary"`
-}
-
-type PackageInfo struct {
-	Name             string `json:"name"`
-	SPDXID           string `json:"spdx_id"`
-	DownloadLocation string `json:"download_location"`
-	LicenseConcluded string `json:"license_concluded"`
-	LicenseDeclared  string `json:"license_declared"`
-	CopyrightText    string `json:"copyright_text"`
-}
-
-type LicensesSummary struct {
-	TotalPackages          int            `json:"total_packages"`
-	AllLicenses            []string       `json:"all_licenses"`
-	LicenseDistribution    map[string]int `json:"license_distribution"`
-	PackagesWithoutLicense int            `json:"packages_without_license"`
-}
-
-type VulnerabilityMetadata struct {
-	SourceFormat      string               `json:"source_format"`
-	ToolName          string               `json:"tool_name"`
-	ToolVersion       string               `json:"tool_version"`
-	SchemaVersion     string               `json:"schema_version"`
-	ScanTarget        string               `json:"scan_target"`
-	ResultCount       int                  `json:"result_count"`
-	SeverityBreakdown map[string]int       `json:"severity_breakdown"`
-	Summary           VulnerabilitySummary `json:"summary"`
-}
-
+// PayloadMetadata contains metadata for security payloads
 type VulnerabilitySummary struct {
 	TotalVulnerabilities int `json:"total_vulnerabilities"`
 	Critical             int `json:"critical"`
@@ -83,13 +45,52 @@ type VulnerabilitySummary struct {
 	Info                 int `json:"info"`
 }
 
-type VulnerabilityPayload struct {
-	Type            string               `json:"type"`
-	Metadata        PayloadMetadata      `json:"metadata"`
-	Vulnerabilities []Vulnerability      `json:"vulnerabilities"`
-	Summary         VulnerabilitySummary `json:"summary"`
+// SPDX/SBOM payload (summary + packages)
+type SBOMPayload struct {
+	Metadata PayloadMetadata `json:"metadata"`
+	Summary  SBOMSummary     `json:"summary"`
+	Packages []SBOMPackage   `json:"packages"`
 }
 
+// SPDX/SBOM package details
+type SBOMPackage struct {
+	Name             string            `json:"name"`
+	SPDXID           string            `json:"SPDXID"`
+	VersionInfo      string            `json:"versionInfo"`
+	Supplier         string            `json:"supplier,omitempty"`
+	DownloadLocation string            `json:"downloadLocation,omitempty"`
+	FilesAnalyzed    bool              `json:"filesAnalyzed,omitempty"`
+	SourceInfo       string            `json:"sourceInfo,omitempty"`
+	LicenseConcluded string            `json:"licenseConcluded,omitempty"`
+	LicenseDeclared  string            `json:"licenseDeclared,omitempty"`
+	CopyrightText    string            `json:"copyrightText,omitempty"`
+	ExternalRefs     []SBOMExternalRef `json:"externalRefs,omitempty"`
+}
+
+// SPDX/SBOM external reference details
+type SBOMExternalRef struct {
+	ReferenceCategory string `json:"referenceCategory,omitempty"`
+	ReferenceType     string `json:"referenceType,omitempty"`
+	ReferenceLocator  string `json:"referenceLocator,omitempty"`
+}
+
+// SBOMSummary contains summary information about the SBOM
+type SBOMSummary struct {
+	TotalPackages          int            `json:"total_packages"`
+	AllLicenses            []string       `json:"all_licenses"`
+	LicenseDistribution    map[string]int `json:"license_distribution"`
+	PackagesWithoutLicense int            `json:"packages_without_license"`
+}
+
+// Vulnerability payload (summary + vulnerabilities)
+type VulnerabilityPayload struct {
+	Type            string               `json:"type"` // e.g. "vulnerability_scan"
+	Metadata        PayloadMetadata      `json:"metadata"`
+	Summary         VulnerabilitySummary `json:"summary"`
+	Vulnerabilities []Vulnerability      `json:"vulnerabilities"`
+}
+
+// PayloadMetadata contains metadata about the scan and tool used
 type PayloadMetadata struct {
 	SourceFormat  string `json:"source_format"`
 	ToolName      string `json:"tool_name"`
@@ -102,6 +103,7 @@ type PayloadMetadata struct {
 	SchemaVersion string `json:"schema_version"`
 }
 
+// Vulnerability represents a single vulnerability found in a scan.
 type Vulnerability struct {
 	ID           string   `json:"id"`
 	Severity     string   `json:"severity"`
@@ -113,12 +115,14 @@ type Vulnerability struct {
 	References   []string `json:"references,omitempty"`
 }
 
+// Package represents a software package with its name, version, and ecosystem.
 type Package struct {
 	Name      string `json:"name"`
 	Version   string `json:"version"`
 	Ecosystem string `json:"ecosystem,omitempty"`
 }
 
+// Location represents the file and line number where the vulnerability was found.
 type Location struct {
 	File string `json:"file"`
 	Line int    `json:"line,omitempty"`
@@ -145,7 +149,7 @@ func NewSecurityService(githubClient *clients.GitHubClient, logger *slog.Logger)
 }
 
 // ProcessWorkflowSecurityArtifacts processes security artifacts and returns normalized payloads
-func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, error) {
+func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "security.process_workflow_artifacts")
 	defer span.End()
@@ -160,12 +164,12 @@ func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, 
 	// 1. Discover security artifacts
 	securityArtifacts, err := s.DiscoverSecurityArtifacts(ctx, owner, repo, workflowID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover security artifacts: %w", err)
+		return nil, nil, fmt.Errorf("failed to discover security artifacts: %w", err)
 	}
 
 	if len(securityArtifacts) == 0 {
 		s.logger.InfoContext(ctx, "No security artifacts found")
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// 2. Build payloads from artifacts
@@ -178,8 +182,9 @@ func (s *SecurityService) DiscoverSecurityArtifacts(ctx context.Context, owner, 
 }
 
 // BuildPayloadsFromArtifacts converts security artifacts into normalized payloads
-func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifacts []*SecurityArtifact, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, error) {
-	var payloads []*VulnerabilityPayload
+func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifacts []*SecurityArtifact, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
+	vulnPayloads := make([]*VulnerabilityPayload, 0)
+	sbomPayloads := make([]*SBOMPayload, 0)
 
 	s.logger.InfoContext(ctx, "Building payloads from security artifacts", "count", len(artifacts))
 
@@ -201,11 +206,19 @@ func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifa
 				)
 				continue
 			}
-			payloads = append(payloads, payload)
+			vulnPayloads = append(vulnPayloads, payload)
 
 		case ArtifactTypeSBOMSPDX:
-			// TODO: Implement SBOM payload builder
-			s.logger.DebugContext(ctx, "SBOM processing not yet implemented", "artifact", artifact.FileName)
+			payload, err := s.BuildSBOMPayloadFromSPDX(ctx, artifact, owner, repo, sha, 0, workflowID)
+			if err != nil {
+				s.logger.ErrorContext(ctx, "Failed to build SBOM payload",
+					"artifact_name", artifact.ArtifactName,
+					"file_name", artifact.FileName,
+					"error", err,
+				)
+				continue
+			}
+			sbomPayloads = append(sbomPayloads, payload)
 
 		default:
 			s.logger.WarnContext(ctx, "Unsupported artifact type",
@@ -217,9 +230,10 @@ func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifa
 
 	s.logger.InfoContext(ctx, "Built payloads from security artifacts",
 		"total_artifacts", len(artifacts),
-		"successful_payloads", len(payloads))
+		"vulnerability_payloads", len(vulnPayloads),
+		"sbom_payloads", len(sbomPayloads))
 
-	return payloads, nil
+	return vulnPayloads, sbomPayloads, nil
 }
 
 // checkArtifactForSecurityContent downloads and inspects for security-related content.
@@ -362,6 +376,113 @@ func (s *SecurityService) detectSecurityContent(content []byte, filename string)
 	return ArtifactTypeUnknown
 }
 
+// BuildSBOMPayloadFromSPDX builds a normalized SBOM payload from SPDX content
+func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*SBOMPayload, error) {
+	// Parse the SPDX JSON content
+	doc, err := spdxjson.Read(bytes.NewReader(artifact.Content))
+	if err != nil {
+		s.logger.ErrorContext(ctx, "Failed to parse SPDX document",
+			"artifact_name", artifact.ArtifactName,
+			"file_name", artifact.FileName,
+			"error", err,
+		)
+		return nil, err
+	}
+
+	// Build the metadata for the payload
+	var scanTime string
+	if doc.CreationInfo != nil && doc.CreationInfo.Created != "" {
+		scanTime = doc.CreationInfo.Created
+	} else {
+		scanTime = "unknown"
+	}
+
+	metadata := buildPayloadMetadata(
+		"spdx_json",
+		"spdx",
+		fmt.Sprintf("%s/%s", owner, repo),
+		sha,
+		artifact.FileName, // Use the file name as the scan target
+		doc.SPDXVersion,   // Use SPDX version as schema version
+		prNumber,
+		scanTime,
+	)
+
+	// Extract all packages from SPDX document
+	packages := []SBOMPackage{}
+	licenseDistribution := make(map[string]int)
+	var allLicenses []string
+	packagesWithoutLicense := 0
+	seenLicenses := make(map[string]bool)
+
+	for _, pkg := range doc.Packages {
+		// Skip the root document package (it's not a real package)
+		if pkg.PackageName == "" || pkg.PackageSPDXIdentifier == doc.SPDXIdentifier {
+			continue
+		}
+
+		// Convert supplier to string
+		supplierStr := ""
+		if pkg.PackageSupplier != nil {
+			if pkg.PackageSupplier.Supplier != "" {
+				supplierStr = pkg.PackageSupplier.Supplier
+			} else if pkg.PackageSupplier.SupplierType != "" {
+				supplierStr = pkg.PackageSupplier.SupplierType
+			}
+		}
+
+		sbomPackage := SBOMPackage{
+			Name:             pkg.PackageName,
+			SPDXID:           string(pkg.PackageSPDXIdentifier),
+			VersionInfo:      pkg.PackageVersion,
+			Supplier:         supplierStr,
+			DownloadLocation: pkg.PackageDownloadLocation,
+			FilesAnalyzed:    pkg.FilesAnalyzed,
+			SourceInfo:       pkg.PackageSourceInfo,
+			LicenseConcluded: pkg.PackageLicenseConcluded,
+			LicenseDeclared:  pkg.PackageLicenseDeclared,
+			CopyrightText:    pkg.PackageCopyrightText,
+		}
+
+		packages = append(packages, sbomPackage)
+
+		// Process license information for summary
+		license := extractLicenseFromPackage(pkg)
+		if license == "" || license == "NOASSERTION" || license == "NONE" {
+			packagesWithoutLicense++
+		} else {
+			licenseDistribution[license]++
+			if !seenLicenses[license] {
+				allLicenses = append(allLicenses, license)
+				seenLicenses[license] = true
+			}
+		}
+	}
+
+	// Build the summary
+	summary := SBOMSummary{
+		TotalPackages:          len(packages),
+		AllLicenses:            allLicenses,
+		LicenseDistribution:    licenseDistribution,
+		PackagesWithoutLicense: packagesWithoutLicense,
+	}
+
+	// Build the complete payload
+	payload := &SBOMPayload{
+		Metadata: metadata,
+		Summary:  summary,
+		Packages: packages,
+	}
+
+	s.logger.InfoContext(ctx, "Built SBOM payload from SPDX JSON",
+		"total_packages", len(packages),
+		"licenses_found", len(allLicenses),
+		"packages_without_license", packagesWithoutLicense,
+	)
+
+	return payload, nil
+}
+
 // BuildVulnerabilityPayloadFromTrivy creates a normalized vulnerability payload from Trivy JSON report
 func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*VulnerabilityPayload, error) {
 	// parse the trivy report
@@ -375,17 +496,16 @@ func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(ctx context.Context
 		return nil, err
 	}
 
-	// build the metadata
-	metadata := PayloadMetadata{
-		SourceFormat:  "trivy_json",
-		ToolName:      "trivy",
-		ScanTime:      trivyReport.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		Repository:    fmt.Sprintf("%s/%s", owner, repo),
-		CommitSHA:     sha,
-		PRNumber:      prNumber,
-		ScanTarget:    trivyReport.ArtifactName,
-		SchemaVersion: fmt.Sprintf("%d", trivyReport.SchemaVersion),
-	}
+	metadata := buildPayloadMetadata(
+		"trivy_json",
+		"trivy",
+		fmt.Sprintf("%s/%s", owner, repo),
+		sha,
+		trivyReport.ArtifactName,
+		fmt.Sprintf("%d", trivyReport.SchemaVersion),
+		prNumber,
+		trivyReport.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	)
 
 	// Extract vulnerabilities and build summary
 	vulnerabilities := []Vulnerability{}
@@ -429,20 +549,6 @@ func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(ctx context.Context
 			Info:                 severityCount["INFO"],
 		},
 	}
-	// Update the artifact metadata
-	artifact.Metadata = &SecurityMetadata{
-		VulnerabilityMetadata: &VulnerabilityMetadata{
-			SourceFormat:      "trivy_json",
-			ToolName:          "trivy",
-			ToolVersion:       metadata.ToolVersion,
-			SchemaVersion:     metadata.SchemaVersion,
-			ScanTarget:        metadata.ScanTarget,
-			ResultCount:       len(trivyReport.Results),
-			SeverityBreakdown: severityCount,
-			Summary:           payload.Summary,
-		},
-	}
-
 	s.logger.InfoContext(ctx, "Built vulnerability payload from Trivy JSON",
 		"total_vulnerabilities", len(vulnerabilities),
 		"critical", severityCount["CRITICAL"],
@@ -476,6 +582,22 @@ func normalizeTrivyVulnerability(vuln types.DetectedVulnerability, target string
 		FixedVersion: vuln.FixedVersion,
 		References:   vuln.References,
 	}
+}
+
+// extractLicenseFromPackage extracts the best available license from an SPDX package
+func extractLicenseFromPackage(pkg *v2_3.Package) string {
+	// First try LicenseConcluded
+	if pkg.PackageLicenseConcluded != "" && pkg.PackageLicenseConcluded != "NOASSERTION" && pkg.PackageLicenseConcluded != "NONE" {
+		return pkg.PackageLicenseConcluded
+	}
+
+	// Then try LicenseDeclared
+	if pkg.PackageLicenseDeclared != "" && pkg.PackageLicenseDeclared != "NOASSERTION" && pkg.PackageLicenseDeclared != "NONE" {
+		return pkg.PackageLicenseDeclared
+	}
+
+	// If both are empty or NOASSERTION, return empty string
+	return ""
 }
 
 // extractCVSSScore returns the highest‐priority, non‐zero score from vuln.CVSS,
@@ -637,4 +759,18 @@ func isTrivyJSONContent(content []byte) bool {
 	}
 
 	return true
+}
+
+// buildPayloadMetadata builds the metadata for a security payload
+func buildPayloadMetadata(SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string, PRNumber int, ScanTime string) PayloadMetadata {
+	return PayloadMetadata{
+		SourceFormat:  SourceFormat,
+		ToolName:      ToolName,
+		ScanTime:      ScanTime,
+		Repository:    Repository,
+		CommitSHA:     CommitSHA,
+		PRNumber:      PRNumber,
+		ScanTarget:    ScanTarget,
+		SchemaVersion: SchemaVersion,
+	}
 }
