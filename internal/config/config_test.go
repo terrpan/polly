@@ -3,6 +3,7 @@ package config
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,6 +91,25 @@ func TestOTLPConfig_Structure(t *testing.T) {
 
 	assert.True(t, otlpConfig.EnableOTLP)
 	assert.False(t, otlpConfig.OTLPStdOut)
+}
+
+func TestStorageConfig_Structure(t *testing.T) {
+	storageConfig := StorageConfig{
+		Type: "memory",
+		Valkey: ValkeyConfig{
+			Address:  "localhost:6379",
+			Username: "user",
+			Password: "pass",
+			DB:       0,
+		},
+		DefaultKeyExpiration: "24h",
+	}
+	assert.Equal(t, "memory", storageConfig.Type)
+	assert.Equal(t, "localhost:6379", storageConfig.Valkey.Address)
+	assert.Equal(t, "user", storageConfig.Valkey.Username)
+	assert.Equal(t, "pass", storageConfig.Valkey.Password)
+	assert.Equal(t, 0, storageConfig.Valkey.DB)
+	assert.Equal(t, "24h", storageConfig.DefaultKeyExpiration)
 }
 
 func TestIsGitHubAppConfigured(t *testing.T) {
@@ -295,4 +315,60 @@ func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
 	_, err = LoadGitHubAppConfig()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required")
+}
+
+func TestGetDefaultExpiration(t *testing.T) {
+	// Save original AppConfig to restore later
+	originalAppConfig := AppConfig
+	defer func() {
+		AppConfig = originalAppConfig
+	}()
+
+	tests := []struct {
+		name             string
+		configExpiration string
+		expectedDuration time.Duration
+		expectError      bool
+	}{
+		{
+			name:             "valid 24h duration",
+			configExpiration: "24h",
+			expectedDuration: 24 * time.Hour,
+			expectError:      false,
+		},
+		{
+			name:             "valid 12h duration",
+			configExpiration: "12h",
+			expectedDuration: 12 * time.Hour,
+			expectError:      false,
+		},
+		{
+			name:             "empty config uses default",
+			configExpiration: "",
+			expectedDuration: 24 * time.Hour,
+			expectError:      false,
+		},
+		{
+			name:             "invalid duration uses default",
+			configExpiration: "invalid",
+			expectedDuration: 24 * time.Hour,
+			expectError:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up test config
+			AppConfig = &Config{
+				Storage: StorageConfig{
+					DefaultKeyExpiration: tt.configExpiration,
+				},
+			}
+
+			// Test the function
+			result := GetDefaultExpiration()
+			assert.Equal(t, tt.expectedDuration, result)
+			assert.Positive(t, result, "Duration should be positive")
+		})
+	}
 }

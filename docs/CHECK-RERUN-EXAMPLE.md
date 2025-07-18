@@ -82,17 +82,17 @@ check_run event (action: rerequested)
 
 ## Technical Details
 
-**Memory Storage** (in webhook handler):
+**StateService Storage**:
 ```go
 // After initial workflow
-artifactStore["abc123"] = 556677
-prContextStore["abc123"] = 42
-licenseCheckStore["abc123"] = 222
+stateService.StoreWorkflowRunID(ctx, "abc123", 556677)
+stateService.StorePRNumber(ctx, "abc123", 42)
+stateService.StoreLicenseCheckRunID(ctx, "abc123", 222)
 
 // During rerun
-workflowRunID := artifactStore["abc123"]  // → 556677
-prNumber := prContextStore["abc123"]      // → 42
-checkRunID := licenseCheckStore["abc123"] // → 222
+workflowRunID, _ := stateService.GetWorkflowRunID(ctx, "abc123")  // → 556677
+prNumber, _ := stateService.GetPRNumber(ctx, "abc123")           // → 42
+checkRunID, _ := stateService.GetLicenseCheckRunID(ctx, "abc123") // → 222
 ```
 
 **Service Calls**:

@@ -73,6 +73,7 @@ func TestContainer_DependencyInjection(t *testing.T) {
 		_ = container.SecurityService
 		_ = container.WebhookHandler
 		_ = container.HealthHandler
+		_ = container.StateService
 	})
 }
 
@@ -90,6 +91,7 @@ func TestContainer_FieldTypes(t *testing.T) {
 	assert.IsType(t, (*services.SecurityService)(nil), container.SecurityService)
 	assert.IsType(t, (*handlers.WebhookHandler)(nil), container.WebhookHandler)
 	assert.IsType(t, (*handlers.HealthHandler)(nil), container.HealthHandler)
+	assert.IsType(t, (*services.StateService)(nil), container.StateService)
 }
 
 func TestContainer_ZeroValue(t *testing.T) {
@@ -106,6 +108,7 @@ func TestContainer_ZeroValue(t *testing.T) {
 	assert.Nil(t, container.SecurityService)
 	assert.Nil(t, container.WebhookHandler)
 	assert.Nil(t, container.HealthHandler)
+	assert.Nil(t, container.StateService)
 }
 
 func TestContainer_Logger_Creation(t *testing.T) {

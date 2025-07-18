@@ -12,6 +12,7 @@ require (
 	github.com/spdx/tools-golang v0.5.5
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
+	github.com/valkey-io/valkey-go v1.0.62
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
 )
 

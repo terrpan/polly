@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/go-playground/webhooks/v6/github"
 	gogithub "github.com/google/go-github/v72/github"
@@ -24,17 +23,7 @@ type WebhookHandler struct {
 	checkService    *services.CheckService
 	policyService   *services.PolicyService
 	securityService *services.SecurityService
-
-	// In-memory cache for PR context store
-	prContextStore          map[string]int64 // sha -> pr_number
-	vulnerabilityCheckStore map[string]int64 // sha -> vulnerability_check_id
-	licenseCheckStore       map[string]int64 // sha -> license_check_id
-	artifactStore           map[string]int64 // sha -> workflow_run_id (for artifact lookup)
-	prContextMutex          sync.RWMutex     // RWMutex to protect the context store
-	vulnerabilityCheckMutex sync.RWMutex     // RWMutex to protect the vulnerability check store
-	licenseCheckMutex       sync.RWMutex     // RWMutex to protect the license check store
-	artifactMutex           sync.RWMutex     // RWMutex to protect the artifact store
-
+	stateService    *services.StateService
 }
 
 // SecurityCheckType represents a type of security check that can be created
@@ -57,9 +46,15 @@ func (h *WebhookHandler) getSecurityCheckTypes(ctx context.Context, owner, repo,
 				return h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRunID)
 			},
 			store: func(checkRunID int64) {
-				h.vulnerabilityCheckMutex.Lock()
-				h.vulnerabilityCheckStore[sha] = checkRunID
-				h.vulnerabilityCheckMutex.Unlock()
+				if err := h.stateService.StoreVulnerabilityCheckRunID(ctx, sha, checkRunID); err != nil {
+					h.logger.ErrorContext(ctx, "Failed to store vulnerability check run",
+						"error", err,
+						"owner", owner,
+						"repo", repo,
+						"sha", sha,
+						"check_run_id", checkRunID,
+					)
+				}
 			},
 		},
 		{
@@ -71,42 +66,18 @@ func (h *WebhookHandler) getSecurityCheckTypes(ctx context.Context, owner, repo,
 				return h.checkService.StartLicenseCheck(ctx, owner, repo, checkRunID)
 			},
 			store: func(checkRunID int64) {
-				h.licenseCheckMutex.Lock()
-				h.licenseCheckStore[sha] = checkRunID
-				h.licenseCheckMutex.Unlock()
+				if err := h.stateService.StoreLicenseCheckRunID(ctx, sha, checkRunID); err != nil {
+					h.logger.ErrorContext(ctx, "Failed to store license check run",
+						"error", err,
+						"owner", owner,
+						"repo", repo,
+						"sha", sha,
+						"check_run_id", checkRunID,
+					)
+				}
 			},
 		},
 	}
-}
-
-// getPRNumberForSHA retrieves the PR number associated with a given SHA from the context store
-func (h *WebhookHandler) getPRNumberForSHA(sha string) (int64, bool) {
-	h.prContextMutex.RLock()
-	defer h.prContextMutex.RUnlock()
-	prNumber, exists := h.prContextStore[sha]
-	return prNumber, exists
-}
-
-// storePRNumberForSHA stores the PR number for a given SHA in the context store
-func (h *WebhookHandler) storePRNumberForSHA(sha string, prNumber int64) {
-	h.prContextMutex.Lock()
-	defer h.prContextMutex.Unlock()
-	h.prContextStore[sha] = prNumber
-}
-
-// getWorkflowRunIDForSHA retrieves the workflow run ID associated with a given SHA from the artifact store
-func (h *WebhookHandler) getWorkflowRunIDForSHA(sha string) (int64, bool) {
-	h.artifactMutex.RLock()
-	defer h.artifactMutex.RUnlock()
-	workflowRunID, exists := h.artifactStore[sha]
-	return workflowRunID, exists
-}
-
-// storeWorkflowRunIDForSHA stores the workflow run ID for a given SHA in the artifact store
-func (h *WebhookHandler) storeWorkflowRunIDForSHA(sha string, workflowRunID int64) {
-	h.artifactMutex.Lock()
-	defer h.artifactMutex.Unlock()
-	h.artifactStore[sha] = workflowRunID
 }
 
 // createSecurityCheckRuns creates and starts security check runs concurrently
@@ -155,7 +126,12 @@ func (h *WebhookHandler) createSecurityCheckRuns(ctx context.Context, checkTypes
 // Setups a new WebhookHandler with the provided logger and initializes the GitHub webhook.
 // It currently does not support secret verification, but this can be added later.
 // It returns an error if the webhook cannot be initialized.
-func NewWebhookHandler(logger *slog.Logger, commentService *services.CommentService, checkService *services.CheckService, policyService *services.PolicyService, securityService *services.SecurityService) (*WebhookHandler, error) {
+func NewWebhookHandler(logger *slog.Logger,
+	commentService *services.CommentService,
+	checkService *services.CheckService,
+	policyService *services.PolicyService,
+	securityService *services.SecurityService,
+	stateService *services.StateService) (*WebhookHandler, error) {
 	// TODO: Add support for secret verification
 	hook, err := github.New()
 	if err != nil {
@@ -163,16 +139,13 @@ func NewWebhookHandler(logger *slog.Logger, commentService *services.CommentServ
 	}
 
 	return &WebhookHandler{
-		logger:                  logger,
-		hook:                    hook,
-		commentService:          commentService,
-		checkService:            checkService,
-		policyService:           policyService,
-		securityService:         securityService,
-		prContextStore:          make(map[string]int64), // Initialize the PR context store
-		vulnerabilityCheckStore: make(map[string]int64), // Initialize the vulnerability check store
-		licenseCheckStore:       make(map[string]int64), // Initialize the license check store
-		artifactStore:           make(map[string]int64), // Initialize the artifact store
+		logger:          logger,
+		hook:            hook,
+		commentService:  commentService,
+		checkService:    checkService,
+		policyService:   policyService,
+		securityService: securityService,
+		stateService:    stateService, // Initialize state service for storing PR numbers and workflow run IDs
 	}, nil
 }
 
@@ -284,7 +257,14 @@ func (h *WebhookHandler) handlePullRequestEvent(ctx context.Context, event githu
 		"id", id,
 	)
 
-	h.storePRNumberForSHA(sha, event.Number)
+	err := h.stateService.StorePRNumber(ctx, sha, event.Number)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to store PR number for SHA",
+			"error", err,
+			"sha", sha,
+			"pr_number", event.Number,
+		)
+	}
 
 	// Create security check runs (vulnerability and license checks)
 	h.logger.DebugContext(ctx, "Creating security check runs for pull request",
@@ -350,7 +330,14 @@ func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.C
 	// Store the PR number for this SHA if we can find it from the check run
 	if len(event.CheckRun.PullRequests) > 0 {
 		prNumber := int64(event.CheckRun.PullRequests[0].Number)
-		h.storePRNumberForSHA(sha, prNumber)
+		err := h.stateService.StorePRNumber(ctx, sha, prNumber)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "Failed to store PR number for SHA",
+				"error", err,
+				"sha", sha,
+				"pr_number", prNumber,
+			)
+		}
 		h.logger.DebugContext(ctx, "Stored PR context from check run",
 			"sha", sha,
 			"pr_number", prNumber,
@@ -365,9 +352,15 @@ func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.C
 			"sha", sha,
 		)
 		// Store the check run ID for this SHA
-		h.vulnerabilityCheckMutex.Lock()
-		h.vulnerabilityCheckStore[sha] = checkRunID
-		h.vulnerabilityCheckMutex.Unlock()
+		err := h.stateService.StoreVulnerabilityCheckRunID(ctx, sha, checkRunID)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "Failed to store vulnerability check run ID",
+				"error", err,
+				"sha", sha,
+				"check_run_id", checkRunID,
+			)
+			return err
+		}
 
 		// Start the vulnerability check and process artifacts if available
 		return h.restartVulnerabilityCheck(ctx, owner, repo, sha, checkRunID)
@@ -378,9 +371,15 @@ func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.C
 			"sha", sha,
 		)
 		// Store the check run ID for this SHA
-		h.licenseCheckMutex.Lock()
-		h.licenseCheckStore[sha] = checkRunID
-		h.licenseCheckMutex.Unlock()
+		err := h.stateService.StoreLicenseCheckRunID(ctx, sha, checkRunID)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "Failed to store license check run ID",
+				"error", err,
+				"sha", sha,
+				"check_run_id", checkRunID,
+			)
+			return err
+		}
 
 		// Start the license check and process artifacts if available
 		return h.restartLicenseCheck(ctx, owner, repo, sha, checkRunID)
@@ -451,9 +450,17 @@ func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github
 	)
 
 	// Get PR number from stored context
-	prNumber, exists := h.getPRNumberForSHA(sha)
+	// prNumber, exists := h.getPRNumberForSHA(sha)
+	prNumber, exists, err := h.stateService.GetPRNumber(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA",
+			"error", err,
+			"sha", sha,
+		)
+		return err
+	}
 	if !exists {
-		h.logger.DebugContext(ctx, "No PR context found for SHA - skipping security check creation",
+		h.logger.InfoContext(ctx, "No PR context found for SHA - skipping security check creation",
 			"sha", sha,
 		)
 		return nil
@@ -489,7 +496,14 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 	}
 
 	// Store the workflow run ID for this SHA to enable check reruns
-	h.storeWorkflowRunIDForSHA(sha, workflowRunID)
+	if err := h.stateService.StoreWorkflowRunID(ctx, sha, workflowRunID); err != nil {
+		h.logger.ErrorContext(ctx, "Failed to store workflow run ID for SHA",
+			"error", err,
+			"sha", sha,
+			"workflow_run_id", workflowRunID,
+		)
+	}
+
 	h.logger.DebugContext(ctx, "Stored workflow run ID for SHA",
 		"sha", sha,
 		"workflow_run_id", workflowRunID,
@@ -526,9 +540,18 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 	}
 
 	// Get PR number from stored context
-	h.prContextMutex.RLock()
-	prNumber, exists := h.prContextStore[sha]
-	h.prContextMutex.RUnlock()
+	// h.prContextMutex.RLock()
+	// prNumber, exists := h.prContextStore[sha]
+	// h.prContextMutex.RUnlock()
+
+	prNumber, exists, err := h.stateService.GetPRNumber(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA",
+			"error", err,
+			"sha", sha,
+		)
+		return err
+	}
 
 	if !exists {
 		h.logger.DebugContext(ctx, "No PR context found for SHA",
@@ -628,9 +651,14 @@ func (h *WebhookHandler) completeLicenseCheckAsNeutral(ctx context.Context, owne
 
 // findVulnerabilityCheckRun finds an existing vulnerability check run for the given SHA
 func (h *WebhookHandler) findVulnerabilityCheckRun(ctx context.Context, owner, repo, sha string) (int64, error) {
-	h.vulnerabilityCheckMutex.RLock()
-	checkRunID, exists := h.vulnerabilityCheckStore[sha]
-	h.vulnerabilityCheckMutex.RUnlock()
+	checkRunID, exists, err := h.stateService.GetVulnerabilityCheckRunID(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get vulnerability check run ID",
+			"error", err,
+			"sha", sha,
+		)
+		return 0, err
+	}
 
 	if !exists {
 		h.logger.DebugContext(ctx, "No security check run found for SHA",
@@ -649,9 +677,14 @@ func (h *WebhookHandler) findVulnerabilityCheckRun(ctx context.Context, owner, r
 
 // findLicenseCheckRun finds an existing license check run for the given SHA
 func (h *WebhookHandler) findLicenseCheckRun(ctx context.Context, owner, repo, sha string) (int64, error) {
-	h.licenseCheckMutex.RLock()
-	checkRunID, exists := h.licenseCheckStore[sha]
-	h.licenseCheckMutex.RUnlock()
+	checkRunID, exists, err := h.stateService.GetLicenseCheckRunID(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get license check run ID",
+			"error", err,
+			"sha", sha,
+		)
+		return 0, err
+	}
 
 	if !exists {
 		h.logger.DebugContext(ctx, "No license check run found for SHA",
@@ -676,7 +709,15 @@ func (h *WebhookHandler) restartVulnerabilityCheck(ctx context.Context, owner, r
 	}
 
 	// Look for stored artifacts for this SHA
-	workflowRunID, exists := h.getWorkflowRunIDForSHA(sha)
+	workflowRunID, exists, err := h.stateService.GetWorkflowRunID(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get workflow run ID for SHA",
+			"error", err,
+			"sha", sha,
+		)
+		return err
+	}
+
 	if !exists {
 		h.logger.DebugContext(ctx, "No stored artifacts found for SHA - completing as neutral",
 			"sha", sha,
@@ -708,7 +749,15 @@ func (h *WebhookHandler) restartVulnerabilityCheck(ctx context.Context, owner, r
 	}
 
 	// Get PR number for comments
-	prNumber, exists := h.getPRNumberForSHA(sha)
+	prNumber, exists, err := h.stateService.GetPRNumber(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA",
+			"error", err,
+			"sha", sha,
+		)
+		return err
+	}
+
 	if !exists {
 		h.logger.DebugContext(ctx, "No PR context found for SHA",
 			"sha", sha,
@@ -728,7 +777,16 @@ func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, s
 	}
 
 	// Look for stored artifacts for this SHA
-	workflowRunID, exists := h.getWorkflowRunIDForSHA(sha)
+	// workflowRunID, exists := h.getWorkflowRunIDForSHA(sha)
+	workflowRunID, exists, err := h.stateService.GetWorkflowRunID(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get workflow run ID for SHA",
+			"error", err,
+			"sha", sha,
+		)
+		return err
+	}
+
 	if !exists {
 		h.logger.DebugContext(ctx, "No stored artifacts found for SHA - completing as neutral",
 			"sha", sha,
@@ -760,7 +818,16 @@ func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, s
 	}
 
 	// Get PR number for comments
-	prNumber, exists := h.getPRNumberForSHA(sha)
+	// prNumber, exists := h.getPRNumberForSHA(sha)
+	prNumber, exists, err := h.stateService.GetPRNumber(ctx, sha)
+	if err != nil {
+		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA",
+			"error", err,
+			"sha", sha,
+		)
+		return err
+	}
+
 	if !exists {
 		h.logger.DebugContext(ctx, "No PR context found for SHA",
 			"sha", sha,
@@ -771,8 +838,6 @@ func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, s
 	// Process SBOM payloads
 	return h.processLicenseChecks(ctx, sbomPayloads, owner, repo, sha, prNumber, checkRunID)
 }
-
-// createCheckRun is a helper function to create a check run for the pull request.
 
 // processVulnerabilityChecks processes vulnerability payloads, posts comments for violations, and completes the check run.
 func (h *WebhookHandler) processVulnerabilityChecks(ctx context.Context, payloads []*services.VulnerabilityPayload, owner, repo, sha string, prNumber int64, checkRunID int64) error {
