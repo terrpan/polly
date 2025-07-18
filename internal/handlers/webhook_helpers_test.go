@@ -113,15 +113,17 @@ func TestWebhookHandler_PRContextHelpers(t *testing.T) {
 
 	t.Run("store and retrieve PR number", func(t *testing.T) {
 		ctx := context.Background()
+		owner := "test-owner"
+		repo := "test-repo"
 		sha := "test-sha-123"
 		prNumber := int64(42)
 
 		// Store PR number using StateService
-		err := handler.stateService.StorePRNumber(ctx, sha, prNumber)
+		err := handler.stateService.StorePRNumber(ctx, owner, repo, sha, prNumber)
 		require.NoError(t, err)
 
 		// Retrieve PR number using StateService
-		retrievedPR, exists, err := handler.stateService.GetPRNumber(ctx, sha)
+		retrievedPR, exists, err := handler.stateService.GetPRNumber(ctx, owner, repo, sha)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, prNumber, retrievedPR)
@@ -129,9 +131,11 @@ func TestWebhookHandler_PRContextHelpers(t *testing.T) {
 
 	t.Run("retrieve non-existent PR number", func(t *testing.T) {
 		ctx := context.Background()
+		owner := "test-owner"
+		repo := "test-repo"
 		sha := "non-existent-sha"
 
-		retrievedPR, exists, err := handler.stateService.GetPRNumber(ctx, sha)
+		retrievedPR, exists, err := handler.stateService.GetPRNumber(ctx, owner, repo, sha)
 		require.NoError(t, err)
 		assert.False(t, exists)
 		assert.Equal(t, int64(0), retrievedPR)
@@ -246,15 +250,17 @@ func TestWebhookHandler_VulnerabilityCheckStoreHelpers(t *testing.T) {
 
 	t.Run("store and retrieve vulnerability check run ID", func(t *testing.T) {
 		ctx := context.Background()
+		owner := "test-owner"
+		repo := "test-repo"
 		sha := "test-sha-vuln"
 		checkRunID := int64(999)
 
 		// Store check run ID using StateService
-		err := handler.stateService.StoreVulnerabilityCheckRunID(ctx, sha, checkRunID)
+		err := handler.stateService.StoreVulnerabilityCheckRunID(ctx, owner, repo, sha, checkRunID)
 		require.NoError(t, err)
 
 		// Retrieve check run ID using StateService
-		retrievedID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, sha)
+		retrievedID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, checkRunID, retrievedID)
@@ -262,9 +268,11 @@ func TestWebhookHandler_VulnerabilityCheckStoreHelpers(t *testing.T) {
 
 	t.Run("retrieve non-existent vulnerability check run ID", func(t *testing.T) {
 		ctx := context.Background()
+		owner := "test-owner"
+		repo := "test-repo"
 		sha := "non-existent-vuln-sha"
 
-		retrievedID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, sha)
+		retrievedID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
 		require.NoError(t, err)
 		assert.False(t, exists)
 		assert.Equal(t, int64(0), retrievedID)
@@ -281,15 +289,17 @@ func TestWebhookHandler_LicenseCheckStore(t *testing.T) {
 
 	t.Run("store and retrieve license check run ID", func(t *testing.T) {
 		ctx := context.Background()
+		owner := "test-owner"
+		repo := "test-repo"
 		sha := "test-sha-license"
 		checkRunID := int64(888)
 
 		// Store check run ID using StateService
-		err := handler.stateService.StoreLicenseCheckRunID(ctx, sha, checkRunID)
+		err := handler.stateService.StoreLicenseCheckRunID(ctx, owner, repo, sha, checkRunID)
 		require.NoError(t, err)
 
 		// Retrieve check run ID using StateService
-		retrievedID, exists, err := handler.stateService.GetLicenseCheckRunID(ctx, sha)
+		retrievedID, exists, err := handler.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha)
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, checkRunID, retrievedID)
@@ -297,9 +307,11 @@ func TestWebhookHandler_LicenseCheckStore(t *testing.T) {
 
 	t.Run("retrieve non-existent license check run ID", func(t *testing.T) {
 		ctx := context.Background()
+		owner := "test-owner"
+		repo := "test-repo"
 		sha := "non-existent-license-sha"
 
-		retrievedID, exists, err := handler.stateService.GetLicenseCheckRunID(ctx, sha)
+		retrievedID, exists, err := handler.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha)
 		require.NoError(t, err)
 		assert.False(t, exists)
 		assert.Equal(t, int64(0), retrievedID)

@@ -84,6 +84,12 @@ func (m *MemoryStore) Exists(ctx context.Context, key string) (bool, error) {
 	return exists, nil
 }
 
+// Ping checks the connection to the storage service.
+// For memory store, this always returns success since it's local.
+func (m *MemoryStore) Ping(ctx context.Context) (string, error) {
+	return "pong", nil
+}
+
 // Close closes the storage connection.
 func (m *MemoryStore) Close() error {
 	m.mutex.Lock()

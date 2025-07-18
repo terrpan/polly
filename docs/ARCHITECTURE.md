@@ -69,10 +69,12 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - Ecosystem detection for vulnerability context
 
 #### 6. State Service (`internal/services/state.go`)
-- **Purpose**: PR context and check run state management
+- **Purpose**: Multi-repository PR context and check run state management
 - **Responsibilities**:
-  - Store and retrieve PR numbers by commit SHA
-  - Manage vulnerability and license check run IDs
+  - Store and retrieve PR numbers by repository context (owner/repo/SHA)
+  - Manage vulnerability and license check run IDs with repository isolation
+  - Provide comprehensive state access via StateMap
+  - Ensure repository-level state isolation for webhook environments
   - Handle workflow run ID tracking for re-runs
   - Provide thread-safe access to state data
 - **Key Features**:
@@ -124,17 +126,17 @@ GitHub PR opened/reopened
     ↓
 handlers.WebhookHandler.handlePullRequestEvent()
     ↓
-services.StateService.StorePRNumber() - Store SHA → PR number mapping
+services.StateService.StorePRNumber(owner, repo, sha, prNumber) - Store SHA → PR number mapping
     ↓
 Create Vulnerability + License Check Runs (Concurrent)
     ↓
-services.StateService.StoreVulnCheckRunID() + StoreLicenseCheckRunID()
+services.StateService.StoreVulnCheckRunID(owner, repo, sha, ID) + StoreLicenseCheckRunID(owner, repo, sha, ID)
     ↓
 GitHub Workflow completed
     ↓
 handlers.WebhookHandler.handleWorkflowCompleted()
     ↓
-services.StateService.GetPRNumber() - Retrieve PR context by SHA
+services.StateService.GetPRNumber(owner, repo, sha) - Retrieve PR context by repository
     ↓
 services.SecurityService.ProcessWorkflowSecurityArtifacts()
     ↓
@@ -153,9 +155,9 @@ GitHub check run re-requested
     ↓
 handlers.WebhookHandler.handleCheckRunEvent()
     ↓
-services.StateService.GetPRNumber() - Retrieve PR context
+services.StateService.GetPRNumber(owner, repo, sha) - Retrieve PR context
     ↓
-services.StateService.GetWorkflowRunID() - Find associated workflow
+services.StateService.GetWorkflowRunID(owner, repo, sha) - Find associated workflow
     ↓
 services.CheckService.StartPolicyCheck()
     ↓

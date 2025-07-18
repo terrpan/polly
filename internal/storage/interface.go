@@ -25,6 +25,9 @@ type Store interface {
 	// Exists checks if a key exists in the store.
 	Exists(ctx context.Context, key string) (bool, error)
 
+	// Ping checks the connection to the storage service.
+	Ping(ctx context.Context) (string, error)
+
 	// Close closes the storage connection.
 	Close() error
 }

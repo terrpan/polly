@@ -10,6 +10,7 @@ import (
 
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/config"
+	"github.com/terrpan/polly/internal/storage"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -17,6 +18,7 @@ import (
 type HealthService struct {
 	logger    *slog.Logger
 	opaClient *clients.OPAClient
+	store     storage.Store
 }
 
 type HealthServiceResponse struct {
@@ -40,10 +42,11 @@ type DependencyCheck struct {
 }
 
 // NewHealthService initializes a new HealthService with the provided logger.
-func NewHealthService(logger *slog.Logger, opaClient *clients.OPAClient) *HealthService {
+func NewHealthService(logger *slog.Logger, opaClient *clients.OPAClient, store storage.Store) *HealthService {
 	return &HealthService{
 		logger:    logger,
 		opaClient: opaClient,
+		store:     store,
 	}
 }
 
@@ -57,6 +60,7 @@ func (s *HealthService) CheckHealth(ctx context.Context) *HealthServiceResponse 
 
 	dependencies := make(map[string]DependencyCheck)
 	dependencies["opa"] = s.checkOPAHealth(ctx)
+	dependencies["storage"] = s.checkStorageHealth(ctx)
 
 	overallStatus := s.getOverallStatus(dependencies)
 	s.logger.DebugContext(ctx, "Overall health status", "status", overallStatus)
@@ -76,6 +80,58 @@ func (s *HealthService) CheckHealth(ctx context.Context) *HealthServiceResponse 
 		Dependencies: dependencies,
 	}
 
+}
+
+// checkStorageHealth checks the health of the storage service.
+func (s *HealthService) checkStorageHealth(ctx context.Context) DependencyCheck {
+	tracer := otel.Tracer("polly/services")
+	ctx, span := tracer.Start(ctx, "health.check_storage")
+	defer span.End()
+
+	start := time.Now()
+
+	if s.store == nil {
+		span.SetAttributes(attribute.String("error", "Storage not initialized"))
+		s.logger.WarnContext(ctx, "Storage is not initialized")
+		return DependencyCheck{
+			Status:    "error",
+			Message:   "Storage not initialized",
+			Duration:  time.Since(start).Milliseconds(),
+			Timestamp: time.Now().UTC(),
+		}
+	}
+
+	checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	span.SetAttributes(attribute.String("storage.timeout", "3s"))
+	response, err := s.store.Ping(checkCtx)
+
+	if err != nil {
+		span.SetAttributes(
+			attribute.String("storage.status", "error"),
+			attribute.String("error", err.Error()),
+		)
+		s.logger.ErrorContext(ctx, "Failed to ping storage", "error", err)
+		return DependencyCheck{
+			Status:    "error",
+			Message:   "Failed to connect to storage: " + err.Error(),
+			Duration:  time.Since(start).Milliseconds(),
+			Timestamp: time.Now().UTC(),
+		}
+	}
+
+	span.SetAttributes(
+		attribute.String("storage.status", "healthy"),
+		attribute.String("storage.response", response),
+	)
+	s.logger.DebugContext(ctx, "Storage health check passed", "response", response)
+	return DependencyCheck{
+		Status:    "healthy",
+		Message:   "Storage service is responding: " + response,
+		Duration:  time.Since(start).Milliseconds(),
+		Timestamp: time.Now().UTC(),
+	}
 }
 
 // checkOpaHealth checks the health of the OPA service.

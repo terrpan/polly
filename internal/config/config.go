@@ -91,6 +91,14 @@ type ValkeyConfig struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+	// Sentinel configuration
+	EnableSentinel    bool     `mapstructure:"enable_sentinel"`
+	SentinelAddrs     []string `mapstructure:"sentinel_addrs"`
+	SentinelMaster    string   `mapstructure:"sentinel_master"`
+	SentinelUsername  string   `mapstructure:"sentinel_username"`
+	SentinelPassword  string   `mapstructure:"sentinel_password"`
+	EnableCompression bool     `mapstructure:"enable_compression"`
+	EnableOTel        bool     `mapstructure:"enable_otel"`
 }
 
 var (
@@ -125,10 +133,17 @@ var (
 			Type:                 "memory", // Default to in-memory storage
 			DefaultKeyExpiration: "24h",    // Expiration for keys
 			Valkey: ValkeyConfig{
-				Address:  "localhost:6379",
-				Username: "",
-				Password: "",
-				DB:       0,
+				Address:           "localhost:6379",
+				Username:          "",
+				Password:          "",
+				DB:                0,
+				EnableSentinel:    false,
+				SentinelAddrs:     []string{},
+				SentinelMaster:    "",
+				SentinelUsername:  "",
+				SentinelPassword:  "",
+				EnableCompression: true,
+				EnableOTel:        true,
 			},
 		},
 	}

@@ -72,17 +72,21 @@ func TestWebhookHandler_ContextStore(t *testing.T) {
 
 	// Test that StateService can store and retrieve data
 	ctx := context.Background()
-	err = handler.stateService.StorePRNumber(ctx, "test-sha", 123)
+	owner := "test-owner"
+	repo := "test-repo"
+	sha := "test-sha"
+
+	err = handler.stateService.StorePRNumber(ctx, owner, repo, sha, 123)
 	require.NoError(t, err)
-	err = handler.stateService.StoreVulnerabilityCheckRunID(ctx, "test-sha", 456)
+	err = handler.stateService.StoreVulnerabilityCheckRunID(ctx, owner, repo, sha, 456)
 	require.NoError(t, err)
 
-	prNum, exists, err := handler.stateService.GetPRNumber(ctx, "test-sha")
+	prNum, exists, err := handler.stateService.GetPRNumber(ctx, owner, repo, sha)
 	require.NoError(t, err)
 	require.True(t, exists)
 	assert.Equal(t, int64(123), prNum)
 
-	vulnCheckID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, "test-sha")
+	vulnCheckID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
 	require.NoError(t, err)
 	require.True(t, exists)
 	assert.Equal(t, int64(456), vulnCheckID)
@@ -112,13 +116,17 @@ func TestWebhookHandler_ConcurrentAccess(t *testing.T) {
 
 	// Test that StateService can be used for concurrent access without explicit mutexes
 	ctx := context.Background()
+	owner := "test-owner"
+	repo := "test-repo"
+	sha := "test-sha"
+
 	assert.NotPanics(t, func() {
-		err := handler.stateService.StorePRNumber(ctx, "test", 1)
+		err := handler.stateService.StorePRNumber(ctx, owner, repo, sha, 1)
 		require.NoError(t, err)
 	})
 
 	assert.NotPanics(t, func() {
-		err := handler.stateService.StoreVulnerabilityCheckRunID(ctx, "test", 2)
+		err := handler.stateService.StoreVulnerabilityCheckRunID(ctx, owner, repo, sha, 2)
 		require.NoError(t, err)
 	})
 }

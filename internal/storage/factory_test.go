@@ -41,7 +41,7 @@ func TestNewStore_Valkey(t *testing.T) {
 		cfg := config.StorageConfig{
 			Type: "valkey",
 			Valkey: config.ValkeyConfig{
-				Address:  "localhost:6379",
+				Address:  "localhost:16379", // Use a port that's definitely not running
 				Username: "",
 				Password: "",
 				DB:       0,
@@ -49,7 +49,7 @@ func TestNewStore_Valkey(t *testing.T) {
 		}
 
 		store, err := NewStore(cfg)
-		// We expect this to fail since no Valkey server is running
+		// We expect this to fail since no Valkey server is running on port 16379
 		// but the error should be a connection error, not a configuration error
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create Valkey store")
@@ -101,7 +101,7 @@ func TestStoreType_Constants(t *testing.T) {
 	// Test that the constants are correctly defined
 	assert.Equal(t, StoreType("memory"), StoreTypeMemory)
 	assert.Equal(t, StoreType("valkey"), StoreTypeValkey)
-	
+
 	// Test string conversion
 	assert.Equal(t, "memory", string(StoreTypeMemory))
 	assert.Equal(t, "valkey", string(StoreTypeValkey))

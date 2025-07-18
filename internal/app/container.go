@@ -41,14 +41,14 @@ func NewContainer(ctx context.Context) (*Container, error) {
 	c := &Container{}
 
 	c.Logger = config.NewLogger()
-	c.Logger.Info("Initializing application container", "type", config.AppConfig.Storage.Type)
+	c.Logger.Info("Initializing application container")
+
 	var err error
+	c.Logger.Info("Initializing storage", "type", config.AppConfig.Storage.Type)
 	c.Store, err = storage.NewStore(config.AppConfig.Storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize storage: %w", err)
 	}
-
-	c.Logger.Info("Initializing storage")
 
 	// Initialize clients
 	if config.IsGitHubAppConfigured() {
@@ -83,7 +83,7 @@ func NewContainer(ctx context.Context) (*Container, error) {
 
 	// Initialize services
 	c.CommentService = services.NewCommentService(c.GitHubClient, c.Logger)
-	c.HealthService = services.NewHealthService(c.Logger, c.OpaClient)
+	c.HealthService = services.NewHealthService(c.Logger, c.OpaClient, c.Store)
 	c.CheckService = services.NewCheckService(c.GitHubClient, c.Logger)
 	c.PolicyService = services.NewPolicyService(c.OpaClient, c.Logger)
 	c.SecurityService = services.NewSecurityService(c.GitHubClient, c.Logger)

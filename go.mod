@@ -12,7 +12,8 @@ require (
 	github.com/spdx/tools-golang v0.5.5
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/valkey-io/valkey-go v1.0.62
+	github.com/valkey-io/valkey-go v1.0.63
+	github.com/valkey-io/valkey-go/valkeyotel v1.0.63
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
 )
 
@@ -59,7 +60,7 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.37.0
-	go.opentelemetry.io/otel/trace v1.37.0 // indirect
+	go.opentelemetry.io/otel/trace v1.37.0
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
