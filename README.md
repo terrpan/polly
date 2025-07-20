@@ -151,7 +151,7 @@ polly/
 ## TODOs and Future Work
 - [x] Implement ValKey for persistent PR context storage
     - [x] Add otel to ValKey
-    - [ ] Add tests for ValKey integration
+    - [x] Add tests for ValKey integration
     - [x] Add support for ValKey sentinel
     - [x] Add Valkey compression for performance
 - [ ] Improve Observability with Prometheus metrics

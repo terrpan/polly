@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMemoryStore_BasicOperations(t *testing.T) {
+func TestMemoryStore_BasicOperations_Memory(t *testing.T) {
 	store := NewMemoryStore()
 	ctx := context.Background()
 
@@ -301,4 +301,143 @@ func TestMemoryStore_Overwrite(t *testing.T) {
 	retrieved, err = store.Get(ctx, key)
 	require.NoError(t, err)
 	assert.Equal(t, value2, retrieved)
+}
+
+// Integration tests for MemoryStore - these test more complex scenarios
+// but don't require external dependencies like testcontainers
+func TestMemoryStore_IntegrationComplexOperations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	store := NewMemoryStore()
+	ctx := context.Background()
+
+	t.Run("large scale operations", func(t *testing.T) {
+		const numKeys = 10000
+		const keyPrefix = "large-scale-key-"
+		const valuePrefix = "large-scale-value-"
+
+		// Set many keys
+		for i := 0; i < numKeys; i++ {
+			key := fmt.Sprintf("%s%d", keyPrefix, i)
+			value := fmt.Sprintf("%s%d", valuePrefix, i)
+			err := store.Set(ctx, key, value, 0)
+			require.NoError(t, err)
+		}
+
+		// Verify all keys exist
+		for i := 0; i < numKeys; i++ {
+			key := fmt.Sprintf("%s%d", keyPrefix, i)
+			expectedValue := fmt.Sprintf("%s%d", valuePrefix, i)
+
+			exists, err := store.Exists(ctx, key)
+			require.NoError(t, err)
+			assert.True(t, exists)
+
+			value, err := store.Get(ctx, key)
+			require.NoError(t, err)
+			assert.Equal(t, expectedValue, value)
+		}
+
+		// Delete all keys
+		for i := 0; i < numKeys; i++ {
+			key := fmt.Sprintf("%s%d", keyPrefix, i)
+			err := store.Delete(ctx, key)
+			require.NoError(t, err)
+		}
+
+		// Verify all keys are gone
+		for i := 0; i < numKeys; i++ {
+			key := fmt.Sprintf("%s%d", keyPrefix, i)
+			exists, err := store.Exists(ctx, key)
+			require.NoError(t, err)
+			assert.False(t, exists)
+		}
+	})
+
+	t.Run("complex data structures", func(t *testing.T) {
+		type NestedStruct struct {
+			ID       int                    `json:"id"`
+			Name     string                 `json:"name"`
+			Tags     []string               `json:"tags"`
+			Metadata map[string]interface{} `json:"metadata"`
+			Children []NestedStruct         `json:"children"`
+		}
+
+		key := "integration-nested-key"
+		original := NestedStruct{
+			ID:   1,
+			Name: "Parent",
+			Tags: []string{"parent", "root", "integration"},
+			Metadata: map[string]interface{}{
+				"created_at": "2024-01-15T10:30:00Z",
+				"version":    "1.0.0",
+				"active":     true,
+				"priority":   10,
+			},
+			Children: []NestedStruct{
+				{
+					ID:   2,
+					Name: "Child 1",
+					Tags: []string{"child", "first"},
+					Metadata: map[string]interface{}{
+						"parent_id": 1,
+						"order":     1,
+					},
+				},
+				{
+					ID:   3,
+					Name: "Child 2",
+					Tags: []string{"child", "second"},
+					Metadata: map[string]interface{}{
+						"parent_id": 1,
+						"order":     2,
+					},
+				},
+			},
+		}
+
+		err := store.Set(ctx, key, original, 0)
+		require.NoError(t, err)
+
+		retrievedInterface, err := store.Get(ctx, key)
+		require.NoError(t, err)
+
+		retrieved, ok := retrievedInterface.(NestedStruct)
+		require.True(t, ok, "Expected NestedStruct type, got %T", retrievedInterface)
+		assert.Equal(t, original, retrieved)
+	})
+
+	t.Run("expiration stress test", func(t *testing.T) {
+		const numKeys = 1000
+		const expiration = 100 * time.Millisecond
+
+		keys := make([]string, numKeys)
+		for i := 0; i < numKeys; i++ {
+			key := fmt.Sprintf("expiration-stress-key-%d", i)
+			value := fmt.Sprintf("expiration-stress-value-%d", i)
+			keys[i] = key
+
+			err := store.Set(ctx, key, value, expiration)
+			require.NoError(t, err)
+		}
+
+		// All keys should exist initially
+		for _, key := range keys {
+			exists, err := store.Exists(ctx, key)
+			require.NoError(t, err)
+			assert.True(t, exists)
+		}
+
+		// Wait for expiration + buffer
+		time.Sleep(expiration + 50*time.Millisecond)
+
+		// All keys should be expired
+		for _, key := range keys {
+			exists, err := store.Exists(ctx, key)
+			require.NoError(t, err)
+			assert.False(t, exists, "Key %s should have expired", key)
+		}
+	})
 }
