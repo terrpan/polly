@@ -541,9 +541,6 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 	}
 
 	// Get PR number from stored context
-	// h.prContextMutex.RLock()
-	// prNumber, exists := h.prContextStore[sha]
-	// h.prContextMutex.RUnlock()
 
 	prNumber, exists, err := h.stateService.GetPRNumber(ctx, owner, repo, sha)
 	if err != nil {
