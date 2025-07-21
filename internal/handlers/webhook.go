@@ -442,7 +442,6 @@ func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github
 	)
 
 	// Get PR number from stored context
-	// prNumber, exists := h.getPRNumberForSHA(sha)
 	prNumber, exists, err := h.stateService.GetPRNumber(ctx, owner, repo, sha)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA",
