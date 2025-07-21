@@ -88,7 +88,9 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 	defer cancel()
 
 	if _, err := store.Ping(ctx); err != nil {
-		store.Close() // Clean up the client
+		if closeErr := store.Close(); closeErr != nil {
+			logger.Error("failed to close Valkey client during cleanup", "error", closeErr)
+		}
 		return nil, fmt.Errorf("failed to connect to Valkey server: %w", err)
 	}
 
