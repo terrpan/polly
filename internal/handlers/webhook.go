@@ -46,15 +46,7 @@ func (h *WebhookHandler) getSecurityCheckTypes(ctx context.Context, owner, repo,
 				return h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRunID)
 			},
 			store: func(checkRunID int64) {
-				if err := h.stateService.StoreVulnerabilityCheckRunID(ctx, owner, repo, sha, checkRunID); err != nil {
-					h.logger.ErrorContext(ctx, "Failed to store vulnerability check run",
-						"error", err,
-						"owner", owner,
-						"repo", repo,
-						"sha", sha,
-						"check_run_id", checkRunID,
-					)
-				}
+				h.storeCheckRunID(ctx, owner, repo, sha, checkRunID, "vulnerability", h.stateService.StoreVulnerabilityCheckRunID)
 			},
 		},
 		{
