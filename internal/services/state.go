@@ -58,7 +58,7 @@ func NewStateService(store storage.Store, logger *slog.Logger) *StateService {
 }
 
 // storeInt64 stores an int64 value with the given key type and repository context.
-// in the format "<owner>:<repo>:<keyType>:<sha>". Ie: "terrpan:polly:pr:abc2134f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5 -> 42"
+// in the format "<owner>:<repo>:<keyType>:<sha>". e.g.: "terrpan:polly:pr:abc123def456 -> 42"
 func (s *StateService) storeInt64(ctx context.Context, keyType StateKeyType, repoCtx RepoContext, value int64) error {
 	key := fmt.Sprintf("%s:%s:%s:%s", repoCtx.Owner, repoCtx.Repo, keyType, repoCtx.SHA)
 	return s.store.Set(ctx, key, value, s.expiration)
