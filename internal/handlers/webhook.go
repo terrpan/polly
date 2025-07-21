@@ -819,7 +819,6 @@ func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, s
 	}
 
 	// Get PR number for comments
-	// prNumber, exists := h.getPRNumberForSHA(sha)
 	prNumber, exists, err := h.stateService.GetPRNumber(ctx, owner, repo, sha)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA",
