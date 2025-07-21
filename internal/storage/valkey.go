@@ -301,14 +301,9 @@ func (v *ValkeyStore) Exists(ctx context.Context, key string) (bool, error) {
 
 	result := v.client.Do(ctx, v.client.B().Exists().Key(key).Build())
 	if result.Error() != nil {
-		if valkey.IsValkeyNil(result.Error()) {
-			span.SetAttributes(
-				attribute.Bool("valkey.key.exists", false),
-				attribute.String("valkey.result", "key_not_found"),
-			)
-			return false, ErrKeyNotFound
+		if handled, err := v.handleValkeyNilError(result.Error(), span, "key_not_found"); handled {
+			return false, err
 		}
-		span.RecordError(result.Error())
 		return false, result.Error()
 	}
 
