@@ -21,6 +21,18 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
+// cleanupExpiredKey checks if a key has expired and removes it if so.
+// Returns true if the key was expired and cleaned up, false otherwise.
+// This method assumes the caller already holds the appropriate lock.
+func (m *MemoryStore) cleanupExpiredKey(key string) bool {
+	if expiry, exists := m.expiry[key]; exists && time.Now().After(expiry) {
+		delete(m.data, key)
+		delete(m.expiry, key)
+		return true
+	}
+	return false
+}
+
 // Set stores a key-value pair with expiration time.
 func (m *MemoryStore) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	m.mutex.Lock()
@@ -40,11 +52,8 @@ func (m *MemoryStore) Get(ctx context.Context, key string) (interface{}, error) 
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
-	// Check if key has expired
-	if expiry, exists := m.expiry[key]; exists && time.Now().After(expiry) {
-		// Clean up expired key
-		delete(m.data, key)
-		delete(m.expiry, key)
+	// Check if key has expired and clean up if so
+	if m.cleanupExpiredKey(key) {
 		return nil, ErrKeyNotFound
 	}
 
@@ -72,11 +81,8 @@ func (m *MemoryStore) Exists(ctx context.Context, key string) (bool, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
-	// Check if key has expired
-	if expiry, exists := m.expiry[key]; exists && time.Now().After(expiry) {
-		// Clean up expired key
-		delete(m.data, key)
-		delete(m.expiry, key)
+	// Check if key has expired and clean up if so
+	if m.cleanupExpiredKey(key) {
 		return false, nil
 	}
 

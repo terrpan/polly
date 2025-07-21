@@ -201,6 +201,129 @@ func TestMemoryStore_Expiration(t *testing.T) {
 	})
 }
 
+func TestMemoryStore_CleanupExpiredKey(t *testing.T) {
+	store := NewMemoryStore()
+	ctx := context.Background()
+
+	t.Run("returns true when key is expired and cleans it up", func(t *testing.T) {
+		key := "expiring-key"
+		value := "test-value"
+		expiration := 50 * time.Millisecond
+
+		// Set key with short expiration
+		err := store.Set(ctx, key, value, expiration)
+		require.NoError(t, err)
+
+		// Verify key exists initially
+		assert.Contains(t, store.data, key)
+		assert.Contains(t, store.expiry, key)
+
+		// Wait for expiration
+		time.Sleep(100 * time.Millisecond)
+
+		// Test the helper function
+		store.mutex.Lock()
+		wasExpired := store.cleanupExpiredKey(key)
+		store.mutex.Unlock()
+
+		// Should return true indicating key was expired and cleaned up
+		assert.True(t, wasExpired)
+
+		// Key should be removed from both maps
+		assert.NotContains(t, store.data, key)
+		assert.NotContains(t, store.expiry, key)
+	})
+
+	t.Run("returns false when key is not expired", func(t *testing.T) {
+		key := "non-expiring-key"
+		value := "test-value"
+		expiration := 5 * time.Second // Long expiration
+
+		// Set key with long expiration
+		err := store.Set(ctx, key, value, expiration)
+		require.NoError(t, err)
+
+		// Test the helper function immediately
+		store.mutex.Lock()
+		wasExpired := store.cleanupExpiredKey(key)
+		store.mutex.Unlock()
+
+		// Should return false indicating key was not expired
+		assert.False(t, wasExpired)
+
+		// Key should still exist in both maps
+		assert.Contains(t, store.data, key)
+		assert.Contains(t, store.expiry, key)
+	})
+
+	t.Run("returns false when key does not exist", func(t *testing.T) {
+		key := "non-existent-key"
+
+		// Test the helper function on non-existent key
+		store.mutex.Lock()
+		wasExpired := store.cleanupExpiredKey(key)
+		store.mutex.Unlock()
+
+		// Should return false
+		assert.False(t, wasExpired)
+	})
+
+	t.Run("returns false when key exists but has no expiration", func(t *testing.T) {
+		key := "no-expiry-key"
+		value := "test-value"
+
+		// Set key without expiration
+		err := store.Set(ctx, key, value, 0)
+		require.NoError(t, err)
+
+		// Test the helper function
+		store.mutex.Lock()
+		wasExpired := store.cleanupExpiredKey(key)
+		store.mutex.Unlock()
+
+		// Should return false since key has no expiration
+		assert.False(t, wasExpired)
+
+		// Key should still exist in data map but not in expiry map
+		assert.Contains(t, store.data, key)
+		assert.NotContains(t, store.expiry, key)
+	})
+
+	t.Run("handles race conditions safely", func(t *testing.T) {
+		key := "race-key"
+		value := "test-value"
+		expiration := 100 * time.Millisecond
+
+		// Set key with expiration
+		err := store.Set(ctx, key, value, expiration)
+		require.NoError(t, err)
+
+		// Wait for expiration
+		time.Sleep(150 * time.Millisecond)
+
+		// Test multiple concurrent calls to cleanup (simulating race condition)
+		results := make([]bool, 3)
+		for i := 0; i < 3; i++ {
+			store.mutex.Lock()
+			results[i] = store.cleanupExpiredKey(key)
+			store.mutex.Unlock()
+		}
+
+		// Only the first call should return true, others should return false
+		trueCount := 0
+		for _, result := range results {
+			if result {
+				trueCount++
+			}
+		}
+		assert.Equal(t, 1, trueCount, "Only one cleanup call should return true")
+
+		// Key should be completely removed
+		assert.NotContains(t, store.data, key)
+		assert.NotContains(t, store.expiry, key)
+	})
+}
+
 func TestMemoryStore_ConcurrentAccess(t *testing.T) {
 	store := NewMemoryStore()
 	ctx := context.Background()
