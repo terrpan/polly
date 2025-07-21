@@ -13,6 +13,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/valkey-io/valkey-go"
 	"go.opentelemetry.io/otel"
 )
 
@@ -331,6 +332,60 @@ func TestValkeyStore_HandleValkeyNilError(t *testing.T) {
 
 	// Note: Testing actual Valkey nil errors requires integration tests with real Valkey instance
 	// because valkey.IsValkeyNil checks for specific internal error types from the valkey client
+}
+
+func TestApplyCommonValkeyConfig(t *testing.T) {
+	t.Run("applies common configuration to client options", func(t *testing.T) {
+		cfg := config.ValkeyConfig{
+			Username: "test-user",
+			Password: "test-pass",
+			DB:       5,
+		}
+
+		var clientOpts valkey.ClientOption
+		applyCommonValkeyConfig(&clientOpts, cfg)
+
+		assert.Equal(t, "test-user", clientOpts.Username)
+		assert.Equal(t, "test-pass", clientOpts.Password)
+		assert.Equal(t, 5, clientOpts.SelectDB)
+	})
+
+	t.Run("handles empty configuration values", func(t *testing.T) {
+		cfg := config.ValkeyConfig{
+			Username: "",
+			Password: "",
+			DB:       0,
+		}
+
+		var clientOpts valkey.ClientOption
+		applyCommonValkeyConfig(&clientOpts, cfg)
+
+		assert.Equal(t, "", clientOpts.Username)
+		assert.Equal(t, "", clientOpts.Password)
+		assert.Equal(t, 0, clientOpts.SelectDB)
+	})
+
+	t.Run("does not affect other client option fields", func(t *testing.T) {
+		cfg := config.ValkeyConfig{
+			Username: "test-user",
+			Password: "test-pass",
+			DB:       3,
+		}
+
+		clientOpts := valkey.ClientOption{
+			InitAddress: []string{"localhost:6379"},
+		}
+
+		applyCommonValkeyConfig(&clientOpts, cfg)
+
+		// Common fields should be set
+		assert.Equal(t, "test-user", clientOpts.Username)
+		assert.Equal(t, "test-pass", clientOpts.Password)
+		assert.Equal(t, 3, clientOpts.SelectDB)
+
+		// Other fields should remain unchanged
+		assert.Equal(t, []string{"localhost:6379"}, clientOpts.InitAddress)
+	})
 }
 
 // Integration tests using testcontainers - these require Docker

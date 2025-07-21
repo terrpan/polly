@@ -26,6 +26,13 @@ type ValkeyStore struct {
 	tracer            trace.Tracer
 }
 
+// applyCommonValkeyConfig applies common configuration settings to both Sentinel and standard client options
+func applyCommonValkeyConfig(clientOpts *valkey.ClientOption, cfg config.ValkeyConfig) {
+	clientOpts.Username = cfg.Username
+	clientOpts.Password = cfg.Password
+	clientOpts.SelectDB = cfg.DB
+}
+
 func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 	logger := slog.Default().With("component", "valkey_store")
 
@@ -40,9 +47,6 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 				Username:  cfg.SentinelUsername,
 				Password:  cfg.SentinelPassword,
 			},
-			Username: cfg.Username,
-			Password: cfg.Password,
-			SelectDB: cfg.DB,
 		}
 		logger.Info("Configuring Valkey with Sentinel",
 			"master", cfg.SentinelMaster,
@@ -51,12 +55,12 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 		// Standard configuration
 		clientOpts = valkey.ClientOption{
 			InitAddress: []string{cfg.Address},
-			Username:    cfg.Username,
-			Password:    cfg.Password,
-			SelectDB:    cfg.DB,
 		}
 		logger.Info("Configuring Valkey with direct connection", "address", cfg.Address)
 	}
+
+	// Apply common configuration settings
+	applyCommonValkeyConfig(&clientOpts, cfg)
 
 	var client valkey.Client
 	var err error
