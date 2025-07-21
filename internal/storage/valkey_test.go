@@ -17,6 +17,10 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+const (
+	valkeyImage = "valkey/valkey:8-alpine"
+)
+
 // TestValkeyStore_InterfaceCompliance tests that ValkeyStore implements the Store interface
 // This is a compile-time check that doesn't require a running Valkey server
 func TestValkeyStore_InterfaceCompliance(t *testing.T) {
@@ -397,7 +401,7 @@ func TestValkeyStore_IntegrationBasicOperations(t *testing.T) {
 	ctx := context.Background()
 
 	// Start Valkey container
-	redisContainer, err := redis.Run(ctx, "valkey/valkey:8-alpine")
+	redisContainer, err := redis.Run(ctx, valkeyImage)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -538,7 +542,7 @@ func TestValkeyStore_IntegrationConcurrency(t *testing.T) {
 	ctx := context.Background()
 
 	// Start Valkey container
-	redisContainer, err := redis.Run(ctx, "valkey/valkey:8-alpine")
+	redisContainer, err := redis.Run(ctx, valkeyImage)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -630,7 +634,7 @@ func TestValkeyStore_IntegrationCompression(t *testing.T) {
 	ctx := context.Background()
 
 	// Start Valkey container
-	redisContainer, err := redis.Run(ctx, "valkey/valkey:8-alpine")
+	redisContainer, err := redis.Run(ctx, valkeyImage)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -736,7 +740,7 @@ func TestValkeyStore_IntegrationSentinel(t *testing.T) {
 	// Start a simple Valkey master container for testing Sentinel-like operations
 	masterContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        "valkey/valkey:8-alpine",
+			Image:        valkeyImage,
 			ExposedPorts: []string{"6379/tcp"},
 			WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
 		},
@@ -925,7 +929,7 @@ func TestValkeyStore_IntegrationAuthentication(t *testing.T) {
 		// Start Valkey container with password authentication
 		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        "valkey/valkey:8-alpine",
+				Image:        valkeyImage,
 				ExposedPorts: []string{"6379/tcp"},
 				Cmd:          []string{"valkey-server", "--requirepass", "test-password"},
 				WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
@@ -986,7 +990,7 @@ func TestValkeyStore_IntegrationAuthentication(t *testing.T) {
 		// Start Valkey container with password authentication
 		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        "valkey/valkey:8-alpine",
+				Image:        valkeyImage,
 				ExposedPorts: []string{"6379/tcp"},
 				Cmd:          []string{"valkey-server", "--requirepass", "correct-password"},
 				WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
@@ -1067,7 +1071,7 @@ user default off
 		// Start Valkey container with custom config
 		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        "valkey/valkey:8-alpine",
+				Image:        valkeyImage,
 				ExposedPorts: []string{"6379/tcp"},
 				Files: []testcontainers.ContainerFile{
 					{
@@ -1135,7 +1139,7 @@ user default off
 		// Start Valkey container with password authentication
 		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        "valkey/valkey:8-alpine",
+				Image:        valkeyImage,
 				ExposedPorts: []string{"6379/tcp"},
 				Cmd:          []string{"valkey-server", "--requirepass", "compress-password"},
 				WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),

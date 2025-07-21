@@ -154,6 +154,10 @@ polly/
     - [x] Add tests for ValKey integration
     - [x] Add support for ValKey sentinel
     - [x] Add Valkey compression for performance
+- [ ] Improve security and credential handling
+    - [ ] Implement configuration sanitization for safe logging
+    - [ ] Audit and fix credential exposure in logs and error messages
+    - [ ] Add security tests to prevent credential leaks
 - [ ] Improve Observability with Prometheus metrics
 - [ ] Add integration tests
 - [ ] Implement event queuing for better event handling
