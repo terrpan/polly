@@ -122,7 +122,7 @@ func (v *ValkeyStore) handleValkeyNilError(err error, span trace.Span, logMessag
 func (v *ValkeyStore) compress(ctx context.Context, data []byte) ([]byte, error) {
 	ctx, span := v.tracer.Start(ctx, "valkey.compress",
 		trace.WithAttributes(
-			attribute.Int("data.size.bytes", len(data)),
+			attribute.Int("data.original.size.bytes", len(data)),
 			attribute.Bool("compression.enabled", v.enableCompression),
 		),
 	)
@@ -137,9 +137,11 @@ func (v *ValkeyStore) compress(ctx context.Context, data []byte) ([]byte, error)
 	writer := zlib.NewWriter(&buf)
 
 	if _, err := writer.Write(data); err != nil {
-		writer.Close()
+		if closeErr := writer.Close(); closeErr != nil {
+			span.RecordError(closeErr)
+		}
 		span.RecordError(err)
-		return nil, fmt.Errorf("failed to compress data: %w", err)
+		return nil, fmt.Errorf("failed to write data: %w", err)
 	}
 
 	if err := writer.Close(); err != nil {
