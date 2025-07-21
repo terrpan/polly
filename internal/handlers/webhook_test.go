@@ -130,3 +130,54 @@ func TestWebhookHandler_ConcurrentAccess(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestWebhookHandler_StoreCheckRunIDHelpers(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	commentService, checkService, policyService, securityService, stateService := createTestServices()
+
+	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	owner := "test-owner"
+	repo := "test-repo"
+	sha := "test-sha"
+	checkRunID := int64(12345)
+
+	t.Run("storeCheckRunID does not return error (fire and forget)", func(t *testing.T) {
+		// Should not panic and should store successfully
+		assert.NotPanics(t, func() {
+			handler.storeCheckRunID(ctx, owner, repo, sha, checkRunID, "vulnerability", handler.stateService.StoreVulnerabilityCheckRunID)
+		})
+
+		// Verify it was stored
+		storedID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Equal(t, checkRunID, storedID)
+	})
+
+	t.Run("storeCheckRunIDWithError returns error when storage fails", func(t *testing.T) {
+		// Test with a function that returns an error
+		mockStoreFunc := func(ctx context.Context, owner, repo, sha string, id int64) error {
+			return assert.AnError
+		}
+
+		err := handler.storeCheckRunIDWithError(ctx, owner, repo, sha, checkRunID+1, "test", mockStoreFunc)
+		assert.Error(t, err)
+		assert.Equal(t, assert.AnError, err)
+	})
+
+	t.Run("storeCheckRunIDWithError succeeds when storage succeeds", func(t *testing.T) {
+		licenseCheckRunID := int64(67890)
+
+		err := handler.storeCheckRunIDWithError(ctx, owner, repo, sha, licenseCheckRunID, "license", handler.stateService.StoreLicenseCheckRunID)
+		assert.NoError(t, err)
+
+		// Verify it was stored
+		storedID, exists, err := handler.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha)
+		require.NoError(t, err)
+		assert.True(t, exists)
+		assert.Equal(t, licenseCheckRunID, storedID)
+	})
+}

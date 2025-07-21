@@ -285,6 +285,54 @@ func TestValkeyStore_CompressionHelpers(t *testing.T) {
 	})
 }
 
+func TestValkeyStore_HandleValkeyNilError(t *testing.T) {
+	// Create a ValkeyStore instance for testing (doesn't need actual connection)
+	store := &ValkeyStore{
+		tracer: otel.Tracer("test-tracer"),
+	}
+
+	// Create a test span for tracing verification
+	ctx := context.Background()
+	_, span := store.tracer.Start(ctx, "test-span")
+	defer span.End()
+
+	t.Run("handles nil error correctly", func(t *testing.T) {
+		handled, err := store.handleValkeyNilError(nil, span, "test_message")
+
+		// Should not be handled for nil errors
+		assert.False(t, handled, "Should not handle nil errors")
+		assert.NoError(t, err, "Should return no error for nil input")
+	})
+
+	t.Run("handles regular errors correctly", func(t *testing.T) {
+		regularErr := fmt.Errorf("connection timeout")
+
+		handled, err := store.handleValkeyNilError(regularErr, span, "test_message")
+
+		// Should be handled and return the original error
+		assert.True(t, handled, "Should handle regular errors")
+		assert.Equal(t, regularErr, err, "Should return the original error")
+	})
+
+	t.Run("records error for non-nil regular errors", func(t *testing.T) {
+		// Create a fresh span to check error recording
+		_, testSpan := store.tracer.Start(ctx, "error-recording-test-span")
+		defer testSpan.End()
+
+		testError := fmt.Errorf("test connection error")
+
+		handled, err := store.handleValkeyNilError(testError, testSpan, "test_message")
+
+		assert.True(t, handled)
+		assert.Equal(t, testError, err)
+		// Note: In a real test environment, you might want to verify that
+		// span.RecordError was called with the correct error
+	})
+
+	// Note: Testing actual Valkey nil errors requires integration tests with real Valkey instance
+	// because valkey.IsValkeyNil checks for specific internal error types from the valkey client
+}
+
 // Integration tests using testcontainers - these require Docker
 func TestValkeyStore_IntegrationBasicOperations(t *testing.T) {
 	if testing.Short() {
@@ -401,6 +449,29 @@ func TestValkeyStore_IntegrationBasicOperations(t *testing.T) {
 		// Check the values are correct
 		assert.Equal(t, "test", retrieved["name"])
 		assert.Equal(t, float64(42), retrieved["value"]) // JSON numbers unmarshal as float64
+	})
+
+	t.Run("handleValkeyNilError integration - real nil errors", func(t *testing.T) {
+		// Test that our helper function properly handles real Valkey nil errors
+		nonExistentKey := "integration-definitely-does-not-exist-key"
+
+		// Try to get a non-existent key - this should trigger the helper function
+		_, err := store.Get(ctx, nonExistentKey)
+
+		// Should return our custom ErrKeyNotFound
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrKeyNotFound, "Get should return ErrKeyNotFound via handleValkeyNilError")
+
+		// Test with Exists method as well
+		exists, err := store.Exists(ctx, nonExistentKey)
+		assert.NoError(t, err) // Exists should not error for non-existent keys
+		assert.False(t, exists, "Key should not exist")
+
+		// Test that the helper function correctly distinguishes between nil and other errors
+		// by ensuring that when a key doesn't exist, we get ErrKeyNotFound specifically
+		anotherNonExistentKey := fmt.Sprintf("test-key-that-definitely-does-not-exist-%d", time.Now().UnixNano())
+		_, err = store.Get(ctx, anotherNonExistentKey)
+		assert.ErrorIs(t, err, ErrKeyNotFound, "Multiple calls should consistently return ErrKeyNotFound")
 	})
 }
 

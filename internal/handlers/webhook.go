@@ -58,15 +58,7 @@ func (h *WebhookHandler) getSecurityCheckTypes(ctx context.Context, owner, repo,
 				return h.checkService.StartLicenseCheck(ctx, owner, repo, checkRunID)
 			},
 			store: func(checkRunID int64) {
-				if err := h.stateService.StoreLicenseCheckRunID(ctx, owner, repo, sha, checkRunID); err != nil {
-					h.logger.ErrorContext(ctx, "Failed to store license check run",
-						"error", err,
-						"owner", owner,
-						"repo", repo,
-						"sha", sha,
-						"check_run_id", checkRunID,
-					)
-				}
+				h.storeCheckRunID(ctx, owner, repo, sha, checkRunID, "license", h.stateService.StoreLicenseCheckRunID)
 			},
 		},
 	}
@@ -111,6 +103,36 @@ func (h *WebhookHandler) createSecurityCheckRuns(ctx context.Context, checkTypes
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// storeCheckRunID is a helper method that handles storing check run IDs with consistent error logging
+func (h *WebhookHandler) storeCheckRunID(ctx context.Context, owner, repo, sha string, checkRunID int64, checkType string, storeFunc func(context.Context, string, string, string, int64) error) {
+	if err := storeFunc(ctx, owner, repo, sha, checkRunID); err != nil {
+		h.logger.ErrorContext(ctx, "Failed to store check run ID",
+			"error", err,
+			"check_type", checkType,
+			"owner", owner,
+			"repo", repo,
+			"sha", sha,
+			"check_run_id", checkRunID,
+		)
+	}
+}
+
+// storeCheckRunIDWithError is a helper method that handles storing check run IDs with consistent error logging and returns the error
+func (h *WebhookHandler) storeCheckRunIDWithError(ctx context.Context, owner, repo, sha string, checkRunID int64, checkType string, storeFunc func(context.Context, string, string, string, int64) error) error {
+	if err := storeFunc(ctx, owner, repo, sha, checkRunID); err != nil {
+		h.logger.ErrorContext(ctx, "Failed to store check run ID",
+			"error", err,
+			"check_type", checkType,
+			"owner", owner,
+			"repo", repo,
+			"sha", sha,
+			"check_run_id", checkRunID,
+		)
+		return err
 	}
 	return nil
 }
@@ -344,13 +366,7 @@ func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.C
 			"sha", sha,
 		)
 		// Store the check run ID for this SHA
-		err := h.stateService.StoreVulnerabilityCheckRunID(ctx, owner, repo, sha, checkRunID)
-		if err != nil {
-			h.logger.ErrorContext(ctx, "Failed to store vulnerability check run ID",
-				"error", err,
-				"sha", sha,
-				"check_run_id", checkRunID,
-			)
+		if err := h.storeCheckRunIDWithError(ctx, owner, repo, sha, checkRunID, "vulnerability", h.stateService.StoreVulnerabilityCheckRunID); err != nil {
 			return err
 		}
 
@@ -363,13 +379,7 @@ func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.C
 			"sha", sha,
 		)
 		// Store the check run ID for this SHA
-		err := h.stateService.StoreLicenseCheckRunID(ctx, owner, repo, sha, checkRunID)
-		if err != nil {
-			h.logger.ErrorContext(ctx, "Failed to store license check run ID",
-				"error", err,
-				"sha", sha,
-				"check_run_id", checkRunID,
-			)
+		if err := h.storeCheckRunIDWithError(ctx, owner, repo, sha, checkRunID, "license", h.stateService.StoreLicenseCheckRunID); err != nil {
 			return err
 		}
 

@@ -101,6 +101,19 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 	return store, nil
 }
 
+// handleValkeyNilError is a helper function to handle Valkey nil errors consistently
+func (v *ValkeyStore) handleValkeyNilError(err error, span trace.Span, logMessage string) (handled bool, resultErr error) {
+	if valkey.IsValkeyNil(err) {
+		span.SetAttributes(attribute.String("valkey.result", logMessage))
+		return true, ErrKeyNotFound
+	}
+	if err != nil {
+		span.RecordError(err)
+		return true, err
+	}
+	return false, nil
+}
+
 // compress compresses data using zlib if compression is enabled
 func (v *ValkeyStore) compress(ctx context.Context, data []byte) ([]byte, error) {
 	ctx, span := v.tracer.Start(ctx, "valkey.compress",
@@ -232,12 +245,9 @@ func (v *ValkeyStore) Get(ctx context.Context, key string) (interface{}, error) 
 
 	result := v.client.Do(ctx, v.client.B().Get().Key(key).Build())
 	if result.Error() != nil {
-		if valkey.IsValkeyNil(result.Error()) {
-			span.SetAttributes(attribute.String("valkey.result", "key_not_found"))
-			return nil, ErrKeyNotFound
+		if handled, err := v.handleValkeyNilError(result.Error(), span, "key_not_found"); handled {
+			return nil, err
 		}
-		span.RecordError(result.Error())
-		return nil, result.Error()
 	}
 
 	data, err := result.ToString()
