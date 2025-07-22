@@ -21,6 +21,13 @@ POLLY_GITHUB_INSTALLATION_ID=your_installation_id
 POLLY_GITHUB_PRIVATE_KEY_PATH=/path/to/private-key.pem
 POLLY_OPA_SERVER_URL=http://localhost:8181
 
+# Storage Configuration (optional)
+POLLY_STORAGE_TYPE=memory          # Options: memory, valkey (default: memory)
+POLLY_VALKEY_ADDRESS=localhost:6379
+POLLY_VALKEY_USERNAME=
+POLLY_VALKEY_PASSWORD=
+POLLY_VALKEY_DB=0
+
 # OpenTelemetry Configuration (optional)
 POLLY_OTLP_ENABLED=true
 POLLY_OTLP_ENDPOINT=localhost:4317
@@ -43,12 +50,46 @@ GitHub Webhook → Policy Validation → Check Run Result
 - **Handlers** (`internal/handlers/`) - HTTP endpoints for webhooks
 - **Services** (`internal/services/`) - Business logic and orchestration
 - **Clients** (`internal/clients/`) - GitHub and OPA API integration
+- **Storage** (`internal/storage/`) - Configurable storage abstraction (memory/Valkey)
 - **Config** (`internal/config/`) - Environment-based configuration
 
 ### Policy Integration
 Polly evaluates OPA policies at `/v1/data/{bundle}/{rule}` with webhook payloads as input. Policy results determine GitHub check run status (success/failure).
 
 See [`opa/opa.md`](tools/opa/opa.md) for policy details and examples.
+
+## Storage
+
+Polly uses a flexible storage abstraction to maintain PR context and check run state across GitHub webhook events. The storage layer supports multiple backends:
+
+### Memory Storage (Default)
+- **Use Case**: Local development and testing
+- **Features**: Fast, no external dependencies
+- **Limitations**: Data lost on restart, single instance only
+
+### Valkey Storage
+- **Use Case**: Production deployments
+- **Features**: Persistent, supports multiple instances, automatic expiration
+- **Requirements**: Valkey/Redis server
+
+```bash
+# Use memory storage (default)
+POLLY_STORAGE_TYPE=memory
+
+# Use Valkey storage
+POLLY_STORAGE_TYPE=valkey
+POLLY_VALKEY_ADDRESS=localhost:6379
+POLLY_VALKEY_USERNAME=your_username
+POLLY_VALKEY_PASSWORD=your_password
+POLLY_VALKEY_DB=0
+```
+
+The storage layer manages:
+- **PR Context**: SHA → PR number mappings for connecting workflow events to pull requests
+- **Check Run State**: Vulnerability and license check run IDs for proper GitHub integration
+- **Workflow State**: Workflow run IDs for handling re-runs and concurrent processing
+
+See [`docs/STORAGE.md`](docs/STORAGE.md) for detailed storage architecture and configuration options.
 
 ## Development
 
@@ -83,7 +124,8 @@ polly/
 │   ├── config/           # Configuration and logger
 │   ├── handlers/         # HTTP handlers (webhook, health)
 │   ├── otel/             # OpenTelemetry integration
-│   └── services/         # Core business logic (checks, policy, security)
+│   ├── services/         # Core business logic (checks, policy, security, state)
+│   └── storage/          # Storage abstraction layer (memory, Valkey)
 ├── pkg/                  # Public Go packages (if any)
 ├── tools/                # Development tools, local infrastructure configs, and OPA policies
 │   ├── docker-compose.yml
@@ -107,7 +149,15 @@ polly/
 - **[CI Pipeline](docs/CI-PIPELINE.md)** - Continuous integration configuration
 
 ## TODOs and Future Work
-- [ ] Implement ValKey for persistent PR context storage
+- [x] Implement ValKey for persistent PR context storage
+    - [x] Add otel to ValKey
+    - [x] Add tests for ValKey integration
+    - [x] Add support for ValKey sentinel
+    - [x] Add Valkey compression for performance
+- [ ] Improve security and credential handling
+    - [ ] Implement configuration sanitization for safe logging
+    - [ ] Audit and fix credential exposure in logs and error messages
+    - [ ] Add security tests to prevent credential leaks
 - [ ] Improve Observability with Prometheus metrics
 - [ ] Add integration tests
 - [ ] Implement event queuing for better event handling

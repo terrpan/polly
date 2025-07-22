@@ -68,11 +68,39 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - Concurrent artifact processing
   - Ecosystem detection for vulnerability context
 
-#### 6. External Clients (`internal/clients/`)
+#### 6. State Service (`internal/services/state.go`)
+- **Purpose**: Multi-repository PR context and check run state management
+- **Responsibilities**:
+  - Store and retrieve PR numbers by repository context (owner/repo/SHA)
+  - Manage vulnerability and license check run IDs with repository isolation
+  - Provide comprehensive state access via StateMap
+  - Ensure repository-level state isolation for webhook environments
+  - Handle workflow run ID tracking for re-runs
+  - Provide thread-safe access to state data
+- **Key Features**:
+  - Generic state management with type safety
+  - Storage abstraction supporting memory and Valkey backends
+  - Automatic key formatting and validation
+  - Concurrent access support
+
+#### 7. Storage Layer (`internal/storage/`)
+- **Purpose**: Configurable storage abstraction for state persistence
+- **Components**:
+  - **Interface** (`interface.go`): Common storage contract with context support
+  - **Memory Store** (`memory.go`): In-memory implementation for development
+  - **Valkey Store** (`valkey.go`): Distributed storage for production
+  - **Factory** (`factory.go`): Configuration-driven store creation
+- **Key Features**:
+  - Pluggable backends via interface abstraction
+  - Automatic expiration support
+  - JSON serialization for complex data types
+  - Thread-safe operations with context cancellation
+
+#### 8. External Clients (`internal/clients/`)
 - **GitHub Client** (`github.go`): GitHub API integration with app authentication
 - **OPA Client** (`opa.go`): OPA server communication with generic policy evaluation
 
-#### 7. Configuration (`internal/config/config.go`)
+#### 9. Configuration (`internal/config/config.go`)
 - **Purpose**: Environment-based configuration with validation
 - **Features**:
   - Automatic environment variable binding using reflection
@@ -98,11 +126,17 @@ GitHub PR opened/reopened
     ↓
 handlers.WebhookHandler.handlePullRequestEvent()
     ↓
+services.StateService.StorePRNumber(owner, repo, sha, prNumber) - Store SHA → PR number mapping
+    ↓
 Create Vulnerability + License Check Runs (Concurrent)
+    ↓
+services.StateService.StoreVulnCheckRunID(owner, repo, sha, ID) + StoreLicenseCheckRunID(owner, repo, sha, ID)
     ↓
 GitHub Workflow completed
     ↓
 handlers.WebhookHandler.handleWorkflowCompleted()
+    ↓
+services.StateService.GetPRNumber(owner, repo, sha) - Retrieve PR context by repository
     ↓
 services.SecurityService.ProcessWorkflowSecurityArtifacts()
     ↓
@@ -121,9 +155,13 @@ GitHub check run re-requested
     ↓
 handlers.WebhookHandler.handleCheckRunEvent()
     ↓
+services.StateService.GetPRNumber(owner, repo, sha) - Retrieve PR context
+    ↓
+services.StateService.GetWorkflowRunID(owner, repo, sha) - Find associated workflow
+    ↓
 services.CheckService.StartPolicyCheck()
     ↓
-[Same policy evaluation flow as above]
+Re-process workflow artifacts and complete check run
 ```
 
 ### 3. Generic Event Information Extraction

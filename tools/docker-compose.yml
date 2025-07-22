@@ -9,6 +9,12 @@ services:
   #   command: ["run", "--server", "--addr", "0.0.0.0:8181"]
   #   restart: unless-stopped
 
+  valkey:
+    container_name: valkey_polly
+    image: valkey/valkey:8.1-alpine3.22
+    ports:
+      - 6379:6379
+
   otel-collector:
     container_name: otel-collector_polly
     image: otel/opentelemetry-collector:0.117.0

@@ -1,7 +1,7 @@
 # ADR-005: PR Context Storage for Security Check Runs
 
 ## Status
-Accepted
+Implemented
 
 ## Context
 Polly processes security artifacts from GitHub Actions workflow runs to evaluate vulnerabilities and create check runs on pull requests. However, there's a timing and context challenge:
@@ -61,9 +61,63 @@ type WebhookHandler struct {
 - Read operations (retrieving context) use `RLock()`
 - Immediate unlock pattern for simple operations (no defer needed)
 
-## Future Enhancement: ValKey Integration
+## Implementation Status (2025)
 
-### Rationale for ValKey Migration
+The storage abstraction has been fully implemented with the following components:
+
+### Storage Interface (`internal/storage/interface.go`)
+```go
+type Store interface {
+    Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+    Get(ctx context.Context, key string, dest interface{}) error
+    Delete(ctx context.Context, key string) error
+    Exists(ctx context.Context, key string) (bool, error)
+    Close() error
+}
+```
+
+### StateService (`internal/services/state.go`)
+Replaces the original WebhookHandler maps with a dedicated service:
+```go
+type StateService struct {
+    store storage.Store
+}
+
+// PR context management
+func (s *StateService) StorePRNumber(ctx context.Context, sha string, prNumber int64) error
+func (s *StateService) GetPRNumber(ctx context.Context, sha string) (int64, error)
+
+// Check run state management
+func (s *StateService) StoreVulnCheckRunID(ctx context.Context, sha string, checkRunID int64) error
+func (s *StateService) GetVulnCheckRunID(ctx context.Context, sha string) (int64, error)
+func (s *StateService) StoreLicenseCheckRunID(ctx context.Context, sha string, checkRunID int64) error
+func (s *StateService) GetLicenseCheckRunID(ctx context.Context, sha string) (int64, error)
+
+// Workflow state management
+func (s *StateService) StoreWorkflowRunID(ctx context.Context, sha string, workflowRunID int64) error
+func (s *StateService) GetWorkflowRunID(ctx context.Context, sha string) (int64, error)
+```
+
+### Storage Backends
+- **Memory Store** (`internal/storage/memory.go`): Thread-safe in-memory implementation with expiration
+- **Valkey Store** (`internal/storage/valkey.go`): Production-ready distributed storage with JSON serialization
+- **Factory** (`internal/storage/factory.go`): Configuration-driven store creation
+
+### Configuration Integration
+Environment variable support for flexible storage selection:
+```bash
+POLLY_STORAGE_TYPE=memory          # or "valkey"
+POLLY_VALKEY_ADDRESS=localhost:6379
+POLLY_VALKEY_USERNAME=
+POLLY_VALKEY_PASSWORD=
+POLLY_VALKEY_DB=0
+```
+
+The WebhookHandler has been refactored to use StateService instead of direct map access, providing clean separation of concerns and enabling seamless backend switching.
+
+## Valkey Integration (Implemented)
+
+### Production Storage Features
 - **Persistence**: Survive application restarts and deployments
 - **Scalability**: Support multiple Polly instances
 - **TTL Support**: Automatic cleanup of old PR contexts

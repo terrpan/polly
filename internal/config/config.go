@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/terrpan/polly/internal/clients"
@@ -37,6 +38,9 @@ type Config struct {
 
 	// OTLP configuration for OpenTelemetry
 	OTLP OTLPConfig `mapstructure:"otlp"`
+
+	// Storage configuration
+	Storage StorageConfig `mapstructure:"storage"`
 }
 
 // GitHubAppConfig represents the configuration for a GitHub App
@@ -72,6 +76,31 @@ type OTLPConfig struct {
 	OTLPStdOut         bool `mapstructure:"otlp_stdout"`
 }
 
+// StorageConfig represents the configuration for storage
+type StorageConfig struct {
+	// Type of storage (e.g., "memory", "valkey")
+	Type string `mapstructure:"type"`
+	// Valkey-specific configuration
+	Valkey               ValkeyConfig `mapstructure:"valkey"`
+	DefaultKeyExpiration string       `mapstructure:"default_key_expiration"` // Expiration for keys
+}
+
+// ValkeyConfig holds the configuration for connecting to Valkey
+type ValkeyConfig struct {
+	Address  string `mapstructure:"address"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+	// Sentinel configuration
+	EnableSentinel    bool     `mapstructure:"enable_sentinel"`
+	SentinelAddrs     []string `mapstructure:"sentinel_addrs"`
+	SentinelMaster    string   `mapstructure:"sentinel_master"`
+	SentinelUsername  string   `mapstructure:"sentinel_username"`
+	SentinelPassword  string   `mapstructure:"sentinel_password"`
+	EnableCompression bool     `mapstructure:"enable_compression"`
+	EnableOTel        bool     `mapstructure:"enable_otel"`
+}
+
 var (
 	Version   = "v0.0.1"  // Default version, can be overridden by build flags
 	Commit    = "unknown" // Default commit hash, can be overridden by build flags
@@ -99,6 +128,23 @@ var (
 		OTLP: OTLPConfig{
 			EnableOTLP: true,
 			OTLPStdOut: false,
+		},
+		Storage: StorageConfig{
+			Type:                 "memory", // Default to in-memory storage
+			DefaultKeyExpiration: "24h",    // Expiration for keys
+			Valkey: ValkeyConfig{
+				Address:           "localhost:6379",
+				Username:          "",
+				Password:          "",
+				DB:                0,
+				EnableSentinel:    false,
+				SentinelAddrs:     []string{},
+				SentinelMaster:    "",
+				SentinelUsername:  "",
+				SentinelPassword:  "",
+				EnableCompression: true,
+				EnableOTel:        true,
+			},
 		},
 	}
 )
@@ -265,4 +311,18 @@ func bindStructEnvVars(structType reflect.Type, keyPrefix, envPrefix string) {
 			_ = viper.BindEnv(viperKey, envKey)
 		}
 	}
+}
+
+// getDefaultExpiration returns the default expiration duration for keys
+func GetDefaultExpiration() time.Duration {
+	if AppConfig == nil || AppConfig.Storage.DefaultKeyExpiration == "" {
+		return 24 * time.Hour // Default to 24 hours if not set
+	}
+
+	duration, err := time.ParseDuration(AppConfig.Storage.DefaultKeyExpiration)
+	if err != nil {
+		return 24 * time.Hour // Fallback to 24 hours on error
+	}
+	return duration
+
 }

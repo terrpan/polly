@@ -9,11 +9,16 @@ import (
 	"github.com/terrpan/polly/internal/config"
 	"github.com/terrpan/polly/internal/handlers"
 	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/storage"
 )
 
 // Container holds all application dependencies
 type Container struct {
 	Logger *slog.Logger
+
+	// Storage
+	Store        storage.Store
+	StateService *services.StateService
 
 	// Clients
 	GitHubClient *clients.GitHubClient
@@ -38,8 +43,14 @@ func NewContainer(ctx context.Context) (*Container, error) {
 	c.Logger = config.NewLogger()
 	c.Logger.Info("Initializing application container")
 
-	// Initialize clients
 	var err error
+	c.Logger.Info("Initializing storage", "type", config.AppConfig.Storage.Type)
+	c.Store, err = storage.NewStore(config.AppConfig.Storage)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize storage: %w", err)
+	}
+
+	// Initialize clients
 	if config.IsGitHubAppConfigured() {
 		c.Logger.Info("Using GitHub App authentication")
 		githubConfig, err := config.LoadGitHubAppConfig()
@@ -72,10 +83,11 @@ func NewContainer(ctx context.Context) (*Container, error) {
 
 	// Initialize services
 	c.CommentService = services.NewCommentService(c.GitHubClient, c.Logger)
-	c.HealthService = services.NewHealthService(c.Logger, c.OpaClient)
+	c.HealthService = services.NewHealthService(c.Logger, c.OpaClient, c.Store)
 	c.CheckService = services.NewCheckService(c.GitHubClient, c.Logger)
 	c.PolicyService = services.NewPolicyService(c.OpaClient, c.Logger)
 	c.SecurityService = services.NewSecurityService(c.GitHubClient, c.Logger)
+	c.StateService = services.NewStateService(c.Store, c.Logger)
 	c.Logger.Info("Services initialized",
 		"comment_service", c.CommentService,
 		"health_service", c.HealthService,
@@ -91,6 +103,7 @@ func NewContainer(ctx context.Context) (*Container, error) {
 		c.CheckService,
 		c.PolicyService,
 		c.SecurityService,
+		c.StateService,
 	)
 	if err != nil {
 		c.Logger.Error("Failed to create webhook handler", "error", err)
