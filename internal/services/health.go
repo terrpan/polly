@@ -8,11 +8,12 @@ import (
 	"runtime"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/config"
 	"github.com/terrpan/polly/internal/storage"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 type HealthService struct {
@@ -42,7 +43,11 @@ type DependencyCheck struct {
 }
 
 // NewHealthService initializes a new HealthService with the provided logger.
-func NewHealthService(logger *slog.Logger, opaClient *clients.OPAClient, store storage.Store) *HealthService {
+func NewHealthService(
+	logger *slog.Logger,
+	opaClient *clients.OPAClient,
+	store storage.Store,
+) *HealthService {
 	return &HealthService{
 		logger:    logger,
 		opaClient: opaClient,
@@ -200,7 +205,6 @@ func (s *HealthService) checkOPAHealth(ctx context.Context) DependencyCheck {
 			Timestamp: time.Now().UTC(),
 		}
 	}
-
 }
 
 // getOverallStatus aggregates the health status of all dependencies.

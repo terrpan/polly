@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/terrpan/polly/internal/clients"
 )
 

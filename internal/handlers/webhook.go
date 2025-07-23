@@ -9,10 +9,11 @@ import (
 
 	"github.com/go-playground/webhooks/v6/github"
 	gogithub "github.com/google/go-github/v72/github"
-	"github.com/terrpan/polly/internal/services"
-	"github.com/terrpan/polly/internal/utils"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/utils"
 )
 
 // WebhookHandler handles incoming GitHub webhooks.
@@ -35,7 +36,10 @@ type SecurityCheckType struct {
 }
 
 // getSecurityCheckTypes returns the configured security check types for the given context
-func (h *WebhookHandler) getSecurityCheckTypes(ctx context.Context, owner, repo, sha string) []SecurityCheckType {
+func (h *WebhookHandler) getSecurityCheckTypes(
+	ctx context.Context,
+	owner, repo, sha string,
+) []SecurityCheckType {
 	return []SecurityCheckType{
 		{
 			name: "vulnerability",
@@ -46,7 +50,15 @@ func (h *WebhookHandler) getSecurityCheckTypes(ctx context.Context, owner, repo,
 				return h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRunID)
 			},
 			store: func(checkRunID int64) {
-				h.storeCheckRunID(ctx, owner, repo, sha, checkRunID, "vulnerability", h.stateService.StoreVulnerabilityCheckRunID)
+				h.storeCheckRunID(
+					ctx,
+					owner,
+					repo,
+					sha,
+					checkRunID,
+					"vulnerability",
+					h.stateService.StoreVulnerabilityCheckRunID,
+				)
 			},
 		},
 		{
@@ -58,14 +70,27 @@ func (h *WebhookHandler) getSecurityCheckTypes(ctx context.Context, owner, repo,
 				return h.checkService.StartLicenseCheck(ctx, owner, repo, checkRunID)
 			},
 			store: func(checkRunID int64) {
-				h.storeCheckRunID(ctx, owner, repo, sha, checkRunID, "license", h.stateService.StoreLicenseCheckRunID)
+				h.storeCheckRunID(
+					ctx,
+					owner,
+					repo,
+					sha,
+					checkRunID,
+					"license",
+					h.stateService.StoreLicenseCheckRunID,
+				)
 			},
 		},
 	}
 }
 
 // createSecurityCheckRuns creates and starts security check runs concurrently
-func (h *WebhookHandler) createSecurityCheckRuns(ctx context.Context, checkTypes []SecurityCheckType, owner, repo, sha string, prNumber int64) error {
+func (h *WebhookHandler) createSecurityCheckRuns(
+	ctx context.Context,
+	checkTypes []SecurityCheckType,
+	owner, repo, sha string,
+	prNumber int64,
+) error {
 	tasks := make([]func() error, len(checkTypes))
 	for i, ct := range checkTypes {
 		ct := ct
@@ -108,7 +133,13 @@ func (h *WebhookHandler) createSecurityCheckRuns(ctx context.Context, checkTypes
 }
 
 // storeCheckRunID is a helper method that handles storing check run IDs with consistent error logging
-func (h *WebhookHandler) storeCheckRunID(ctx context.Context, owner, repo, sha string, checkRunID int64, checkType string, storeFunc func(context.Context, string, string, string, int64) error) {
+func (h *WebhookHandler) storeCheckRunID(
+	ctx context.Context,
+	owner, repo, sha string,
+	checkRunID int64,
+	checkType string,
+	storeFunc func(context.Context, string, string, string, int64) error,
+) {
 	if err := storeFunc(ctx, owner, repo, sha, checkRunID); err != nil {
 		h.logger.ErrorContext(ctx, "Failed to store check run ID",
 			"error", err,
@@ -122,7 +153,13 @@ func (h *WebhookHandler) storeCheckRunID(ctx context.Context, owner, repo, sha s
 }
 
 // storeCheckRunIDWithError is a helper method that handles storing check run IDs with consistent error logging and returns the error
-func (h *WebhookHandler) storeCheckRunIDWithError(ctx context.Context, owner, repo, sha string, checkRunID int64, checkType string, storeFunc func(context.Context, string, string, string, int64) error) error {
+func (h *WebhookHandler) storeCheckRunIDWithError(
+	ctx context.Context,
+	owner, repo, sha string,
+	checkRunID int64,
+	checkType string,
+	storeFunc func(context.Context, string, string, string, int64) error,
+) error {
 	if err := storeFunc(ctx, owner, repo, sha, checkRunID); err != nil {
 		h.logger.ErrorContext(ctx, "Failed to store check run ID",
 			"error", err,
@@ -232,7 +269,10 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePullRequestEvent processes pull request events.
-func (h *WebhookHandler) handlePullRequestEvent(ctx context.Context, event github.PullRequestPayload) error {
+func (h *WebhookHandler) handlePullRequestEvent(
+	ctx context.Context,
+	event github.PullRequestPayload,
+) error {
 	tracer := otel.Tracer("polly/handlers")
 	ctx, span := tracer.Start(ctx, "webhook.handle_pull_request")
 	defer span.End()
@@ -294,7 +334,10 @@ func (h *WebhookHandler) handlePullRequestEvent(ctx context.Context, event githu
 
 // handleCheckRunEvent processes check run events.
 // Used for handling rerequested check runs.
-func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.CheckRunPayload) error {
+func (h *WebhookHandler) handleCheckRunEvent(
+	ctx context.Context,
+	event github.CheckRunPayload,
+) error {
 	tracer := otel.Tracer("polly/handlers")
 	ctx, span := tracer.Start(ctx, "webhook.handle_check_run")
 	defer span.End()
@@ -397,7 +440,10 @@ func (h *WebhookHandler) handleCheckRunEvent(ctx context.Context, event github.C
 
 // handleWorkflowRunEvent processes workflow run events.
 // This is a placeholder for future functionality, currently it does nothing.
-func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event github.WorkflowRunPayload) error {
+func (h *WebhookHandler) handleWorkflowRunEvent(
+	ctx context.Context,
+	event github.WorkflowRunPayload,
+) error {
 	tracer := otel.Tracer("polly/handlers")
 	ctx, span := tracer.Start(ctx, "webhook.handle_workflow_run")
 	defer span.End()
@@ -443,7 +489,12 @@ func (h *WebhookHandler) handleWorkflowRunEvent(ctx context.Context, event githu
 }
 
 // handleWorkflowStarted creates pending security checks when a workflow starts
-func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github.WorkflowRunPayload, owner, repo, sha string, workflowRunID int64) error {
+func (h *WebhookHandler) handleWorkflowStarted(
+	ctx context.Context,
+	event github.WorkflowRunPayload,
+	owner, repo, sha string,
+	workflowRunID int64,
+) error {
 	h.logger.InfoContext(ctx, "Workflow started - creating pending security checks",
 		"owner", owner,
 		"repo", repo,
@@ -478,11 +529,19 @@ func (h *WebhookHandler) handleWorkflowStarted(ctx context.Context, event github
 }
 
 // handleWorkflowCompleted processes security artifacts when a workflow completes
-func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event github.WorkflowRunPayload, owner, repo, sha string, workflowRunID int64) error {
+func (h *WebhookHandler) handleWorkflowCompleted(
+	ctx context.Context,
+	event github.WorkflowRunPayload,
+	owner, repo, sha string,
+	workflowRunID int64,
+) error {
 	// Only process successful workflows
 	if event.WorkflowRun.Conclusion != "success" {
-		h.logger.DebugContext(ctx, "Handling workflow run event with non-success conclusion as a failed workflow",
-			"conclusion", event.WorkflowRun.Conclusion,
+		h.logger.DebugContext(
+			ctx,
+			"Handling workflow run event with non-success conclusion as a failed workflow",
+			"conclusion",
+			event.WorkflowRun.Conclusion,
 		)
 
 		// If workflow failed, we should complete any pending security checks as "neutral"
@@ -518,7 +577,13 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 	)
 
 	// Process security artifacts
-	vulnPayloads, sbomPayloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(ctx, owner, repo, sha, workflowRunID)
+	vulnPayloads, sbomPayloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(
+		ctx,
+		owner,
+		repo,
+		sha,
+		workflowRunID,
+	)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to process workflow security artifacts",
 			"error", err,
@@ -585,11 +650,24 @@ func (h *WebhookHandler) handleWorkflowCompleted(ctx context.Context, event gith
 	}
 
 	// Process and evaluate security payloads
-	return h.processSecurityPayloads(ctx, vulnPayloads, sbomPayloads, owner, repo, sha, prNumber, vulnCheckRunID, licenseCheckRunID)
+	return h.processSecurityPayloads(
+		ctx,
+		vulnPayloads,
+		sbomPayloads,
+		owner,
+		repo,
+		sha,
+		prNumber,
+		vulnCheckRunID,
+		licenseCheckRunID,
+	)
 }
 
 // completeVulnerabilityCheckAsNeutral completes vulnerability checks as neutral when no artifacts are found
-func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(ctx context.Context, owner, repo, sha string) error {
+func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(
+	ctx context.Context,
+	owner, repo, sha string,
+) error {
 	checkRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to find security check run",
@@ -607,7 +685,10 @@ func (h *WebhookHandler) completeVulnerabilityCheckAsNeutral(ctx context.Context
 }
 
 // completeSecurityChecksAsNeutral completes both vulnerability and license checks as neutral when no artifacts are found
-func (h *WebhookHandler) completeSecurityChecksAsNeutral(ctx context.Context, owner, repo, sha string) error {
+func (h *WebhookHandler) completeSecurityChecksAsNeutral(
+	ctx context.Context,
+	owner, repo, sha string,
+) error {
 	// Define completion functions
 	completionFuncs := []func() error{
 		func() error { return h.completeVulnerabilityCheckAsNeutral(ctx, owner, repo, sha) },
@@ -620,7 +701,12 @@ func (h *WebhookHandler) completeSecurityChecksAsNeutral(ctx context.Context, ow
 		fn := fn
 		tasks[i] = func() error {
 			if err := fn(); err != nil {
-				h.logger.ErrorContext(ctx, "Failed to complete security check as neutral", "error", err)
+				h.logger.ErrorContext(
+					ctx,
+					"Failed to complete security check as neutral",
+					"error",
+					err,
+				)
 			}
 			return nil
 		}
@@ -630,7 +716,10 @@ func (h *WebhookHandler) completeSecurityChecksAsNeutral(ctx context.Context, ow
 }
 
 // completeLicenseCheckAsNeutral completes license checks as neutral when no artifacts are found
-func (h *WebhookHandler) completeLicenseCheckAsNeutral(ctx context.Context, owner, repo, sha string) error {
+func (h *WebhookHandler) completeLicenseCheckAsNeutral(
+	ctx context.Context,
+	owner, repo, sha string,
+) error {
 	checkRunID, err := h.findLicenseCheckRun(ctx, owner, repo, sha)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to find license check run",
@@ -648,7 +737,10 @@ func (h *WebhookHandler) completeLicenseCheckAsNeutral(ctx context.Context, owne
 }
 
 // findVulnerabilityCheckRun finds an existing vulnerability check run for the given SHA
-func (h *WebhookHandler) findVulnerabilityCheckRun(ctx context.Context, owner, repo, sha string) (int64, error) {
+func (h *WebhookHandler) findVulnerabilityCheckRun(
+	ctx context.Context,
+	owner, repo, sha string,
+) (int64, error) {
 	checkRunID, exists, err := h.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to get vulnerability check run ID",
@@ -674,7 +766,10 @@ func (h *WebhookHandler) findVulnerabilityCheckRun(ctx context.Context, owner, r
 }
 
 // findLicenseCheckRun finds an existing license check run for the given SHA
-func (h *WebhookHandler) findLicenseCheckRun(ctx context.Context, owner, repo, sha string) (int64, error) {
+func (h *WebhookHandler) findLicenseCheckRun(
+	ctx context.Context,
+	owner, repo, sha string,
+) (int64, error) {
 	checkRunID, exists, err := h.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to get license check run ID",
@@ -700,7 +795,11 @@ func (h *WebhookHandler) findLicenseCheckRun(ctx context.Context, owner, repo, s
 }
 
 // restartVulnerabilityCheck restarts a vulnerability check by processing stored artifacts
-func (h *WebhookHandler) restartVulnerabilityCheck(ctx context.Context, owner, repo, sha string, checkRunID int64) error {
+func (h *WebhookHandler) restartVulnerabilityCheck(
+	ctx context.Context,
+	owner, repo, sha string,
+	checkRunID int64,
+) error {
 	// Start the check run in progress state
 	if err := h.checkService.StartVulnerabilityCheck(ctx, owner, repo, checkRunID); err != nil {
 		return fmt.Errorf("failed to start vulnerability check: %w", err)
@@ -720,7 +819,12 @@ func (h *WebhookHandler) restartVulnerabilityCheck(ctx context.Context, owner, r
 		h.logger.DebugContext(ctx, "No stored artifacts found for SHA - completing as neutral",
 			"sha", sha,
 		)
-		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(
+			ctx,
+			owner,
+			repo,
+			checkRunID,
+		)
 	}
 
 	h.logger.InfoContext(ctx, "Processing stored artifacts for vulnerability check rerun",
@@ -730,20 +834,36 @@ func (h *WebhookHandler) restartVulnerabilityCheck(ctx context.Context, owner, r
 	)
 
 	// Process the security artifacts from the stored workflow run
-	vulnPayloads, _, err := h.securityService.ProcessWorkflowSecurityArtifacts(ctx, owner, repo, sha, workflowRunID)
+	vulnPayloads, _, err := h.securityService.ProcessWorkflowSecurityArtifacts(
+		ctx,
+		owner,
+		repo,
+		sha,
+		workflowRunID,
+	)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to process stored security artifacts",
 			"error", err,
 			"workflow_run_id", workflowRunID,
 		)
-		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(
+			ctx,
+			owner,
+			repo,
+			checkRunID,
+		)
 	}
 
 	if len(vulnPayloads) == 0 {
 		h.logger.InfoContext(ctx, "No vulnerability artifacts found in stored workflow run",
 			"workflow_run_id", workflowRunID,
 		)
-		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(ctx, owner, repo, checkRunID)
+		return h.checkService.CompleteVulnerabilityCheckWithNoArtifacts(
+			ctx,
+			owner,
+			repo,
+			checkRunID,
+		)
 	}
 
 	// Get PR number for comments
@@ -768,7 +888,11 @@ func (h *WebhookHandler) restartVulnerabilityCheck(ctx context.Context, owner, r
 }
 
 // restartLicenseCheck restarts a license check by processing stored artifacts
-func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, sha string, checkRunID int64) error {
+func (h *WebhookHandler) restartLicenseCheck(
+	ctx context.Context,
+	owner, repo, sha string,
+	checkRunID int64,
+) error {
 	// Start the check run in progress state
 	if err := h.checkService.StartLicenseCheck(ctx, owner, repo, checkRunID); err != nil {
 		return fmt.Errorf("failed to start license check: %w", err)
@@ -799,7 +923,13 @@ func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, s
 	)
 
 	// Process the security artifacts from the stored workflow run
-	_, sbomPayloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(ctx, owner, repo, sha, workflowRunID)
+	_, sbomPayloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(
+		ctx,
+		owner,
+		repo,
+		sha,
+		workflowRunID,
+	)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "Failed to process stored security artifacts",
 			"error", err,
@@ -837,7 +967,13 @@ func (h *WebhookHandler) restartLicenseCheck(ctx context.Context, owner, repo, s
 }
 
 // processVulnerabilityChecks processes vulnerability payloads, posts comments for violations, and completes the check run.
-func (h *WebhookHandler) processVulnerabilityChecks(ctx context.Context, payloads []*services.VulnerabilityPayload, owner, repo, sha string, prNumber int64, checkRunID int64) error {
+func (h *WebhookHandler) processVulnerabilityChecks(
+	ctx context.Context,
+	payloads []*services.VulnerabilityPayload,
+	owner, repo, sha string,
+	prNumber int64,
+	checkRunID int64,
+) error {
 	allPassed := true
 	var failureDetails []string
 	var allNonCompliantVulns []services.VulnerabilityPolicyVuln
@@ -855,19 +991,31 @@ func (h *WebhookHandler) processVulnerabilityChecks(ctx context.Context, payload
 			h.logger.ErrorContext(ctx, "Failed to evaluate vulnerability policy", "error", err)
 			if payload.Summary.Critical > 0 || payload.Summary.High > 0 {
 				allPassed = false
-				failureDetails = append(failureDetails,
-					fmt.Sprintf("Found %d critical and %d high severity vulnerabilities (policy evaluation failed)",
-						payload.Summary.Critical, payload.Summary.High))
+				failureDetails = append(
+					failureDetails,
+					fmt.Sprintf(
+						"Found %d critical and %d high severity vulnerabilities (policy evaluation failed)",
+						payload.Summary.Critical,
+						payload.Summary.High,
+					),
+				)
 			}
 			continue
 		}
 
 		if !policyResult.Compliant {
 			allPassed = false
-			failureDetails = append(failureDetails,
-				fmt.Sprintf("Vulnerability policy violation: %d non-compliant vulnerabilities out of %d total",
-					policyResult.NonCompliantCount, policyResult.TotalVulnerabilities))
-			allNonCompliantVulns = append(allNonCompliantVulns, policyResult.NonCompliantVulnerabilities...)
+			failureDetails = append(
+				failureDetails,
+				fmt.Sprintf(
+					"Vulnerability policy violation: %d non-compliant vulnerabilities out of %d total",
+					policyResult.NonCompliantCount,
+					policyResult.TotalVulnerabilities,
+				),
+			)
+			allNonCompliantVulns = append(
+				allNonCompliantVulns,
+				policyResult.NonCompliantVulnerabilities...)
 		}
 	}
 
@@ -888,17 +1036,36 @@ func (h *WebhookHandler) processVulnerabilityChecks(ctx context.Context, payload
 	if !allPassed {
 		conclusion = services.ConclusionFailure
 		result = services.CheckRunResult{
-			Title:   "Vulnerability Check - Failed",
-			Summary: fmt.Sprintf("Found vulnerability violations in %d scan results", len(failureDetails)),
-			Text:    fmt.Sprintf("Vulnerability violations found:\n\n%s", strings.Join(failureDetails, "\n")),
+			Title: "Vulnerability Check - Failed",
+			Summary: fmt.Sprintf(
+				"Found vulnerability violations in %d scan results",
+				len(failureDetails),
+			),
+			Text: fmt.Sprintf(
+				"Vulnerability violations found:\n\n%s",
+				strings.Join(failureDetails, "\n"),
+			),
 		}
 	}
 
-	return h.checkService.CompleteVulnerabilityCheck(ctx, owner, repo, checkRunID, conclusion, result)
+	return h.checkService.CompleteVulnerabilityCheck(
+		ctx,
+		owner,
+		repo,
+		checkRunID,
+		conclusion,
+		result,
+	)
 }
 
 // processLicenseChecks processes SBOM payloads, posts comments for violations, and completes the check run.
-func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*services.SBOMPayload, owner, repo, sha string, prNumber int64, checkRunID int64) error {
+func (h *WebhookHandler) processLicenseChecks(
+	ctx context.Context,
+	payloads []*services.SBOMPayload,
+	owner, repo, sha string,
+	prNumber int64,
+	checkRunID int64,
+) error {
 	allPassed := true
 	var failureDetails []string
 	var allNonCompliantComponents []services.SBOMPolicyComponent
@@ -928,12 +1095,19 @@ func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*s
 		if !policyResult.Compliant {
 			allPassed = false
 			failureDetails = append(failureDetails,
-				fmt.Sprintf("SBOM policy violation: %d non-compliant components out of %d total",
-					policyResult.TotalComponents-policyResult.CompliantComponents, policyResult.TotalComponents))
-			allNonCompliantComponents = append(allNonCompliantComponents, policyResult.NonCompliantComponents...)
+				fmt.Sprintf(
+					"SBOM policy violation: %d non-compliant components out of %d total",
+					policyResult.TotalComponents-policyResult.CompliantComponents,
+					policyResult.TotalComponents,
+				))
+			allNonCompliantComponents = append(
+				allNonCompliantComponents,
+				policyResult.NonCompliantComponents...)
 		}
 
-		allConditionalComponents = append(allConditionalComponents, policyResult.ConditionalComponents...)
+		allConditionalComponents = append(
+			allConditionalComponents,
+			policyResult.ConditionalComponents...)
 	}
 
 	// Post a combined comment if there are any violations or conditional licenses
@@ -954,9 +1128,15 @@ func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*s
 	if !allPassed {
 		conclusion = services.ConclusionFailure
 		result = services.CheckRunResult{
-			Title:   "License Check - Failed",
-			Summary: fmt.Sprintf("Found license violations in %d scan results", len(failureDetails)),
-			Text:    fmt.Sprintf("License violations found:\n\n%s", strings.Join(failureDetails, "\n")),
+			Title: "License Check - Failed",
+			Summary: fmt.Sprintf(
+				"Found license violations in %d scan results",
+				len(failureDetails),
+			),
+			Text: fmt.Sprintf(
+				"License violations found:\n\n%s",
+				strings.Join(failureDetails, "\n"),
+			),
 		}
 	}
 
@@ -964,7 +1144,14 @@ func (h *WebhookHandler) processLicenseChecks(ctx context.Context, payloads []*s
 }
 
 // processSecurityPayloads evaluates vulnerability and SBOM payloads separately and completes their respective check runs
-func (h *WebhookHandler) processSecurityPayloads(ctx context.Context, vulnPayloads []*services.VulnerabilityPayload, sbomPayloads []*services.SBOMPayload, owner, repo, sha string, prNumber int64, vulnCheckRunID, licenseCheckRunID int64) error {
+func (h *WebhookHandler) processSecurityPayloads(
+	ctx context.Context,
+	vulnPayloads []*services.VulnerabilityPayload,
+	sbomPayloads []*services.SBOMPayload,
+	owner, repo, sha string,
+	prNumber int64,
+	vulnCheckRunID, licenseCheckRunID int64,
+) error {
 	// Define processing functions
 	type processingFunc struct {
 		name string
@@ -978,7 +1165,15 @@ func (h *WebhookHandler) processSecurityPayloads(ctx context.Context, vulnPayloa
 		processingFuncs = append(processingFuncs, processingFunc{
 			name: "vulnerability",
 			fn: func() error {
-				return h.processVulnerabilityChecks(ctx, vulnPayloads, owner, repo, sha, prNumber, vulnCheckRunID)
+				return h.processVulnerabilityChecks(
+					ctx,
+					vulnPayloads,
+					owner,
+					repo,
+					sha,
+					prNumber,
+					vulnCheckRunID,
+				)
 			},
 		})
 	}
@@ -988,7 +1183,15 @@ func (h *WebhookHandler) processSecurityPayloads(ctx context.Context, vulnPayloa
 		processingFuncs = append(processingFuncs, processingFunc{
 			name: "license",
 			fn: func() error {
-				return h.processLicenseChecks(ctx, sbomPayloads, owner, repo, sha, prNumber, licenseCheckRunID)
+				return h.processLicenseChecks(
+					ctx,
+					sbomPayloads,
+					owner,
+					repo,
+					sha,
+					prNumber,
+					licenseCheckRunID,
+				)
 			},
 		})
 	}
@@ -1005,7 +1208,14 @@ func (h *WebhookHandler) processSecurityPayloads(ctx context.Context, vulnPayloa
 		tasks[i] = func() error {
 			h.logger.DebugContext(ctx, "Processing security payloads", "type", pf.name)
 			if err := pf.fn(); err != nil {
-				h.logger.ErrorContext(ctx, "Error processing security payload", "type", pf.name, "error", err)
+				h.logger.ErrorContext(
+					ctx,
+					"Error processing security payload",
+					"type",
+					pf.name,
+					"error",
+					err,
+				)
 				return err
 			}
 			return nil

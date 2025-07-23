@@ -49,7 +49,6 @@ const (
 
 // NewStateService creates a new StateService.
 func NewStateService(store storage.Store, logger *slog.Logger) *StateService {
-
 	return &StateService{
 		store:      store,
 		logger:     logger,
@@ -59,14 +58,23 @@ func NewStateService(store storage.Store, logger *slog.Logger) *StateService {
 
 // storeInt64 stores an int64 value with the given key type and repository context.
 // in the format "<owner>:<repo>:<keyType>:<sha>". e.g.: "terrpan:polly:pr:abc123def456 -> 42"
-func (s *StateService) storeInt64(ctx context.Context, keyType StateKeyType, repoCtx RepoContext, value int64) error {
+func (s *StateService) storeInt64(
+	ctx context.Context,
+	keyType StateKeyType,
+	repoCtx RepoContext,
+	value int64,
+) error {
 	key := fmt.Sprintf("%s:%s:%s:%s", repoCtx.Owner, repoCtx.Repo, keyType, repoCtx.SHA)
 	return s.store.Set(ctx, key, value, s.expiration)
 }
 
 // getInt64 retrieves an int64 value for the given key type and repository context.
 // It returns the value, a boolean indicating if the key was found, and an error if any.
-func (s *StateService) getInt64(ctx context.Context, keyType StateKeyType, repoCtx RepoContext) (int64, bool, error) {
+func (s *StateService) getInt64(
+	ctx context.Context,
+	keyType StateKeyType,
+	repoCtx RepoContext,
+) (int64, bool, error) {
 	key := fmt.Sprintf("%s:%s:%s:%s", repoCtx.Owner, repoCtx.Repo, keyType, repoCtx.SHA)
 	value, err := s.store.Get(ctx, key)
 	if err != nil {
@@ -92,55 +100,87 @@ func (s *StateService) getInt64(ctx context.Context, keyType StateKeyType, repoC
 }
 
 // deleteState deletes the state for a given key type and repository context.
-func (s *StateService) deleteState(ctx context.Context, keyType StateKeyType, repoCtx RepoContext) error {
+func (s *StateService) deleteState(
+	ctx context.Context,
+	keyType StateKeyType,
+	repoCtx RepoContext,
+) error {
 	key := fmt.Sprintf("%s:%s:%s:%s", repoCtx.Owner, repoCtx.Repo, keyType, repoCtx.SHA)
 	return s.store.Delete(ctx, key)
 }
 
 // StorePRNumber stores the PR number for a given repository context.
-func (s *StateService) StorePRNumber(ctx context.Context, owner, repo, sha string, prNumber int64) error {
+func (s *StateService) StorePRNumber(
+	ctx context.Context,
+	owner, repo, sha string,
+	prNumber int64,
+) error {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.storeInt64(ctx, StateKeyPR, repoCtx, prNumber)
 }
 
 // GetPRNumber retrieves the PR number for a given repository context.
-func (s *StateService) GetPRNumber(ctx context.Context, owner, repo, sha string) (int64, bool, error) {
+func (s *StateService) GetPRNumber(
+	ctx context.Context,
+	owner, repo, sha string,
+) (int64, bool, error) {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.getInt64(ctx, StateKeyPR, repoCtx)
 }
 
 // StoreVulnerabilityCheckRunID stores the vulnerability check run ID for a given repository context.
-func (s *StateService) StoreVulnerabilityCheckRunID(ctx context.Context, owner, repo, sha string, runID int64) error {
+func (s *StateService) StoreVulnerabilityCheckRunID(
+	ctx context.Context,
+	owner, repo, sha string,
+	runID int64,
+) error {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.storeInt64(ctx, StateKeyVulnCheck, repoCtx, runID)
 }
 
 // GetVulnerabilityCheckRunID retrieves the vulnerability check run ID for a given repository context.
-func (s *StateService) GetVulnerabilityCheckRunID(ctx context.Context, owner, repo, sha string) (int64, bool, error) {
+func (s *StateService) GetVulnerabilityCheckRunID(
+	ctx context.Context,
+	owner, repo, sha string,
+) (int64, bool, error) {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.getInt64(ctx, StateKeyVulnCheck, repoCtx)
 }
 
 // StoreLicenseCheckRunID stores the license check run ID for a given repository context.
-func (s *StateService) StoreLicenseCheckRunID(ctx context.Context, owner, repo, sha string, runID int64) error {
+func (s *StateService) StoreLicenseCheckRunID(
+	ctx context.Context,
+	owner, repo, sha string,
+	runID int64,
+) error {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.storeInt64(ctx, StateKeyLicenseCheck, repoCtx, runID)
 }
 
 // GetLicenseCheckRunID retrieves the license check run ID for a given repository context.
-func (s *StateService) GetLicenseCheckRunID(ctx context.Context, owner, repo, sha string) (int64, bool, error) {
+func (s *StateService) GetLicenseCheckRunID(
+	ctx context.Context,
+	owner, repo, sha string,
+) (int64, bool, error) {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.getInt64(ctx, StateKeyLicenseCheck, repoCtx)
 }
 
 // StoreWorkflowRunID stores the workflow run ID for a given repository context.
-func (s *StateService) StoreWorkflowRunID(ctx context.Context, owner, repo, sha string, runID int64) error {
+func (s *StateService) StoreWorkflowRunID(
+	ctx context.Context,
+	owner, repo, sha string,
+	runID int64,
+) error {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.storeInt64(ctx, StateKeyWorkflow, repoCtx, runID)
 }
 
 // GetWorkflowRunID retrieves the workflow run ID for a given repository context.
-func (s *StateService) GetWorkflowRunID(ctx context.Context, owner, repo, sha string) (int64, bool, error) {
+func (s *StateService) GetWorkflowRunID(
+	ctx context.Context,
+	owner, repo, sha string,
+) (int64, bool, error) {
 	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
 	return s.getInt64(ctx, StateKeyWorkflow, repoCtx)
 }
@@ -165,7 +205,10 @@ func (s *StateService) DeletePStates(ctx context.Context, owner, repo, sha strin
 }
 
 // GetAllState retrieves all state information for a given repository context as a map.
-func (s *StateService) GetAllState(ctx context.Context, owner, repo, sha string) (*StateMap, error) {
+func (s *StateService) GetAllState(
+	ctx context.Context,
+	owner, repo, sha string,
+) (*StateMap, error) {
 	stateMap := &StateMap{}
 
 	// Get PR Number

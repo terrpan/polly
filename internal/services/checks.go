@@ -5,9 +5,10 @@ import (
 	"log/slog"
 
 	gogithub "github.com/google/go-github/v72/github"
-	"github.com/terrpan/polly/internal/clients"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/clients"
 )
 
 type CheckService struct {
@@ -55,7 +56,11 @@ func NewCheckService(githubClient *clients.GitHubClient, logger *slog.Logger) *C
 }
 
 // Generic method to create any type of check run
-func (s *CheckService) CreateCheckRun(ctx context.Context, owner, repo, sha string, checkType CheckRunType) (*gogithub.CheckRun, error) {
+func (s *CheckService) CreateCheckRun(
+	ctx context.Context,
+	owner, repo, sha string,
+	checkType CheckRunType,
+) (*gogithub.CheckRun, error) {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "checks.create_check_run")
 	defer span.End()
@@ -93,7 +98,12 @@ func (s *CheckService) CreateCheckRun(ctx context.Context, owner, repo, sha stri
 }
 
 // Generic method to start any type of check run
-func (s *CheckService) StartCheckRun(ctx context.Context, owner, repo string, checkRunID int64, checkType CheckRunType) error {
+func (s *CheckService) StartCheckRun(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+	checkType CheckRunType,
+) error {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "checks.start_check_run")
 	defer span.End()
@@ -124,7 +134,16 @@ func (s *CheckService) StartCheckRun(ctx context.Context, owner, repo string, ch
 		Text:    gogithub.Ptr(text),
 	}
 
-	err := s.githubClient.UpdateCheckRun(ctx, owner, repo, checkRunID, string(checkType), string(StatusInProgress), nil, output)
+	err := s.githubClient.UpdateCheckRun(
+		ctx,
+		owner,
+		repo,
+		checkRunID,
+		string(checkType),
+		string(StatusInProgress),
+		nil,
+		output,
+	)
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		s.logger.ErrorContext(ctx, "Failed to start check run",
@@ -147,7 +166,14 @@ func (s *CheckService) StartCheckRun(ctx context.Context, owner, repo string, ch
 }
 
 // Generic method to complete any type of check run
-func (s *CheckService) CompleteCheckRun(ctx context.Context, owner, repo string, checkRunID int64, checkType CheckRunType, conclusion CheckRunConclusion, result CheckRunResult) error {
+func (s *CheckService) CompleteCheckRun(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+	checkType CheckRunType,
+	conclusion CheckRunConclusion,
+	result CheckRunResult,
+) error {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "checks.complete_check_run")
 	defer span.End()
@@ -172,7 +198,16 @@ func (s *CheckService) CompleteCheckRun(ctx context.Context, owner, repo string,
 		Text:    gogithub.Ptr(result.Text),
 	}
 
-	err := s.githubClient.UpdateCheckRun(ctx, owner, repo, checkRunID, string(checkType), string(StatusCompleted), githubConclusion, output)
+	err := s.githubClient.UpdateCheckRun(
+		ctx,
+		owner,
+		repo,
+		checkRunID,
+		string(checkType),
+		string(StatusCompleted),
+		githubConclusion,
+		output,
+	)
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		s.logger.ErrorContext(ctx, "Failed to complete check run",
@@ -198,44 +233,102 @@ func (s *CheckService) CompleteCheckRun(ctx context.Context, owner, repo string,
 
 // Convenience methods for backward compatibility
 
-func (s *CheckService) CreateVulnerabilityCheck(ctx context.Context, owner, repo, sha string) (*gogithub.CheckRun, error) {
+func (s *CheckService) CreateVulnerabilityCheck(
+	ctx context.Context,
+	owner, repo, sha string,
+) (*gogithub.CheckRun, error) {
 	return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypeVulnerability)
 }
 
-func (s *CheckService) StartVulnerabilityCheck(ctx context.Context, owner, repo string, checkRunID int64) error {
+func (s *CheckService) StartVulnerabilityCheck(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+) error {
 	return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability)
 }
 
-func (s *CheckService) CompleteVulnerabilityCheck(ctx context.Context, owner, repo string, checkRunID int64, conclusion CheckRunConclusion, result CheckRunResult) error {
-	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability, conclusion, result)
+func (s *CheckService) CompleteVulnerabilityCheck(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+	conclusion CheckRunConclusion,
+	result CheckRunResult,
+) error {
+	return s.CompleteCheckRun(
+		ctx,
+		owner,
+		repo,
+		checkRunID,
+		CheckRunTypeVulnerability,
+		conclusion,
+		result,
+	)
 }
 
-func (s *CheckService) CompleteVulnerabilityCheckWithNoArtifacts(ctx context.Context, owner, repo string, checkRunID int64) error {
+func (s *CheckService) CompleteVulnerabilityCheckWithNoArtifacts(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+) error {
 	result := CheckRunResult{
 		Title:   "Vulnerability Scan Check - No Reports Found",
 		Summary: "No vulnerability scan reports were found to analyze",
 		Text:    "The workflow completed successfully but no vulnerability scan reports (Trivy, SARIF, SBOM) were found to analyze. This may indicate that no security scanning tools were configured in the workflow.",
 	}
-	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability, ConclusionNeutral, result)
+	return s.CompleteCheckRun(
+		ctx,
+		owner,
+		repo,
+		checkRunID,
+		CheckRunTypeVulnerability,
+		ConclusionNeutral,
+		result,
+	)
 }
 
-func (s *CheckService) CreateLicenseCheck(ctx context.Context, owner, repo, sha string) (*gogithub.CheckRun, error) {
+func (s *CheckService) CreateLicenseCheck(
+	ctx context.Context,
+	owner, repo, sha string,
+) (*gogithub.CheckRun, error) {
 	return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypeLicense)
 }
 
-func (s *CheckService) StartLicenseCheck(ctx context.Context, owner, repo string, checkRunID int64) error {
+func (s *CheckService) StartLicenseCheck(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+) error {
 	return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense)
 }
 
-func (s *CheckService) CompleteLicenseCheck(ctx context.Context, owner, repo string, checkRunID int64, conclusion CheckRunConclusion, result CheckRunResult) error {
+func (s *CheckService) CompleteLicenseCheck(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+	conclusion CheckRunConclusion,
+	result CheckRunResult,
+) error {
 	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense, conclusion, result)
 }
 
-func (s *CheckService) CompleteLicenseCheckWithNoArtifacts(ctx context.Context, owner, repo string, checkRunID int64) error {
+func (s *CheckService) CompleteLicenseCheckWithNoArtifacts(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+) error {
 	result := CheckRunResult{
 		Title:   "License Check - No Reports Found",
 		Summary: "No license scan reports were found to analyze",
 		Text:    "The workflow completed successfully but no license scan reports (SBOM) were found to analyze. This may indicate that no license scanning tools were configured in the workflow.",
 	}
-	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense, ConclusionNeutral, result)
+	return s.CompleteCheckRun(
+		ctx,
+		owner,
+		repo,
+		checkRunID,
+		CheckRunTypeLicense,
+		ConclusionNeutral,
+		result,
+	)
 }

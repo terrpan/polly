@@ -11,18 +11,73 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/services"
 	"github.com/terrpan/polly/internal/storage"
 	"github.com/terrpan/polly/internal/utils"
 )
 
-// Test helper to create test services for helpers tests
+// createTestServicesForHelpers creates mock services for webhook helper tests
 func createTestServicesForHelpers() (*services.CommentService, *services.CheckService, *services.PolicyService, *services.SecurityService, *services.StateService) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	memStore := storage.NewMemoryStore()
+	opaClient := &clients.OPAClient{}
+	githubClient := &clients.GitHubClient{}
+
+	commentService := services.NewCommentService(githubClient, logger)
+	checkService := services.NewCheckService(githubClient, logger)
+	policyService := services.NewPolicyService(opaClient, logger)
+	securityService := services.NewSecurityService(githubClient, logger)
+	stateService := services.NewStateService(memStore, logger)
+
+	return commentService, checkService, policyService, securityService, stateService
+}
+
+// WebhookHelpersTestSuite provides a test suite for webhook helper tests
+type WebhookHelpersTestSuite struct {
+	suite.Suite
+	ctx             context.Context
+	logger          *slog.Logger
+	handler         *WebhookHandler
+	commentService  *services.CommentService
+	checkService    *services.CheckService
+	policyService   *services.PolicyService
+	securityService *services.SecurityService
+	stateService    *services.StateService
+}
+
+// SetupSuite runs once before all tests in the suite
+func (suite *WebhookHelpersTestSuite) SetupSuite() {
+	suite.ctx = context.Background()
+	suite.logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+}
+
+// SetupTest runs before each test
+func (suite *WebhookHelpersTestSuite) SetupTest() {
+	// Create test services
+	suite.commentService, suite.checkService, suite.policyService, suite.securityService, suite.stateService = suite.createTestServicesForHelpers()
+
+	// Create webhook handler
+	var err error
+	suite.handler, err = NewWebhookHandler(
+		suite.logger,
+		suite.commentService,
+		suite.checkService,
+		suite.policyService,
+		suite.securityService,
+		suite.stateService,
+	)
+	suite.Require().NoError(err)
+}
+
+// createTestServicesForHelpers creates test services for the helpers tests
+func (suite *WebhookHelpersTestSuite) createTestServicesForHelpers() (*services.CommentService, *services.CheckService, *services.PolicyService, *services.SecurityService, *services.StateService) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	// Create test GitHub client (will not make real API calls in tests)
-	githubClient := clients.NewGitHubClient(context.Background())
+	githubClient := clients.NewGitHubClient(suite.ctx)
 
 	// Create test OPA client
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
@@ -103,104 +158,71 @@ func TestExecuteConcurrently(t *testing.T) {
 	})
 }
 
-// Test PR context storage helper functions
-func TestWebhookHandler_PRContextHelpers(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
-	require.NoError(t, err)
-
-	t.Run("store and retrieve PR number", func(t *testing.T) {
-		ctx := context.Background()
+func (suite *WebhookHelpersTestSuite) TestPRContextHelpers() {
+	suite.Run("store and retrieve PR number", func() {
 		owner := "test-owner"
 		repo := "test-repo"
 		sha := "test-sha-123"
 		prNumber := int64(42)
 
 		// Store PR number using StateService
-		err := handler.stateService.StorePRNumber(ctx, owner, repo, sha, prNumber)
-		require.NoError(t, err)
+		err := suite.handler.stateService.StorePRNumber(suite.ctx, owner, repo, sha, prNumber)
+		suite.Require().NoError(err)
 
 		// Retrieve PR number using StateService
-		retrievedPR, exists, err := handler.stateService.GetPRNumber(ctx, owner, repo, sha)
-		require.NoError(t, err)
-		assert.True(t, exists)
-		assert.Equal(t, prNumber, retrievedPR)
+		retrievedPR, exists, err := suite.handler.stateService.GetPRNumber(suite.ctx, owner, repo, sha)
+		suite.Require().NoError(err)
+		suite.Assert().True(exists)
+		suite.Assert().Equal(prNumber, retrievedPR)
 	})
 
-	t.Run("retrieve non-existent PR number", func(t *testing.T) {
-		ctx := context.Background()
+	suite.Run("retrieve non-existent PR number", func() {
 		owner := "test-owner"
 		repo := "test-repo"
 		sha := "non-existent-sha"
 
-		retrievedPR, exists, err := handler.stateService.GetPRNumber(ctx, owner, repo, sha)
-		require.NoError(t, err)
-		assert.False(t, exists)
-		assert.Equal(t, int64(0), retrievedPR)
+		retrievedPR, exists, err := suite.handler.stateService.GetPRNumber(suite.ctx, owner, repo, sha)
+		suite.Require().NoError(err)
+		suite.Assert().False(exists)
+		suite.Assert().Equal(int64(0), retrievedPR)
 	})
 }
 
-// Test getSecurityCheckTypes function
-func TestWebhookHandler_GetSecurityCheckTypes(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
-	require.NoError(t, err)
-
-	ctx := context.Background()
+func (suite *WebhookHelpersTestSuite) TestGetSecurityCheckTypes() {
 	owner := "test-owner"
 	repo := "test-repo"
 	sha := "test-sha"
 
-	checkTypes := handler.getSecurityCheckTypes(ctx, owner, repo, sha)
+	checkTypes := suite.handler.getSecurityCheckTypes(suite.ctx, owner, repo, sha)
 
-	assert.Len(t, checkTypes, 2)
+	suite.Assert().Len(checkTypes, 2)
 
 	// Check vulnerability check type
 	vulnCheck := checkTypes[0]
-	assert.Equal(t, "vulnerability", vulnCheck.name)
-	assert.NotNil(t, vulnCheck.create)
-	assert.NotNil(t, vulnCheck.start)
-	assert.NotNil(t, vulnCheck.store)
+	suite.Assert().Equal("vulnerability", vulnCheck.name)
+	suite.Assert().NotNil(vulnCheck.create)
+	suite.Assert().NotNil(vulnCheck.start)
+	suite.Assert().NotNil(vulnCheck.store)
 
 	// Check license check type
 	licenseCheck := checkTypes[1]
-	assert.Equal(t, "license", licenseCheck.name)
-	assert.NotNil(t, licenseCheck.create)
-	assert.NotNil(t, licenseCheck.start)
-	assert.NotNil(t, licenseCheck.store)
+	suite.Assert().Equal("license", licenseCheck.name)
+	suite.Assert().NotNil(licenseCheck.create)
+	suite.Assert().NotNil(licenseCheck.start)
+	suite.Assert().NotNil(licenseCheck.store)
 }
 
-// Test completeSecurityChecksAsNeutral function
-func TestWebhookHandler_CompleteSecurityChecksAsNeutral(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
-	require.NoError(t, err)
-
-	ctx := context.Background()
+func (suite *WebhookHelpersTestSuite) TestCompleteSecurityChecksAsNeutral() {
 	owner := "test-owner"
 	repo := "test-repo"
 	sha := "test-sha"
 
 	// Test with no stored check runs - should not error
-	err = handler.completeSecurityChecksAsNeutral(ctx, owner, repo, sha)
-	assert.NoError(t, err)
+	err := suite.handler.completeSecurityChecksAsNeutral(suite.ctx, owner, repo, sha)
+	suite.Assert().NoError(err)
 }
 
-// Test processSecurityPayloads with no check runs
-func TestWebhookHandler_ProcessSecurityPayloads_NoCheckRuns(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
-	require.NoError(t, err)
-
-	ctx := context.Background()
+func (suite *WebhookHelpersTestSuite) TestProcessSecurityPayloadsNoCheckRuns() {
 	vulnPayloads := []*services.VulnerabilityPayload{}
 	sbomPayloads := []*services.SBOMPayload{}
 	owner := "test-owner"
@@ -210,81 +232,98 @@ func TestWebhookHandler_ProcessSecurityPayloads_NoCheckRuns(t *testing.T) {
 	vulnCheckRunID := int64(0)    // No vulnerability check run
 	licenseCheckRunID := int64(0) // No license check run
 
-	err = handler.processSecurityPayloads(ctx, vulnPayloads, sbomPayloads, owner, repo, sha, prNumber, vulnCheckRunID, licenseCheckRunID)
-	assert.NoError(t, err)
+	err := suite.handler.processSecurityPayloads(
+		suite.ctx,
+		vulnPayloads,
+		sbomPayloads,
+		owner,
+		repo,
+		sha,
+		prNumber,
+		vulnCheckRunID,
+		licenseCheckRunID,
+	)
+	suite.Assert().NoError(err)
 }
 
-// Test createSecurityCheckRuns helper function
-func TestWebhookHandler_CreateSecurityCheckRuns(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
-	require.NoError(t, err)
-
-	ctx := context.Background()
+func (suite *WebhookHelpersTestSuite) TestCreateSecurityCheckRuns() {
 	owner := "test-owner"
 	repo := "test-repo"
 	sha := "test-sha"
 
 	// Get the security check types to pass to the function
-	checkTypes := handler.getSecurityCheckTypes(ctx, owner, repo, sha)
+	checkTypes := suite.handler.getSecurityCheckTypes(suite.ctx, owner, repo, sha)
 
 	// We verify that the function exists and has the correct signature
 	// We don't actually call it because it would panic due to uninitialized services
-	assert.Len(t, checkTypes, 2) // Should have vulnerability and license check types
-	assert.Equal(t, "vulnerability", checkTypes[0].name)
-	assert.Equal(t, "license", checkTypes[1].name)
+	suite.Assert().Len(checkTypes, 2) // Should have vulnerability and license check types
+	suite.Assert().Equal("vulnerability", checkTypes[0].name)
+	suite.Assert().Equal("license", checkTypes[1].name)
 
 	// Note: We skip calling createSecurityCheckRuns because it would panic
 	// without properly mocked services. This test ensures the function exists.
 }
 
-// Test vulnerability check store helpers
-func TestWebhookHandler_VulnerabilityCheckStoreHelpers(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
-
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
-	require.NoError(t, err)
-
-	t.Run("store and retrieve vulnerability check run ID", func(t *testing.T) {
-		ctx := context.Background()
+func (suite *WebhookHelpersTestSuite) TestVulnerabilityCheckStoreHelpers() {
+	suite.Run("store and retrieve vulnerability check run ID", func() {
 		owner := "test-owner"
 		repo := "test-repo"
 		sha := "test-sha-vuln"
 		checkRunID := int64(999)
 
 		// Store check run ID using StateService
-		err := handler.stateService.StoreVulnerabilityCheckRunID(ctx, owner, repo, sha, checkRunID)
-		require.NoError(t, err)
+		err := suite.handler.stateService.StoreVulnerabilityCheckRunID(suite.ctx, owner, repo, sha, checkRunID)
+		suite.Require().NoError(err)
 
 		// Retrieve check run ID using StateService
-		retrievedID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
-		require.NoError(t, err)
-		assert.True(t, exists)
-		assert.Equal(t, checkRunID, retrievedID)
+		retrievedID, exists, err := suite.handler.stateService.GetVulnerabilityCheckRunID(
+			suite.ctx,
+			owner,
+			repo,
+			sha,
+		)
+		suite.Require().NoError(err)
+		suite.Assert().True(exists)
+		suite.Assert().Equal(checkRunID, retrievedID)
 	})
 
-	t.Run("retrieve non-existent vulnerability check run ID", func(t *testing.T) {
-		ctx := context.Background()
+	suite.Run("retrieve non-existent vulnerability check run ID", func() {
 		owner := "test-owner"
 		repo := "test-repo"
 		sha := "non-existent-vuln-sha"
 
-		retrievedID, exists, err := handler.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
-		require.NoError(t, err)
-		assert.False(t, exists)
-		assert.Equal(t, int64(0), retrievedID)
+		retrievedID, exists, err := suite.handler.stateService.GetVulnerabilityCheckRunID(
+			suite.ctx,
+			owner,
+			repo,
+			sha,
+		)
+		suite.Require().NoError(err)
+		suite.Assert().False(exists)
+		suite.Assert().Equal(int64(0), retrievedID)
 	})
 }
 
-// Test license check store helpers
+// Test license check store helpers (converted to regular test for comparison)
 func TestWebhookHandler_LicenseCheckStore(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
+	githubClient := clients.NewGitHubClient(context.Background())
+	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+	store := storage.NewMemoryStore()
+	stateService := services.NewStateService(store, logger)
+	commentService := services.NewCommentService(githubClient, logger)
+	checkService := services.NewCheckService(githubClient, logger)
+	policyService := services.NewPolicyService(opaClient, logger)
+	securityService := services.NewSecurityService(githubClient, logger)
 
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
+	handler, err := NewWebhookHandler(
+		logger,
+		commentService,
+		checkService,
+		policyService,
+		securityService,
+		stateService,
+	)
 	require.NoError(t, err)
 
 	t.Run("store and retrieve license check run ID", func(t *testing.T) {
@@ -323,7 +362,14 @@ func TestWebhookHandler_CompleteVulnerabilityCheckAsNeutralHelper(t *testing.T) 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
 
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
+	handler, err := NewWebhookHandler(
+		logger,
+		commentService,
+		checkService,
+		policyService,
+		securityService,
+		stateService,
+	)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -341,7 +387,14 @@ func TestWebhookHandler_CompleteLicenseCheckAsNeutral(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
 
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
+	handler, err := NewWebhookHandler(
+		logger,
+		commentService,
+		checkService,
+		policyService,
+		securityService,
+		stateService,
+	)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -359,7 +412,14 @@ func TestWebhookHandler_FindVulnerabilityCheckRun(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
 
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
+	handler, err := NewWebhookHandler(
+		logger,
+		commentService,
+		checkService,
+		policyService,
+		securityService,
+		stateService,
+	)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -380,7 +440,14 @@ func TestWebhookHandler_FindLicenseCheckRun(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
 
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
+	handler, err := NewWebhookHandler(
+		logger,
+		commentService,
+		checkService,
+		policyService,
+		securityService,
+		stateService,
+	)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -401,7 +468,14 @@ func TestWebhookHandler_ProcessSecurityPayloads_EmptyPayloads(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	commentService, checkService, policyService, securityService, stateService := createTestServicesForHelpers()
 
-	handler, err := NewWebhookHandler(logger, commentService, checkService, policyService, securityService, stateService)
+	handler, err := NewWebhookHandler(
+		logger,
+		commentService,
+		checkService,
+		policyService,
+		securityService,
+		stateService,
+	)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -414,6 +488,21 @@ func TestWebhookHandler_ProcessSecurityPayloads_EmptyPayloads(t *testing.T) {
 	vulnCheckRunID := int64(0)
 	licenseCheckRunID := int64(0)
 
-	err = handler.processSecurityPayloads(ctx, vulnPayloads, sbomPayloads, owner, repo, sha, prNumber, vulnCheckRunID, licenseCheckRunID)
+	err = handler.processSecurityPayloads(
+		ctx,
+		vulnPayloads,
+		sbomPayloads,
+		owner,
+		repo,
+		sha,
+		prNumber,
+		vulnCheckRunID,
+		licenseCheckRunID,
+	)
 	assert.NoError(t, err)
+}
+
+// Run the test suite
+func TestWebhookHelpersTestSuite(t *testing.T) {
+	suite.Run(t, new(WebhookHelpersTestSuite))
 }

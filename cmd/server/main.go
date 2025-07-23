@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -18,20 +19,27 @@ func init() {
 	if err := config.InitConfig(); err != nil {
 		log.Fatalf("Failed to initialize config: %v", err)
 	}
-
 }
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("Application failed: %v", err)
+	}
+}
 
+func run() error {
 	ctx := context.Background()
 
 	// Setup OpenTelemetry
+	var shutdown func(context.Context) error
 	if config.AppConfig.OTLP.EnableOTLP {
-		ctx := context.Background()
-		shutdown, err := otel.SetupOTelSDK(ctx, "polly")
+		var err error
+
+		shutdown, err = otel.SetupOTelSDK(ctx, "polly")
 		if err != nil {
-			log.Fatalf("Failed to setup OpenTelemetry: %v", err)
+			return fmt.Errorf("failed to setup OpenTelemetry: %w", err)
 		}
+
 		defer func() {
 			if err := shutdown(ctx); err != nil {
 				log.Printf("Error shutting down OpenTelemetry: %v", err)
@@ -42,7 +50,7 @@ func main() {
 	// Initialize the application container
 	container, err := app.NewContainer(ctx)
 	if err != nil {
-		log.Fatalf("Failed to initialize application container: %v", err)
+		return fmt.Errorf("failed to initialize application container: %w", err)
 	}
 
 	// Log application version and build info
@@ -56,19 +64,28 @@ func main() {
 	// Set up HTTP server
 	server := app.NewServer(container)
 
+	// Channel to capture server start errors
+	serverErrors := make(chan error, 1)
+
 	// Start the server in a goroutine so it doesn't block
 	go func() {
 		if err := server.Start(); err != nil {
 			container.Logger.Error("Failed to start server", "error", err)
-			os.Exit(1)
+
+			serverErrors <- err
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown
+	// Wait for interrupt signal to gracefully shutdown or server error
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	container.Logger.Info("Shutting down server...")
+
+	select {
+	case <-quit:
+		container.Logger.Info("Shutting down server...")
+	case err := <-serverErrors:
+		return fmt.Errorf("server failed to start: %w", err)
+	}
 
 	// Shutdown the server gracefully
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -77,7 +94,6 @@ func main() {
 	// Shutdown server
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		container.Logger.Error("Server forced to shutdown", "error", err)
-
 	}
 
 	// Shutdown application container
@@ -86,4 +102,6 @@ func main() {
 	}
 
 	container.Logger.Info("Server exited")
+
+	return nil
 }

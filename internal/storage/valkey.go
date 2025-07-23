@@ -10,12 +10,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/terrpan/polly/internal/config"
 	"github.com/valkey-io/valkey-go"
 	"github.com/valkey-io/valkey-go/valkeyotel"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
 // ValkeyStore implements Store interface using Valkey storage.
@@ -106,7 +107,11 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 }
 
 // handleValkeyNilError is a helper function to handle Valkey nil errors consistently
-func (v *ValkeyStore) handleValkeyNilError(err error, span trace.Span, logMessage string) (handled bool, resultErr error) {
+func (v *ValkeyStore) handleValkeyNilError(
+	err error,
+	span trace.Span,
+	logMessage string,
+) (handled bool, resultErr error) {
 	if valkey.IsValkeyNil(err) {
 		span.SetAttributes(attribute.String("valkey.result", logMessage))
 		return true, ErrKeyNotFound
@@ -197,7 +202,12 @@ func (v *ValkeyStore) decompress(ctx context.Context, data []byte) ([]byte, erro
 }
 
 // Set stores a value with the given key and expiration.
-func (v *ValkeyStore) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (v *ValkeyStore) Set(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) error {
 	ctx, span := v.tracer.Start(ctx, "valkey.set",
 		trace.WithAttributes(
 			attribute.String("valkey.key", key),

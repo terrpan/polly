@@ -34,7 +34,12 @@ func (m *MemoryStore) cleanupExpiredKey(key string) bool {
 }
 
 // Set stores a key-value pair with expiration time.
-func (m *MemoryStore) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (m *MemoryStore) Set(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 

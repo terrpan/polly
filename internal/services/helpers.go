@@ -39,12 +39,14 @@ func normalizeTrivyVulnerability(vuln types.DetectedVulnerability, target string
 // extractLicenseFromPackage extracts the best available license from an SPDX package
 func extractLicenseFromPackage(pkg *v2_3.Package) string {
 	// First try LicenseConcluded
-	if pkg.PackageLicenseConcluded != "" && pkg.PackageLicenseConcluded != "NOASSERTION" && pkg.PackageLicenseConcluded != "NONE" {
+	if pkg.PackageLicenseConcluded != "" && pkg.PackageLicenseConcluded != "NOASSERTION" &&
+		pkg.PackageLicenseConcluded != "NONE" {
 		return pkg.PackageLicenseConcluded
 	}
 
 	// Then try LicenseDeclared
-	if pkg.PackageLicenseDeclared != "" && pkg.PackageLicenseDeclared != "NOASSERTION" && pkg.PackageLicenseDeclared != "NONE" {
+	if pkg.PackageLicenseDeclared != "" && pkg.PackageLicenseDeclared != "NOASSERTION" &&
+		pkg.PackageLicenseDeclared != "NONE" {
 		return pkg.PackageLicenseDeclared
 	}
 
@@ -214,7 +216,11 @@ func isTrivyJSONContent(content []byte) bool {
 }
 
 // buildPayloadMetadata builds the metadata for a security payload
-func buildPayloadMetadata(SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string, PRNumber int, ScanTime string) PayloadMetadata {
+func buildPayloadMetadata(
+	SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string,
+	PRNumber int,
+	ScanTime string,
+) PayloadMetadata {
 	return PayloadMetadata{
 		SourceFormat:  SourceFormat,
 		ToolName:      ToolName,

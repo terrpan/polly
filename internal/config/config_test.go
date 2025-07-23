@@ -314,7 +314,11 @@ func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
 
 	_, err = LoadGitHubAppConfig()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required")
+	assert.Contains(
+		t,
+		err.Error(),
+		"either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required",
+	)
 }
 
 func TestGetDefaultExpiration(t *testing.T) {

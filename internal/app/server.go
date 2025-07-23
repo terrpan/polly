@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/terrpan/polly/internal/config"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
 // Server wraps the HTTP server with our container
@@ -41,20 +42,25 @@ func NewServer(container *Container) *Server {
 // Start runs the HTTP server
 func (s *Server) Start() error {
 	s.container.Logger.Info("Starting server", "port", config.AppConfig.Port)
+
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		s.container.Logger.Error("Failed to start server", "error", err)
 		return err
 	}
+
 	return nil
 }
 
 // Shutdown gracefully shuts down the HTTP server
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.container.Logger.Info("Stopping server")
+
 	if err := s.httpServer.Shutdown(ctx); err != nil {
 		s.container.Logger.Error("Failed to shut down server", "error", err)
 		return err
 	}
+
 	s.container.Logger.Info("Server shut down successfully")
+
 	return nil
 }

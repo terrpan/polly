@@ -8,9 +8,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/terrpan/polly/internal/clients"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/clients"
 )
 
 const (
@@ -72,7 +73,12 @@ func NewPolicyService(opaClient *clients.OPAClient, logger *slog.Logger) *Policy
 }
 
 // evaluatePolicy is a helper function to evaluate a policy with the given input.
-func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, policyPath string, input T) (R, error) {
+func evaluatePolicy[T any, R any](
+	ctx context.Context,
+	service *PolicyService,
+	policyPath string,
+	input T,
+) (R, error) {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "policy.evaluate")
 	defer span.End()
@@ -132,7 +138,10 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 }
 
 // CheckVulnerabilityPolicy evaluates the vulnerability policy with the given payload.
-func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, input *VulnerabilityPayload) (VulnerabilityPolicyResult, error) {
+func (s *PolicyService) CheckVulnerabilityPolicy(
+	ctx context.Context,
+	input *VulnerabilityPayload,
+) (VulnerabilityPolicyResult, error) {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "policy.check_vulnerability")
 	defer span.End()
@@ -149,7 +158,12 @@ func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, input *Vul
 		"scan_target", input.Metadata.ScanTarget,
 		"tool_name", input.Metadata.ToolName)
 
-	result, err := evaluatePolicy[*VulnerabilityPayload, VulnerabilityPolicyResult](ctx, s, vulnerabilityPolicyPath, input)
+	result, err := evaluatePolicy[*VulnerabilityPayload, VulnerabilityPolicyResult](
+		ctx,
+		s,
+		vulnerabilityPolicyPath,
+		input,
+	)
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		s.logger.ErrorContext(ctx, "Failed to check vulnerability policy", "error", err)
@@ -169,7 +183,10 @@ func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, input *Vul
 }
 
 // CheckSBOMPolicy evaluates the SBOM policy with the given payload.
-func (s *PolicyService) CheckSBOMPolicy(ctx context.Context, input *SBOMPayload) (SBOMPolicyResult, error) {
+func (s *PolicyService) CheckSBOMPolicy(
+	ctx context.Context,
+	input *SBOMPayload,
+) (SBOMPolicyResult, error) {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "policy.check_sbom")
 	defer span.End()

@@ -9,12 +9,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/terrpan/polly/internal/config"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/valkey-io/valkey-go"
 	"go.opentelemetry.io/otel"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
 const (
@@ -254,7 +255,11 @@ func TestValkeyStore_CompressionHelpers(t *testing.T) {
 
 		// Decompressed data should match original
 		if string(decompressed) != string(testData) {
-			t.Errorf("Decompressed data doesn't match original. Got: %s, Want: %s", string(decompressed), string(testData))
+			t.Errorf(
+				"Decompressed data doesn't match original. Got: %s, Want: %s",
+				string(decompressed),
+				string(testData),
+			)
 		}
 	})
 
@@ -274,7 +279,11 @@ func TestValkeyStore_CompressionHelpers(t *testing.T) {
 
 		// With compression disabled, data should be unchanged
 		if string(compressed) != string(testData) {
-			t.Errorf("With compression disabled, data should be unchanged. Got: %s, Want: %s", string(compressed), string(testData))
+			t.Errorf(
+				"With compression disabled, data should be unchanged. Got: %s, Want: %s",
+				string(compressed),
+				string(testData),
+			)
 		}
 
 		// Test decompression (should be pass-through)
@@ -285,7 +294,11 @@ func TestValkeyStore_CompressionHelpers(t *testing.T) {
 
 		// Should still match original
 		if string(decompressed) != string(testData) {
-			t.Errorf("Decompressed data doesn't match original. Got: %s, Want: %s", string(decompressed), string(testData))
+			t.Errorf(
+				"Decompressed data doesn't match original. Got: %s, Want: %s",
+				string(decompressed),
+				string(testData),
+			)
 		}
 	})
 }
@@ -519,7 +532,12 @@ func TestValkeyStore_IntegrationBasicOperations(t *testing.T) {
 
 		// Should return our custom ErrKeyNotFound
 		assert.Error(t, err)
-		assert.ErrorIs(t, err, ErrKeyNotFound, "Get should return ErrKeyNotFound via handleValkeyNilError")
+		assert.ErrorIs(
+			t,
+			err,
+			ErrKeyNotFound,
+			"Get should return ErrKeyNotFound via handleValkeyNilError",
+		)
 
 		// Test with Exists method as well
 		exists, err := store.Exists(ctx, nonExistentKey)
@@ -528,9 +546,17 @@ func TestValkeyStore_IntegrationBasicOperations(t *testing.T) {
 
 		// Test that the helper function correctly distinguishes between nil and other errors
 		// by ensuring that when a key doesn't exist, we get ErrKeyNotFound specifically
-		anotherNonExistentKey := fmt.Sprintf("test-key-that-definitely-does-not-exist-%d", time.Now().UnixNano())
+		anotherNonExistentKey := fmt.Sprintf(
+			"test-key-that-definitely-does-not-exist-%d",
+			time.Now().UnixNano(),
+		)
 		_, err = store.Get(ctx, anotherNonExistentKey)
-		assert.ErrorIs(t, err, ErrKeyNotFound, "Multiple calls should consistently return ErrKeyNotFound")
+		assert.ErrorIs(
+			t,
+			err,
+			ErrKeyNotFound,
+			"Multiple calls should consistently return ErrKeyNotFound",
+		)
 	})
 }
 
@@ -738,14 +764,18 @@ func TestValkeyStore_IntegrationSentinel(t *testing.T) {
 	ctx := context.Background()
 
 	// Start a simple Valkey master container for testing Sentinel-like operations
-	masterContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        valkeyImage,
-			ExposedPorts: []string{"6379/tcp"},
-			WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
+	masterContainer, err := testcontainers.GenericContainer(
+		ctx,
+		testcontainers.GenericContainerRequest{
+			ContainerRequest: testcontainers.ContainerRequest{
+				Image:        valkeyImage,
+				ExposedPorts: []string{"6379/tcp"},
+				WaitingFor: wait.ForLog("Ready to accept connections").
+					WithStartupTimeout(30 * time.Second),
+			},
+			Started: true,
 		},
-		Started: true,
-	})
+	)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -927,15 +957,19 @@ func TestValkeyStore_IntegrationAuthentication(t *testing.T) {
 
 	t.Run("password authentication success", func(t *testing.T) {
 		// Start Valkey container with password authentication
-		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        valkeyImage,
-				ExposedPorts: []string{"6379/tcp"},
-				Cmd:          []string{"valkey-server", "--requirepass", "test-password"},
-				WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
+		authContainer, err := testcontainers.GenericContainer(
+			ctx,
+			testcontainers.GenericContainerRequest{
+				ContainerRequest: testcontainers.ContainerRequest{
+					Image:        valkeyImage,
+					ExposedPorts: []string{"6379/tcp"},
+					Cmd:          []string{"valkey-server", "--requirepass", "test-password"},
+					WaitingFor: wait.ForLog("Ready to accept connections").
+						WithStartupTimeout(30 * time.Second),
+				},
+				Started: true,
 			},
-			Started: true,
-		})
+		)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {
@@ -988,15 +1022,19 @@ func TestValkeyStore_IntegrationAuthentication(t *testing.T) {
 
 	t.Run("password authentication failure", func(t *testing.T) {
 		// Start Valkey container with password authentication
-		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        valkeyImage,
-				ExposedPorts: []string{"6379/tcp"},
-				Cmd:          []string{"valkey-server", "--requirepass", "correct-password"},
-				WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
+		authContainer, err := testcontainers.GenericContainer(
+			ctx,
+			testcontainers.GenericContainerRequest{
+				ContainerRequest: testcontainers.ContainerRequest{
+					Image:        valkeyImage,
+					ExposedPorts: []string{"6379/tcp"},
+					Cmd:          []string{"valkey-server", "--requirepass", "correct-password"},
+					WaitingFor: wait.ForLog("Ready to accept connections").
+						WithStartupTimeout(30 * time.Second),
+				},
+				Started: true,
 			},
-			Started: true,
-		})
+		)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {
@@ -1069,22 +1107,26 @@ user default off
 `
 
 		// Start Valkey container with custom config
-		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        valkeyImage,
-				ExposedPorts: []string{"6379/tcp"},
-				Files: []testcontainers.ContainerFile{
-					{
-						Reader:            strings.NewReader(configContent),
-						ContainerFilePath: "/etc/valkey.conf",
-						FileMode:          0644,
+		authContainer, err := testcontainers.GenericContainer(
+			ctx,
+			testcontainers.GenericContainerRequest{
+				ContainerRequest: testcontainers.ContainerRequest{
+					Image:        valkeyImage,
+					ExposedPorts: []string{"6379/tcp"},
+					Files: []testcontainers.ContainerFile{
+						{
+							Reader:            strings.NewReader(configContent),
+							ContainerFilePath: "/etc/valkey.conf",
+							FileMode:          0644,
+						},
 					},
+					Cmd: []string{"valkey-server", "/etc/valkey.conf"},
+					WaitingFor: wait.ForLog("Ready to accept connections").
+						WithStartupTimeout(30 * time.Second),
 				},
-				Cmd:        []string{"valkey-server", "/etc/valkey.conf"},
-				WaitingFor: wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
+				Started: true,
 			},
-			Started: true,
-		})
+		)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {
@@ -1137,15 +1179,19 @@ user default off
 
 	t.Run("authentication with compression", func(t *testing.T) {
 		// Start Valkey container with password authentication
-		authContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-			ContainerRequest: testcontainers.ContainerRequest{
-				Image:        valkeyImage,
-				ExposedPorts: []string{"6379/tcp"},
-				Cmd:          []string{"valkey-server", "--requirepass", "compress-password"},
-				WaitingFor:   wait.ForLog("Ready to accept connections").WithStartupTimeout(30 * time.Second),
+		authContainer, err := testcontainers.GenericContainer(
+			ctx,
+			testcontainers.GenericContainerRequest{
+				ContainerRequest: testcontainers.ContainerRequest{
+					Image:        valkeyImage,
+					ExposedPorts: []string{"6379/tcp"},
+					Cmd:          []string{"valkey-server", "--requirepass", "compress-password"},
+					WaitingFor: wait.ForLog("Ready to accept connections").
+						WithStartupTimeout(30 * time.Second),
+				},
+				Started: true,
 			},
-			Started: true,
-		})
+		)
 		require.NoError(t, err)
 
 		t.Cleanup(func() {

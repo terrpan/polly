@@ -5,9 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/terrpan/polly/internal/services"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/services"
 )
 
 type HealthHandler struct {

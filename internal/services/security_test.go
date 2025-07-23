@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/terrpan/polly/internal/clients"
 )
 
@@ -323,7 +324,14 @@ func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vulnPayloads, sbomPayloads, err := service.BuildPayloadsFromArtifacts(ctx, tt.artifacts, "owner", "repo", "sha", 123)
+			vulnPayloads, sbomPayloads, err := service.BuildPayloadsFromArtifacts(
+				ctx,
+				tt.artifacts,
+				"owner",
+				"repo",
+				"sha",
+				123,
+			)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -351,7 +359,13 @@ func TestSecurityService_ContextCancellation(t *testing.T) {
 	cancel()
 
 	// Should fail due to cancelled context
-	vulnPayloads, sbomPayloads, err := service.ProcessWorkflowSecurityArtifacts(ctx, "owner", "repo", "sha", 123)
+	vulnPayloads, sbomPayloads, err := service.ProcessWorkflowSecurityArtifacts(
+		ctx,
+		"owner",
+		"repo",
+		"sha",
+		123,
+	)
 	assert.Error(t, err)
 	assert.Nil(t, vulnPayloads)
 	assert.Nil(t, sbomPayloads)

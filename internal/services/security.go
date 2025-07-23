@@ -13,9 +13,10 @@ import (
 
 	dbtypes "github.com/aquasecurity/trivy-db/pkg/types"
 	spdxjson "github.com/spdx/tools-golang/json"
-	"github.com/terrpan/polly/internal/clients"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/clients"
 )
 
 // SecurityService provides methods to process security artifacts from GitHub workflows.
@@ -146,7 +147,11 @@ func NewSecurityService(githubClient *clients.GitHubClient, logger *slog.Logger)
 }
 
 // ProcessWorkflowSecurityArtifacts processes security artifacts and returns normalized payloads
-func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
+func (s *SecurityService) ProcessWorkflowSecurityArtifacts(
+	ctx context.Context,
+	owner, repo, sha string,
+	workflowID int64,
+) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "security.process_workflow_artifacts")
 	defer span.End()
@@ -174,12 +179,21 @@ func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, 
 }
 
 // DiscoverSecurityArtifacts finds and downloads security-related artifacts
-func (s *SecurityService) DiscoverSecurityArtifacts(ctx context.Context, owner, repo string, workflowID int64) ([]*SecurityArtifact, error) {
+func (s *SecurityService) DiscoverSecurityArtifacts(
+	ctx context.Context,
+	owner, repo string,
+	workflowID int64,
+) ([]*SecurityArtifact, error) {
 	return s.checkArtifactForSecurityContent(ctx, owner, repo, workflowID)
 }
 
 // BuildPayloadsFromArtifacts converts security artifacts into normalized payloads
-func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifacts []*SecurityArtifact, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
+func (s *SecurityService) BuildPayloadsFromArtifacts(
+	ctx context.Context,
+	artifacts []*SecurityArtifact,
+	owner, repo, sha string,
+	workflowID int64,
+) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
 	vulnPayloads := make([]*VulnerabilityPayload, 0)
 	sbomPayloads := make([]*SBOMPayload, 0)
 
@@ -194,7 +208,15 @@ func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifa
 
 		switch artifact.Type {
 		case ArtifactTypeVulnerabilityJSON:
-			payload, err := s.BuildVulnerabilityPayloadFromTrivy(ctx, artifact, owner, repo, sha, 0, workflowID)
+			payload, err := s.BuildVulnerabilityPayloadFromTrivy(
+				ctx,
+				artifact,
+				owner,
+				repo,
+				sha,
+				0,
+				workflowID,
+			)
 			if err != nil {
 				s.logger.ErrorContext(ctx, "Failed to build vulnerability payload",
 					"artifact_name", artifact.ArtifactName,
@@ -206,7 +228,15 @@ func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifa
 			vulnPayloads = append(vulnPayloads, payload)
 
 		case ArtifactTypeSBOMSPDX:
-			payload, err := s.BuildSBOMPayloadFromSPDX(ctx, artifact, owner, repo, sha, 0, workflowID)
+			payload, err := s.BuildSBOMPayloadFromSPDX(
+				ctx,
+				artifact,
+				owner,
+				repo,
+				sha,
+				0,
+				workflowID,
+			)
 			if err != nil {
 				s.logger.ErrorContext(ctx, "Failed to build SBOM payload",
 					"artifact_name", artifact.ArtifactName,
@@ -234,7 +264,11 @@ func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifa
 }
 
 // checkArtifactForSecurityContent downloads and inspects for security-related content.
-func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, owner, repo string, workflowID int64) ([]*SecurityArtifact, error) {
+func (s *SecurityService) checkArtifactForSecurityContent(
+	ctx context.Context,
+	owner, repo string,
+	workflowID int64,
+) ([]*SecurityArtifact, error) {
 	tracer := otel.Tracer("polly/services")
 	ctx, span := tracer.Start(ctx, "security.check_artifacts")
 	defer span.End()
@@ -297,7 +331,10 @@ func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, o
 }
 
 // inspectZipContent inspects the content of a ZIP file for security-related files.
-func (s *SecurityService) inspectZipContent(zipData []byte, artifactName string) ([]*SecurityArtifact, error) {
+func (s *SecurityService) inspectZipContent(
+	zipData []byte,
+	artifactName string,
+) ([]*SecurityArtifact, error) {
 	// Create ZIP reader
 	zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
@@ -353,7 +390,6 @@ func (s *SecurityService) inspectZipContent(zipData []byte, artifactName string)
 func (s *SecurityService) detectSecurityContent(content []byte, filename string) ArtifactType {
 	// Try SPDX detection first
 	if isSPDXContent(content) {
-
 		s.logger.Debug("Detected SPDX content", "filename", filename)
 		return ArtifactTypeSBOMSPDX
 	}
@@ -374,7 +410,13 @@ func (s *SecurityService) detectSecurityContent(content []byte, filename string)
 }
 
 // BuildSBOMPayloadFromSPDX builds a normalized SBOM payload from SPDX content
-func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*SBOMPayload, error) {
+func (s *SecurityService) BuildSBOMPayloadFromSPDX(
+	ctx context.Context,
+	artifact *SecurityArtifact,
+	owner, repo, sha string,
+	prNumber int,
+	workflowID int64,
+) (*SBOMPayload, error) {
 	// Parse the SPDX JSON content
 	doc, err := spdxjson.Read(bytes.NewReader(artifact.Content))
 	if err != nil {
@@ -481,7 +523,13 @@ func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact
 }
 
 // BuildVulnerabilityPayloadFromTrivy creates a normalized vulnerability payload from Trivy JSON report
-func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*VulnerabilityPayload, error) {
+func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(
+	ctx context.Context,
+	artifact *SecurityArtifact,
+	owner, repo, sha string,
+	prNumber int,
+	workflowID int64,
+) (*VulnerabilityPayload, error) {
 	// parse the trivy report
 	var trivyReport types.Report
 	if err := json.Unmarshal(artifact.Content, &trivyReport); err != nil {

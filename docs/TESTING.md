@@ -102,6 +102,72 @@ The GitHub Actions workflow runs both unit and integration tests:
 1. **Unit Tests**: `go test -v -race -short -coverprofile=coverage.out ./...`
 2. **Integration Tests**: `go test -v -race -coverprofile=coverage_integration.out ./...`
 
+## Test Suites
+
+For complex test scenarios that require shared setup and teardown, the project uses test suites with `github.com/stretchr/testify/suite`:
+
+### Example: Container Test Suite
+```go
+type ContainerTestSuite struct {
+    suite.Suite
+    originalOpaURL      string
+    originalStorageType string
+    originalGitHubToken string
+    originalAppID       int64
+}
+
+// SetupSuite runs once before all tests in the suite
+func (suite *ContainerTestSuite) SetupSuite() {
+    if config.AppConfig == nil {
+        err := config.InitConfig()
+        suite.Require().NoError(err, "Config should initialize for test suite")
+    }
+
+    // Save original config values
+    suite.originalStorageType = config.AppConfig.Storage.Type
+    // ... save other values
+}
+
+// TearDownSuite runs once after all tests in the suite
+func (suite *ContainerTestSuite) TearDownSuite() {
+    // Restore original config values
+    config.AppConfig.Storage.Type = suite.originalStorageType
+    // ... restore other values
+}
+
+// SetupTest runs before each test
+func (suite *ContainerTestSuite) SetupTest() {
+    // Reset to default values for each test
+    config.AppConfig.Storage.Type = "memory"
+    // ... set other defaults
+}
+
+// Test methods on the suite
+func (suite *ContainerTestSuite) TestInitializeStorage() {
+    container := suite.createTestContainer()
+    err := container.initializeStorage()
+    suite.Require().NoError(err)
+    suite.Assert().NotNil(container.Store)
+}
+
+// Run the suite
+func TestContainerSuite(t *testing.T) {
+    suite.Run(t, new(ContainerTestSuite))
+}
+```
+
+### Benefits of Test Suites
+- **Shared setup/teardown**: Initialize expensive resources once
+- **Config management**: Save and restore configuration state automatically
+- **Cleaner tests**: Remove repetitive setup code from individual tests
+- **Better isolation**: Each test starts with a clean, predictable state
+
+### When to Use Test Suites
+- Tests that require complex configuration setup
+- Tests that share expensive initialization (database connections, etc.)
+- Tests that need to modify global state and restore it afterwards
+- Groups of related tests that benefit from shared helper methods
+
 ## Storage Package Tests
 
 The storage package includes comprehensive tests for:

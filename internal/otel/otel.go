@@ -5,16 +5,20 @@ import (
 	"errors"
 	"time"
 
-	"github.com/terrpan/polly/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
-func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(context.Context) error, err error) {
+func SetupOTelSDK(
+	ctx context.Context,
+	serviceName string,
+) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	shutdown = func(ctx context.Context) error {

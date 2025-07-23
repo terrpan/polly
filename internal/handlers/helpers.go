@@ -5,11 +5,15 @@ import (
 	"strings"
 
 	"github.com/go-playground/webhooks/v6/github"
+
 	"github.com/terrpan/polly/internal/services"
 )
 
 // buildCheckRunResult builds the check run result based on policy validation outcome.
-func buildCheckRunResult(policyPassed bool, policyError error) (services.CheckRunConclusion, services.CheckRunResult) {
+func buildCheckRunResult(
+	policyPassed bool,
+	policyError error,
+) (services.CheckRunConclusion, services.CheckRunResult) {
 	if policyError != nil {
 		return services.ConclusionFailure, services.CheckRunResult{
 			Title:   "OPA Policy Check - Error",
@@ -48,12 +52,18 @@ func buildVulnerabilityViolationComment(vulns []services.VulnerabilityPolicyVuln
 
 		vulnComments = append(vulnComments, comment)
 	}
-	return fmt.Sprintf("❌ **Vulnerability Policy Violation - %d vulnerabilities blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
-		len(vulnComments), strings.Join(vulnComments, "\n\n---\n\n"))
+	return fmt.Sprintf(
+		"❌ **Vulnerability Policy Violation - %d vulnerabilities blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
+		len(vulnComments),
+		strings.Join(vulnComments, "\n\n---\n\n"),
+	)
 }
 
 // buildLicenseComment generates a single markdown comment for both license violations and conditional licenses.
-func buildLicenseComment(violations []services.SBOMPolicyComponent, conditionals []services.SBOMPolicyComponent) string {
+func buildLicenseComment(
+	violations []services.SBOMPolicyComponent,
+	conditionals []services.SBOMPolicyComponent,
+) string {
 	var sections []string
 
 	// Add violations section if there are any
@@ -83,8 +93,14 @@ func buildLicenseComment(violations []services.SBOMPolicyComponent, conditionals
 			violationComments = append(violationComments, comment)
 		}
 
-		sections = append(sections, fmt.Sprintf("❌ **License Violations Found - %d packages**\n\nThe following packages have licenses that violate our policy and must be addressed:\n\n<details>\n<summary>Click to view license violations</summary>\n\n%s\n\n</details>",
-			len(violationComments), strings.Join(violationComments, "\n\n---\n\n")))
+		sections = append(
+			sections,
+			fmt.Sprintf(
+				"❌ **License Violations Found - %d packages**\n\nThe following packages have licenses that violate our policy and must be addressed:\n\n<details>\n<summary>Click to view license violations</summary>\n\n%s\n\n</details>",
+				len(violationComments),
+				strings.Join(violationComments, "\n\n---\n\n"),
+			),
+		)
 	}
 
 	// Add conditionals section if there are any
@@ -114,15 +130,23 @@ func buildLicenseComment(violations []services.SBOMPolicyComponent, conditionals
 			conditionalComments = append(conditionalComments, comment)
 		}
 
-		sections = append(sections, fmt.Sprintf("ℹ️ **Conditionally Allowed Licenses Found - %d packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements:\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n%s\n\n</details>",
-			len(conditionalComments), strings.Join(conditionalComments, "\n\n---\n\n")))
+		sections = append(
+			sections,
+			fmt.Sprintf(
+				"ℹ️ **Conditionally Allowed Licenses Found - %d packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements:\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n%s\n\n</details>",
+				len(conditionalComments),
+				strings.Join(conditionalComments, "\n\n---\n\n"),
+			),
+		)
 	}
 
 	return strings.Join(sections, "\n\n")
 }
 
 // getEventInfo extracts common event information for logging using generics
-func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](event T) (owner, repo, sha string, ID int64) {
+func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](
+	event T,
+) (owner, repo, sha string, ID int64) {
 	// We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.
 	switch e := any(event).(type) {
 	case github.PullRequestPayload:
