@@ -27,6 +27,10 @@ func TestConfig_Structure(t *testing.T) {
 	assert.Equal(t, int64(12345), cfg.GitHubApp.AppID)
 	assert.Equal(t, "test-token", cfg.GitHubToken)
 	assert.Equal(t, "1.0.0", cfg.Version)
+	assert.Equal(t, "abc123", cfg.Commit)
+	assert.Equal(t, "2025-01-01T00:00:00Z", cfg.BuildTime)
+	assert.Equal(t, "/path/to/key", cfg.GitHubApp.PrivateKeyPath)
+	assert.Equal(t, int64(67890), cfg.GitHubApp.InstallationID)
 }
 
 func TestGitHubAppConfig_Structure(t *testing.T) {
@@ -120,8 +124,8 @@ func TestIsGitHubAppConfigured(t *testing.T) {
 	}()
 
 	tests := []struct {
-		name     string
 		setup    func()
+		name     string
 		expected bool
 	}{
 		{
