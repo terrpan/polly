@@ -49,14 +49,45 @@ go test ./internal/storage/ -run Integration
 
 ## Test Implementation Guidelines
 
-### Unit Tests
-- Use `t.Short()` check to skip integration tests:
-  ```go
-  func TestSomething_Unit(t *testing.T) {
-      // This is a unit test - no skip needed
-      // Test implementation...
-  }
-  ```
+### Test Suite Usage
+For complex components with shared setup/teardown and state management, use `testify/suite`:
+```go
+type ComponentTestSuite struct {
+    suite.Suite
+    ctx             context.Context
+    mockService     *mocks.MockService
+    handler         *ComponentHandler
+}
+
+func (suite *ComponentTestSuite) SetupSuite() {
+    suite.ctx = context.Background()
+    // Shared setup for all tests
+}
+
+func (suite *ComponentTestSuite) SetupTest() {
+    // Setup before each test
+    suite.mockService = &mocks.MockService{}
+    suite.handler = NewComponentHandler(suite.mockService)
+}
+
+func (suite *ComponentTestSuite) TestSomething() {
+    // Test implementation
+}
+
+func TestComponentTestSuite(t *testing.T) {
+    suite.Run(t, new(ComponentTestSuite))
+}
+```
+
+### Simple Unit Tests
+For simple functions without complex setup, use standard Go testing:
+```go
+func TestSomething_Unit(t *testing.T) {
+    t.Run("success case", func(t *testing.T) {
+        // Test implementation...
+    })
+}
+```
 
 ### Integration Tests
 - Always include `t.Skip()` for short mode:
@@ -67,6 +98,32 @@ go test ./internal/storage/ -run Integration
       }
 
       // Integration test implementation with testcontainers...
+  }
+  ```
+
+- For complex integration tests with shared resources, use test suites:
+  ```go
+  type IntegrationTestSuite struct {
+      suite.Suite
+      container testcontainers.Container
+      storage   storage.Store
+  }
+
+  func (suite *IntegrationTestSuite) SetupSuite() {
+      if testing.Short() {
+          suite.T().Skip("Skipping integration test suite in short mode")
+      }
+
+      // Setup testcontainers once for all tests
+      var err error
+      suite.container, err = redis.Run(suite.ctx, "valkey/valkey:8-alpine")
+      suite.Require().NoError(err)
+  }
+
+  func (suite *IntegrationTestSuite) TearDownSuite() {
+      if suite.container != nil {
+          _ = testcontainers.TerminateContainer(suite.container)
+      }
   }
   ```
 
