@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v72/github"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -29,9 +28,11 @@ func (suite *GitHubClientTestSuite) SetupSuite() {
 // SetupTest runs before each test
 func (suite *GitHubClientTestSuite) SetupTest() {
 	// Create mock server with common GitHub API endpoints
-	suite.mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		suite.handleMockRequest(w, r)
-	}))
+	suite.mockServer = httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			suite.handleMockRequest(w, r)
+		}),
+	)
 
 	// Create GitHub client pointing to mock server
 	suite.client = github.NewClient(nil)
@@ -91,7 +92,11 @@ func (suite *GitHubClientTestSuite) handleMockRequest(w http.ResponseWriter, r *
 }
 
 // Helper methods for specific endpoints
-func (suite *GitHubClientTestSuite) handleGetPullRequest(w http.ResponseWriter, r *http.Request, prNumber string) {
+func (suite *GitHubClientTestSuite) handleGetPullRequest(
+	w http.ResponseWriter,
+	r *http.Request,
+	prNumber string,
+) {
 	if prNumber == "404" {
 		w.WriteHeader(http.StatusNotFound)
 		writeTestResponse(w, []byte(`{"message": "Not Found"}`))
@@ -116,7 +121,11 @@ func (suite *GitHubClientTestSuite) handleGetPullRequest(w http.ResponseWriter, 
 	writeTestResponse(w, []byte(response))
 }
 
-func (suite *GitHubClientTestSuite) handleWriteComment(w http.ResponseWriter, r *http.Request, issueNumber string) {
+func (suite *GitHubClientTestSuite) handleWriteComment(
+	w http.ResponseWriter,
+	r *http.Request,
+	issueNumber string,
+) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -140,7 +149,11 @@ func (suite *GitHubClientTestSuite) handleWriteComment(w http.ResponseWriter, r 
 	writeTestResponse(w, []byte(response))
 }
 
-func (suite *GitHubClientTestSuite) handleCreateCheckRun(w http.ResponseWriter, r *http.Request, owner, repo string) {
+func (suite *GitHubClientTestSuite) handleCreateCheckRun(
+	w http.ResponseWriter,
+	r *http.Request,
+	owner, repo string,
+) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -164,7 +177,11 @@ func (suite *GitHubClientTestSuite) handleCreateCheckRun(w http.ResponseWriter, 
 	writeTestResponse(w, []byte(response))
 }
 
-func (suite *GitHubClientTestSuite) handleGetCheckRun(w http.ResponseWriter, r *http.Request, checkRunID string) {
+func (suite *GitHubClientTestSuite) handleGetCheckRun(
+	w http.ResponseWriter,
+	r *http.Request,
+	checkRunID string,
+) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -188,7 +205,11 @@ func (suite *GitHubClientTestSuite) handleGetCheckRun(w http.ResponseWriter, r *
 	writeTestResponse(w, []byte(response))
 }
 
-func (suite *GitHubClientTestSuite) handleUpdateCheckRun(w http.ResponseWriter, r *http.Request, checkRunID string) {
+func (suite *GitHubClientTestSuite) handleUpdateCheckRun(
+	w http.ResponseWriter,
+	r *http.Request,
+	checkRunID string,
+) {
 	if r.Method != http.MethodPatch {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -212,7 +233,11 @@ func (suite *GitHubClientTestSuite) handleUpdateCheckRun(w http.ResponseWriter, 
 	writeTestResponse(w, []byte(response))
 }
 
-func (suite *GitHubClientTestSuite) handleListWorkflowArtifacts(w http.ResponseWriter, r *http.Request, runID string) {
+func (suite *GitHubClientTestSuite) handleListWorkflowArtifacts(
+	w http.ResponseWriter,
+	r *http.Request,
+	runID string,
+) {
 	if runID == "404" {
 		w.WriteHeader(http.StatusNotFound)
 		writeTestResponse(w, []byte(`{"message": "Not Found"}`))
@@ -241,7 +266,11 @@ func (suite *GitHubClientTestSuite) handleListWorkflowArtifacts(w http.ResponseW
 	writeTestResponse(w, []byte(response))
 }
 
-func (suite *GitHubClientTestSuite) handleListCheckRuns(w http.ResponseWriter, r *http.Request, sha string) {
+func (suite *GitHubClientTestSuite) handleListCheckRuns(
+	w http.ResponseWriter,
+	r *http.Request,
+	sha string,
+) {
 	if sha == "404" {
 		w.WriteHeader(http.StatusNotFound)
 		writeTestResponse(w, []byte(`{"message": "Not Found"}`))
@@ -271,7 +300,11 @@ func (suite *GitHubClientTestSuite) handleListCheckRuns(w http.ResponseWriter, r
 	writeTestResponse(w, []byte(response))
 }
 
-func (suite *GitHubClientTestSuite) handleGetArtifact(w http.ResponseWriter, r *http.Request, artifactID string) {
+func (suite *GitHubClientTestSuite) handleGetArtifact(
+	w http.ResponseWriter,
+	r *http.Request,
+	artifactID string,
+) {
 	if artifactID == "404" {
 		w.WriteHeader(http.StatusNotFound)
 		writeTestResponse(w, []byte(`{"message": "Not Found"}`))
@@ -310,15 +343,14 @@ func mustParseURL(rawURL string) *url.URL {
 	return u
 }
 
-func TestNewGitHubClient(t *testing.T) {
-	ctx := context.Background()
-	client := NewGitHubClient(ctx)
+func (suite *GitHubClientTestSuite) TestNewGitHubClient() {
+	client := NewGitHubClient(suite.ctx)
 
-	assert.NotNil(t, client)
-	assert.NotNil(t, client.client)
+	suite.Assert().NotNil(client)
+	suite.Assert().NotNil(client.client)
 }
 
-func TestNewGitHubAppClient(t *testing.T) {
+func (suite *GitHubClientTestSuite) TestNewGitHubAppClient() {
 	tests := []struct {
 		name          string
 		errorContains string
@@ -350,24 +382,23 @@ func TestNewGitHubAppClient(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			client, err := NewGitHubAppClient(ctx, tt.config)
+		suite.Run(tt.name, func() {
+			client, err := NewGitHubAppClient(suite.ctx, tt.config)
 
 			if tt.expectedError {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorContains)
-				assert.Nil(t, client)
+				suite.Assert().Error(err)
+				suite.Assert().Contains(err.Error(), tt.errorContains)
+				suite.Assert().Nil(client)
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, client)
-				assert.NotNil(t, client.client)
+				suite.Assert().NoError(err)
+				suite.Assert().NotNil(client)
+				suite.Assert().NotNil(client.client)
 			}
 		})
 	}
 }
 
-func TestAuthenticate(t *testing.T) {
+func (suite *GitHubClientTestSuite) TestAuthenticate() {
 	tests := []struct {
 		name          string
 		token         string
@@ -388,18 +419,17 @@ func TestAuthenticate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			client := NewGitHubClient(ctx)
+		suite.Run(tt.name, func() {
+			client := NewGitHubClient(suite.ctx)
 
-			err := client.Authenticate(ctx, tt.token)
+			err := client.Authenticate(suite.ctx, tt.token)
 
 			if tt.expectedError {
-				assert.Error(t, err)
-				assert.Equal(t, tt.errorMessage, err.Error())
+				suite.Assert().Error(err)
+				suite.Assert().Equal(tt.errorMessage, err.Error())
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, client.client)
+				suite.Assert().NoError(err)
+				suite.Assert().NotNil(client.client)
 			}
 		})
 	}
@@ -477,7 +507,13 @@ func (suite *GitHubClientTestSuite) TestWriteComment() {
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			err := suite.githubClient.WriteComment(suite.ctx, tt.owner, tt.repo, tt.number, tt.comment)
+			err := suite.githubClient.WriteComment(
+				suite.ctx,
+				tt.owner,
+				tt.repo,
+				tt.number,
+				tt.comment,
+			)
 
 			if tt.expectedError {
 				suite.Assert().Error(err)
@@ -597,12 +633,12 @@ func (suite *GitHubClientTestSuite) TestUpdateCheckRun() {
 	}
 }
 
-func TestDownloadArtifact(t *testing.T) {
+func (suite *GitHubClientTestSuite) TestDownloadArtifact() {
 	// Note: This test is simplified since the actual DownloadArtifact method
 	// in the GitHub client involves complex URL redirection and external downloads
 	// In a real test environment, you would mock the GitHub API more comprehensively
 
-	t.Skip("Skipping DownloadArtifact test - requires complex GitHub API mocking")
+	suite.T().Skip("Skipping DownloadArtifact test - requires complex GitHub API mocking")
 }
 
 func (suite *GitHubClientTestSuite) TestListWorkflowRunArtifacts() {
@@ -634,7 +670,12 @@ func (suite *GitHubClientTestSuite) TestListWorkflowRunArtifacts() {
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			artifacts, err := suite.githubClient.ListWorkflowArtifacts(suite.ctx, tt.owner, tt.repo, tt.runID)
+			artifacts, err := suite.githubClient.ListWorkflowArtifacts(
+				suite.ctx,
+				tt.owner,
+				tt.repo,
+				tt.runID,
+			)
 
 			if tt.expectedError {
 				suite.Assert().Error(err)
@@ -679,7 +720,12 @@ func (suite *GitHubClientTestSuite) TestGetCheckRun() {
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			checkRun, err := suite.githubClient.GetCheckRun(suite.ctx, tt.owner, tt.repo, tt.checkRunID)
+			checkRun, err := suite.githubClient.GetCheckRun(
+				suite.ctx,
+				tt.owner,
+				tt.repo,
+				tt.checkRunID,
+			)
 
 			if tt.expectedError {
 				suite.Assert().Error(err)
@@ -771,7 +817,12 @@ func (suite *GitHubClientTestSuite) TestGetArtifact() {
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
-			artifact, err := suite.githubClient.GetArtifact(suite.ctx, tt.owner, tt.repo, tt.artifactID)
+			artifact, err := suite.githubClient.GetArtifact(
+				suite.ctx,
+				tt.owner,
+				tt.repo,
+				tt.artifactID,
+			)
 
 			if tt.expectedError {
 				suite.Assert().Error(err)

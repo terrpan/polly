@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -30,9 +28,11 @@ func (suite *OPAClientTestSuite) SetupSuite() {
 // SetupTest runs before each test
 func (suite *OPAClientTestSuite) SetupTest() {
 	// Create mock server with OPA endpoints
-	suite.mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		suite.handleMockRequest(w, r)
-	}))
+	suite.mockServer = httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			suite.handleMockRequest(w, r)
+		}),
+	)
 
 	// Create OPA client pointing to mock server
 	var err error
@@ -84,7 +84,7 @@ func (suite *OPAClientTestSuite) handleMockRequest(w http.ResponseWriter, r *htt
 	}
 }
 
-func TestNewOPAClient(t *testing.T) {
+func (suite *OPAClientTestSuite) TestNewOPAClient() {
 	tests := []struct {
 		name          string
 		baseURL       string
@@ -105,19 +105,19 @@ func TestNewOPAClient(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		suite.Run(tt.name, func() {
 			client, err := NewOPAClient(tt.baseURL)
 
 			if tt.expectedError {
-				assert.Error(t, err)
-				assert.Equal(t, tt.errorMessage, err.Error())
-				assert.Nil(t, client)
+				suite.Assert().Error(err)
+				suite.Assert().Equal(tt.errorMessage, err.Error())
+				suite.Assert().Nil(client)
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, client)
-				assert.Equal(t, tt.baseURL, client.BaseURL)
-				assert.NotNil(t, client.HTTPClient)
-				assert.Equal(t, 30*time.Second, client.HTTPClient.Timeout)
+				suite.Assert().NoError(err)
+				suite.Assert().NotNil(client)
+				suite.Assert().Equal(tt.baseURL, client.BaseURL)
+				suite.Assert().NotNil(client.HTTPClient)
+				suite.Assert().Equal(30*time.Second, client.HTTPClient.Timeout)
 			}
 		})
 	}
@@ -239,30 +239,28 @@ func (suite *OPAClientTestSuite) TestContextCancellation() {
 	})
 }
 
-func TestOPAClient_InvalidURL(t *testing.T) {
+func (suite *OPAClientTestSuite) TestInvalidURL() {
 	client, err := NewOPAClient("http://localhost:8181")
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 
-	t.Run("invalid URL in Do method", func(t *testing.T) {
-		ctx := context.Background()
-
+	suite.Run("invalid URL in Do method", func() {
 		// Test with invalid URL
-		_, err := client.Do(ctx, http.MethodGet, "://invalid-url", nil)
-		assert.Error(t, err)
+		_, err := client.Do(suite.ctx, http.MethodGet, "://invalid-url", nil)
+		suite.Assert().Error(err)
 	})
 }
 
-func TestOPAClient_HTTPClientConfiguration(t *testing.T) {
+func (suite *OPAClientTestSuite) TestHTTPClientConfiguration() {
 	baseURL := "http://localhost:8181"
 	client, err := NewOPAClient(baseURL)
-	require.NoError(t, err)
+	suite.Require().NoError(err)
 
-	t.Run("verify HTTP client configuration", func(t *testing.T) {
-		assert.NotNil(t, client.HTTPClient)
-		assert.Equal(t, 30*time.Second, client.HTTPClient.Timeout)
+	suite.Run("verify HTTP client configuration", func() {
+		suite.Assert().NotNil(client.HTTPClient)
+		suite.Assert().Equal(30*time.Second, client.HTTPClient.Timeout)
 
 		// Verify that the transport is wrapped with OpenTelemetry
-		assert.NotNil(t, client.HTTPClient.Transport)
+		suite.Assert().NotNil(client.HTTPClient.Transport)
 	})
 }
 
