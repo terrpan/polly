@@ -1,15 +1,20 @@
-# Check Run Rerun Implementa### How It Works
+# Check Run Rerun Implementation
+
+> **Note**: As of the recent webhook refactoring, check run rerun functionality is handled by the `CheckRunHandler` in `webhook_checkrun.go`. The core functionality remains the same, but is now organized in a more modular structure.
+
+## How It Works
 
 1. **Workflow Completion**: When a workflow completes successfully with artifacts:
-   - The system stores the workflow run ID for the commit SHA
-   - Security artifacts are processed and check runs are completed
+   - The system stores the workflow run ID for the commit SHA via `WorkflowHandler`
+   - Security artifacts are processed and check runs are completed using shared processing functions
 
 2. **Check Run Event Reception**: When a user clicks "Re-run" on a check:
    - GitHub sends a `check_run` webhook with action `"rerequested"`
+   - `WebhookRouter` dispatches to `CheckRunHandler.HandleCheckRunEvent()`
 
 3. **Check Type Identification**: The handler examines the `check_run.name` field to determine the type:
-   - Contains "Vulnerability" → Vulnerability check
-   - Contains "License" → License check
+   - Contains "Vulnerability" → Calls `CheckRunHandler.restartVulnerabilityCheck()`
+   - Contains "License" → Calls `CheckRunHandler.restartLicenseCheck()`
    - Other → Unknown (logged and skipped)
 
 4. **Context Restoration**:
@@ -24,8 +29,8 @@
 
 6. **Check Processing**:
    - Calls `ProcessWorkflowSecurityArtifacts()` with the stored workflow run ID
-   - Re-evaluates the same security scan results with current policy
-   - Posts updated comments if violations are found
+   - Re-evaluates the same security scan results with current policy using shared processing functions
+   - Posts updated comments if violations are found using shared comment builders
    - Completes the check run with current results
 
 The webhook handler now supports rerunning individual security checks when a user clicks "Re-run" on a failed check in the GitHub UI.

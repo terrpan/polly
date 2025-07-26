@@ -36,34 +36,35 @@ graph TB
 ### 1. Pull Request Events
 
 **Trigger**: PR opened/reopened webhook
-**Handler**: `handlePullRequestEvent()`
+**Handler**: `WebhookRouter → PullRequestHandler.HandlePullRequestEvent()`
 
 ```go
 // Sequence
-PR Event → Store PR Context → Create Security Check Runs → Set Status: Pending
+PR Event → Store PR Context → SecurityCheckManager.CreateSecurityCheckRuns() → Set Status: Pending
 ```
 
 **What happens:**
 1. **Store PR Context**: Maps SHA → PR number in `prContextStore` for later lookup
-2. **Get Check Types**: Calls `getSecurityCheckTypes()` to define vulnerability and license check configurations
-3. **Create Check Runs Concurrently**:
+2. **Security Check Creation**: `SecurityCheckManager.CreateSecurityCheckRuns()` handles the creation process
+3. **Get Check Types**: Calls `getSecurityCheckTypes()` to define vulnerability and license check configurations
+4. **Create Check Runs Concurrently**:
    - Creates vulnerability check run via `CreateVulnerabilityCheck()`
    - Creates license check run via `CreateLicenseCheck()`
    - Starts both checks in "pending" state
    - Stores check run IDs in `vulnerabilityCheckStore` and `licenseCheckStore`
 
-**Code Location**: Lines 216-260 in `webhook.go`
+**Code Location**: `PullRequestHandler.HandlePullRequestEvent()` in `webhook_pullrequest.go`
 
 ### 2. Workflow Events
 
 #### 2a. Workflow Started
 
 **Trigger**: Workflow `requested` or `in_progress` actions
-**Handler**: `handleWorkflowStarted()`
+**Handler**: `WebhookRouter → WorkflowHandler.handleWorkflowStarted()`
 
 ```go
 // Sequence
-Workflow Start → Find PR Context → Create Security Check Runs (Redundant)
+Workflow Start → Find PR Context → SecurityCheckManager.CreateSecurityCheckRuns() (Redundant)
 ```
 
 **Note**: This creates **duplicate check runs** - both PR events and workflow events create checks. This is a known issue.
@@ -71,11 +72,11 @@ Workflow Start → Find PR Context → Create Security Check Runs (Redundant)
 #### 2b. Workflow Completed
 
 **Trigger**: Workflow `completed` action
-**Handler**: `handleWorkflowCompleted()`
+**Handler**: `WebhookRouter → WorkflowHandler.handleWorkflowCompleted()`
 
 ```go
 // Sequence
-Workflow Complete → Download Artifacts → Process Security Data → Complete Check Runs
+Workflow Complete → Download Artifacts → Process Security Data → Complete Check Runs via Shared Processing Functions
 ```
 
 **What happens:**
@@ -86,27 +87,29 @@ Workflow Complete → Download Artifacts → Process Security Data → Complete 
    - SPDX SBOM files
 4. **Payload Creation**: Converts artifacts into `VulnerabilityPayload` and `SBOMPayload`
 5. **Check Run Lookup**: Finds existing check runs using stored IDs
-6. **Policy Evaluation**: Calls `processSecurityPayloads()` for evaluation
+6. **Policy Evaluation**: Calls `WorkflowHandler.processSecurityPayloads()` for evaluation
 
-**Code Location**: Lines 330-390 in `webhook.go`
+**Code Location**: `WorkflowHandler.handleWorkflowCompleted()` in `webhook_workflow.go`
 
 ### 3. Security Payload Processing
 
-**Handler**: `processSecurityPayloads()`
+**Handler**: `WorkflowHandler.processSecurityPayloads()` with shared processing functions
 
 ```go
 // Sequence
-Security Payloads → Concurrent Processing → Policy Evaluation → Comments → Check Completion
+Security Payloads → Concurrent Processing → Shared Processing Functions → Policy Evaluation → Comments → Check Completion
 ```
 
 **Vulnerability Processing** (if vulnerability check run exists):
-1. **Policy Evaluation**: Evaluates vulnerabilities against OPA policies via `CheckVulnerabilityPolicy()`
-2. **Comment Generation**: Posts PR comments for violations using `buildVulnerabilityViolationComment()`
-3. **Check Completion**: Completes vulnerability check run with success/failure status
+1. **Shared Processing**: Uses `helpers.processVulnerabilityChecks()` function
+2. **Policy Evaluation**: Evaluates vulnerabilities against OPA policies via `CheckVulnerabilityPolicy()`
+3. **Comment Generation**: Posts PR comments for violations using `buildVulnerabilityViolationComment()`
+4. **Check Completion**: Completes vulnerability check run with success/failure status
 
 **License Processing** (if license check run exists):
-1. **Policy Evaluation**: Evaluates SBOM against OPA policies via `CheckSBOMPolicy()`
-2. **Comment Generation**: Posts PR comments for violations using `buildLicenseViolationComment()`
+1. **Shared Processing**: Uses `helpers.processLicenseChecks()` function
+2. **Policy Evaluation**: Evaluates SBOM against OPA policies via `CheckSBOMPolicy()`
+3. **Comment Generation**: Posts PR comments for violations using `buildLicenseComment()`
 3. **Check Completion**: Completes license check run with success/failure status
 
 **Concurrency**: Both processes run concurrently using `utils.ExecuteConcurrently()`

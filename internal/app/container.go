@@ -32,8 +32,8 @@ type Container struct {
 	SecurityService *services.SecurityService
 
 	// Handlers
-	WebhookHandler *handlers.WebhookHandler
-	HealthHandler  *handlers.HealthHandler
+	WebhookRouter *handlers.WebhookRouter
+	HealthHandler *handlers.HealthHandler
 }
 
 // NewContainer initializes a new Container with all dependencies
@@ -97,7 +97,7 @@ func NewContainer(ctx context.Context) (*Container, error) {
 	)
 
 	// Initialize handlers
-	c.WebhookHandler, err = handlers.NewWebhookHandler(
+	c.WebhookRouter, err = handlers.NewWebhookRouter(
 		c.Logger,
 		c.CommentService,
 		c.CheckService,
@@ -106,11 +106,11 @@ func NewContainer(ctx context.Context) (*Container, error) {
 		c.StateService,
 	)
 	if err != nil {
-		c.Logger.Error("Failed to create webhook handler", "error", err)
+		c.Logger.Error("Failed to create webhook router", "error", err)
 		return nil, err
 	}
 	c.HealthHandler = handlers.NewHealthHandler(c.Logger, c.HealthService)
-	c.Logger.Info("Handlers initialized", "webhook_handler", c.WebhookHandler, "health_handler", c.HealthHandler)
+	c.Logger.Info("Handlers initialized", "webhook_router", c.WebhookRouter, "health_handler", c.HealthHandler)
 	return c, nil
 }
 
