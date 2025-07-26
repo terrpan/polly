@@ -5,9 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/terrpan/polly/internal/services"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/services"
 )
 
 type HealthHandler struct {
@@ -27,6 +28,7 @@ func NewHealthHandler(logger *slog.Logger, healthService *services.HealthService
 func (h *HealthHandler) HandleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tracer := otel.Tracer("polly/handlers")
+
 	ctx, span := tracer.Start(ctx, "health.handle")
 	defer span.End()
 
@@ -37,6 +39,7 @@ func (h *HealthHandler) HandleHealthCheck(w http.ResponseWriter, r *http.Request
 		span.SetAttributes(attribute.String("error", "health check failed"))
 		h.logger.ErrorContext(ctx, "Health check failed")
 		http.Error(w, "Health check failed", http.StatusInternalServerError)
+
 		return
 	}
 
@@ -54,6 +57,7 @@ func (h *HealthHandler) HandleHealthCheck(w http.ResponseWriter, r *http.Request
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		h.logger.ErrorContext(ctx, "Failed to encode health response", "error", err)
