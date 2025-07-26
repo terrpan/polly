@@ -153,8 +153,8 @@ func (suite *WorkflowHandlerTestSuite) TestHandleWorkflowRunEvent_StateStorage()
 		err := suite.handler.HandleWorkflowRunEvent(suite.ctx, payload)
 		assert.NoError(t, err) // requested action should be ignored gracefully
 
-		// Note: The workflow run ID storage happens in the completed action,
-		// not in the requested action based on the current implementation
+		// Note: This test ensures that no workflow run ID is stored for the "requested" action,
+		// as storage only occurs for the "completed" action in the current implementation.
 	})
 }
 
