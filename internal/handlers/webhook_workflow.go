@@ -1,13 +1,12 @@
+// Package handlers provides HTTP handlers for health checks and webhook processing.
+// This file defines the WorkflowHandler which processes GitHub workflow run events.
 package handlers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-playground/webhooks/v6/github"
 	"go.opentelemetry.io/otel/attribute"
-
-	"github.com/terrpan/polly/internal/services"
 )
 
 // WorkflowHandler handles workflow run webhook events
@@ -135,7 +134,7 @@ func (h *WorkflowHandler) handleWorkflowCompleted(
 		h.logger.ErrorContext(ctx, "Failed to store workflow run ID", "error", err)
 	}
 
-	// Handle different conclusions
+	// Handle non-success conclusions or missing artifacts
 	if event.WorkflowRun.Conclusion != "success" {
 		h.logger.DebugContext(
 			ctx,
@@ -147,6 +146,7 @@ func (h *WorkflowHandler) handleWorkflowCompleted(
 		return h.securityCheckMgr.CompleteSecurityChecksAsNeutral(ctx, owner, repo, sha)
 	}
 
+	// Handle missing artifacts
 	if event.WorkflowRun.ArtifactsURL == "" {
 		h.logger.DebugContext(
 			ctx,
@@ -158,161 +158,42 @@ func (h *WorkflowHandler) handleWorkflowCompleted(
 		return h.securityCheckMgr.CompleteSecurityChecksAsNeutral(ctx, owner, repo, sha)
 	}
 
-	// Process security artifacts
-	vulnPayloads, sbomPayloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(
-		ctx,
-		owner,
-		repo,
-		sha,
-		workflowRunID,
-	)
-	if err != nil {
-		h.logger.ErrorContext(
-			ctx,
-			"Failed to process workflow security artifacts",
-			"error",
-			err,
-			"workflow_run_id",
-			workflowRunID,
-		)
-
-		return fmt.Errorf("failed to process security artifacts: %w", err)
-	}
-
-	if len(vulnPayloads) == 0 && len(sbomPayloads) == 0 {
-		h.logger.InfoContext(
-			ctx,
-			"No security artifacts found for workflow run",
-			"workflow_run_id",
-			workflowRunID,
-		)
-
-		return h.securityCheckMgr.CompleteSecurityChecksAsNeutral(ctx, owner, repo, sha)
-	}
-
-	// Get PR number and check run IDs
-	prNumber, exists, err := h.stateService.GetPRNumber(ctx, owner, repo, sha)
-	if err != nil {
-		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA", "error", err, "sha", sha)
-		return err
-	}
-
-	if !exists {
+	// Get PR number for processing
+	prNumber := h.getPRNumberForWorkflow(ctx, owner, repo, sha)
+	if prNumber == 0 {
 		h.logger.DebugContext(ctx, "No PR context found for SHA", "sha", sha)
 		return nil
 	}
 
-	vulnCheckRunID, err := h.findVulnerabilityCheckRun(ctx, owner, repo, sha)
+	// Process security artifacts
+	config := WebhookProcessingConfig{
+		Owner:         owner,
+		Repo:          repo,
+		SHA:           sha,
+		WorkflowRunID: workflowRunID,
+		PRNumber:      prNumber,
+		CheckVuln:     true,
+		CheckLicense:  true,
+	}
+
+	return h.processWorkflowSecurityArtifacts(ctx, config)
+}
+
+// getPRNumberForWorkflow retrieves the PR number associated with a workflow
+func (h *WorkflowHandler) getPRNumberForWorkflow(
+	ctx context.Context,
+	owner, repo, sha string,
+) int64 {
+	prNumber, exists, err := h.stateService.GetPRNumber(ctx, owner, repo, sha)
 	if err != nil {
-		h.logger.ErrorContext(
-			ctx,
-			"Failed to find vulnerability check run",
-			"error",
-			err,
-			"sha",
-			sha,
-		)
-
-		return err
+		h.logger.ErrorContext(ctx, "Failed to get PR number for SHA", "error", err, "sha", sha)
+		return 0
 	}
 
-	licenseCheckRunID, err := h.findLicenseCheckRun(ctx, owner, repo, sha)
-	if err != nil {
-		h.logger.ErrorContext(ctx, "Failed to find license check run", "error", err, "sha", sha)
-		return err
+	if !exists {
+		h.logger.DebugContext(ctx, "No PR context found for SHA", "sha", sha)
+		return 0
 	}
 
-	if vulnCheckRunID == 0 && licenseCheckRunID == 0 {
-		h.logger.WarnContext(ctx, "No security check runs found for SHA", "sha", sha)
-		return nil
-	}
-
-	return h.processSecurityPayloads(
-		ctx,
-		vulnPayloads,
-		sbomPayloads,
-		owner,
-		repo,
-		sha,
-		prNumber,
-		vulnCheckRunID,
-		licenseCheckRunID,
-	)
-}
-
-// processSecurityPayloads evaluates vulnerability and SBOM payloads separately and completes their respective check runs
-func (h *WorkflowHandler) processSecurityPayloads(
-	ctx context.Context,
-	vulnPayloads []*services.VulnerabilityPayload,
-	sbomPayloads []*services.SBOMPayload,
-	owner, repo, sha string,
-	prNumber int64,
-	vulnCheckRunID, licenseCheckRunID int64,
-) error {
-	ctx, span := h.tracingHelper.StartSpan(ctx, "workflow.process_security_payloads")
-	defer span.End()
-
-	// Process vulnerability checks if available
-	if vulnCheckRunID != 0 {
-		if err := h.processVulnerabilityPayloads(ctx, vulnPayloads, owner, repo, sha, prNumber, vulnCheckRunID); err != nil {
-			return err
-		}
-	}
-
-	// Process license checks if available
-	if licenseCheckRunID != 0 {
-		if err := h.processLicensePayloads(ctx, sbomPayloads, owner, repo, sha, prNumber, licenseCheckRunID); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// processVulnerabilityPayloads processes vulnerability payloads for a specific check run
-func (h *WorkflowHandler) processVulnerabilityPayloads(
-	ctx context.Context,
-	vulnPayloads []*services.VulnerabilityPayload,
-	owner, repo, sha string,
-	prNumber, checkRunID int64,
-) error {
-	h.logger.DebugContext(ctx, "Processing vulnerability payloads", "count", len(vulnPayloads))
-
-	return processVulnerabilityChecks(
-		ctx,
-		h.logger,
-		h.policyService,
-		h.commentService,
-		h.checkService,
-		vulnPayloads,
-		owner,
-		repo,
-		sha,
-		prNumber,
-		checkRunID,
-	)
-}
-
-// processLicensePayloads processes SBOM payloads for a specific check run
-func (h *WorkflowHandler) processLicensePayloads(
-	ctx context.Context,
-	sbomPayloads []*services.SBOMPayload,
-	owner, repo, sha string,
-	prNumber, checkRunID int64,
-) error {
-	h.logger.DebugContext(ctx, "Processing license payloads", "count", len(sbomPayloads))
-
-	return processLicenseChecks(
-		ctx,
-		h.logger,
-		h.policyService,
-		h.commentService,
-		h.checkService,
-		sbomPayloads,
-		owner,
-		repo,
-		sha,
-		prNumber,
-		checkRunID,
-	)
+	return prNumber
 }

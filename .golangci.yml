@@ -54,6 +54,7 @@ linters:
           - funlen
           - lll
           - wsl_v5
+          - errcheck
 
       # skip generated protobufs
       - path: '.*\.pb\.go'

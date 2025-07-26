@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"testing"
 
+	"github.com/go-playground/webhooks/v6/github"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/terrpan/polly/internal/services"
@@ -232,10 +237,10 @@ func TestBuildComponentComment(t *testing.T) {
 func TestBuildVulnerabilityCheckResult(t *testing.T) {
 	tests := []struct {
 		name               string
-		expectedConclusion services.CheckRunConclusion
-		expectedTitle      string
 		result             PolicyProcessingResult
 		payloadCount       int
+		expectedConclusion services.CheckRunConclusion
+		expectedTitle      string
 	}{
 		{
 			name:               "successful result",
@@ -268,3 +273,158 @@ func TestBuildVulnerabilityCheckResult(t *testing.T) {
 }
 
 // TracingHelperTestSuite provides tests for the TracingHelper
+
+func TestBaseWebhookHandler_storeCheckRunID(t *testing.T) {
+	tests := []struct {
+		name       string
+		storeError error
+		checkType  string
+		checkRunID int64
+	}{
+		{
+			name:       "successful storage",
+			storeError: nil,
+			checkType:  "vulnerability",
+			checkRunID: 12345,
+		},
+		{
+			name:       "storage failure",
+			storeError: errors.New("storage failed"),
+			checkType:  "license",
+			checkRunID: 67890,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a simple logger
+			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+			}))
+
+			// Create handler with minimal dependencies
+			handler := &BaseWebhookHandler{
+				logger: logger,
+			}
+
+			ctx := context.Background()
+			owner, repo, sha := "testowner", "testrepo", "abc123"
+
+			// Create a simple store function that returns the test error
+			storeFunc := func(ctx context.Context, owner, repo, sha string, checkRunID int64) error {
+				return tt.storeError
+			}
+
+			// Execute the function - it should not panic regardless of the store function result
+			handler.storeCheckRunID(ctx, owner, repo, sha, tt.checkRunID, tt.checkType, storeFunc)
+
+			// The function doesn't return anything, so we just verify it doesn't panic
+			// In a real scenario, the error would be logged, but we're testing the function behavior
+		})
+	}
+}
+
+func TestBaseWebhookHandler_storeCheckRunIDWithError(t *testing.T) {
+	tests := []struct {
+		name        string
+		storeError  error
+		expectError bool
+		checkType   string
+		checkRunID  int64
+	}{
+		{
+			name:        "successful storage",
+			storeError:  nil,
+			expectError: false,
+			checkType:   "vulnerability",
+			checkRunID:  12345,
+		},
+		{
+			name:        "storage failure",
+			storeError:  errors.New("storage failed"),
+			expectError: true,
+			checkType:   "license",
+			checkRunID:  67890,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a simple logger
+			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+			}))
+
+			// Create handler with minimal dependencies
+			handler := &BaseWebhookHandler{
+				logger: logger,
+			}
+
+			ctx := context.Background()
+			owner, repo, sha := "testowner", "testrepo", "abc123"
+
+			// Create a simple store function that returns the test error
+			storeFunc := func(ctx context.Context, owner, repo, sha string, checkRunID int64) error {
+				return tt.storeError
+			}
+
+			// Execute the function
+			err := handler.storeCheckRunIDWithError(ctx, owner, repo, sha, tt.checkRunID, tt.checkType, storeFunc)
+
+			// Verify the error handling behavior
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Equal(t, tt.storeError, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestGetEventInfo(t *testing.T) {
+	t.Run("PullRequestPayload", func(t *testing.T) {
+		payload := github.PullRequestPayload{}
+		payload.Repository.Name = "testrepo"
+		payload.Repository.Owner.Login = "testowner"
+		payload.PullRequest.Head.Sha = "abc123def"
+		payload.PullRequest.ID = 12345
+
+		owner, repo, sha, eventID := getEventInfo(payload)
+
+		assert.Equal(t, "testowner", owner)
+		assert.Equal(t, "testrepo", repo)
+		assert.Equal(t, "abc123def", sha)
+		assert.Equal(t, int64(12345), eventID)
+	})
+
+	t.Run("CheckRunPayload", func(t *testing.T) {
+		payload := github.CheckRunPayload{}
+		payload.Repository.Name = "checkrepo"
+		payload.Repository.Owner.Login = "checkowner"
+		payload.CheckRun.HeadSHA = "def456ghi"
+		payload.CheckRun.ID = 67890
+
+		owner, repo, sha, eventID := getEventInfo(payload)
+
+		assert.Equal(t, "checkowner", owner)
+		assert.Equal(t, "checkrepo", repo)
+		assert.Equal(t, "def456ghi", sha)
+		assert.Equal(t, int64(67890), eventID)
+	})
+
+	t.Run("WorkflowRunPayload", func(t *testing.T) {
+		payload := github.WorkflowRunPayload{}
+		payload.Repository.Name = "workflowrepo"
+		payload.Repository.Owner.Login = "workflowowner"
+		payload.WorkflowRun.HeadSha = "ghi789jkl"
+		payload.WorkflowRun.ID = 99999
+
+		owner, repo, sha, eventID := getEventInfo(payload)
+
+		assert.Equal(t, "workflowowner", owner)
+		assert.Equal(t, "workflowrepo", repo)
+		assert.Equal(t, "ghi789jkl", sha)
+		assert.Equal(t, int64(99999), eventID)
+	})
+}

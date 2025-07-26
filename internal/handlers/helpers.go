@@ -480,7 +480,7 @@ func buildLicenseCheckResult(
 // getEventInfo extracts common event information for logging using generics
 func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](
 	event T,
-) (owner, repo, sha string, ID int64) {
+) (owner, repo, sha string, eventID int64) {
 	// We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.
 	switch e := any(event).(type) {
 	case github.PullRequestPayload:
@@ -496,7 +496,7 @@ func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.
 }
 
 // storeCheckRunID is a helper method that handles storing check run IDs with consistent error logging
-func (b *BaseWebhookHandler) storeCheckRunID(
+func (h *BaseWebhookHandler) storeCheckRunID(
 	ctx context.Context,
 	owner, repo, sha string,
 	checkRunID int64,
@@ -504,7 +504,7 @@ func (b *BaseWebhookHandler) storeCheckRunID(
 	storeFunc func(context.Context, string, string, string, int64) error,
 ) {
 	if err := storeFunc(ctx, owner, repo, sha, checkRunID); err != nil {
-		b.logger.ErrorContext(ctx, "Failed to store check run ID",
+		h.logger.ErrorContext(ctx, "Failed to store check run ID",
 			"error", err,
 			"check_type", checkType,
 			"owner", owner,
@@ -516,7 +516,7 @@ func (b *BaseWebhookHandler) storeCheckRunID(
 }
 
 // storeCheckRunIDWithError is a helper method that handles storing check run IDs with consistent error logging and returns the error
-func (b *BaseWebhookHandler) storeCheckRunIDWithError(
+func (h *BaseWebhookHandler) storeCheckRunIDWithError(
 	ctx context.Context,
 	owner, repo, sha string,
 	checkRunID int64,
@@ -524,7 +524,7 @@ func (b *BaseWebhookHandler) storeCheckRunIDWithError(
 	storeFunc func(context.Context, string, string, string, int64) error,
 ) error {
 	if err := storeFunc(ctx, owner, repo, sha, checkRunID); err != nil {
-		b.logger.ErrorContext(ctx, "Failed to store check run ID",
+		h.logger.ErrorContext(ctx, "Failed to store check run ID",
 			"error", err,
 			"check_type", checkType,
 			"owner", owner,
@@ -540,13 +540,13 @@ func (b *BaseWebhookHandler) storeCheckRunIDWithError(
 }
 
 // findVulnerabilityCheckRun finds an existing vulnerability check run for the given SHA
-func (b *BaseWebhookHandler) findVulnerabilityCheckRun(
+func (h *BaseWebhookHandler) findVulnerabilityCheckRun(
 	ctx context.Context,
 	owner, repo, sha string,
 ) (int64, error) {
-	checkRunID, exists, err := b.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
+	checkRunID, exists, err := h.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
 	if err != nil {
-		b.logger.ErrorContext(ctx, "Failed to get vulnerability check run ID",
+		h.logger.ErrorContext(ctx, "Failed to get vulnerability check run ID",
 			"error", err,
 			"sha", sha,
 		)
@@ -555,45 +555,14 @@ func (b *BaseWebhookHandler) findVulnerabilityCheckRun(
 	}
 
 	if !exists {
-		b.logger.DebugContext(ctx, "No vulnerability check run found for SHA",
+		h.logger.DebugContext(ctx, "No vulnerability check run found for SHA",
 			"sha", sha,
 		)
 
 		return 0, nil
 	}
 
-	b.logger.DebugContext(ctx, "Found vulnerability check run for SHA",
-		"sha", sha,
-		"check_run_id", checkRunID,
-	)
-
-	return checkRunID, nil
-}
-
-// findLicenseCheckRun finds an existing license check run for the given SHA
-func (b *BaseWebhookHandler) findLicenseCheckRun(
-	ctx context.Context,
-	owner, repo, sha string,
-) (int64, error) {
-	checkRunID, exists, err := b.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha)
-	if err != nil {
-		b.logger.ErrorContext(ctx, "Failed to get license check run ID",
-			"error", err,
-			"sha", sha,
-		)
-
-		return 0, err
-	}
-
-	if !exists {
-		b.logger.DebugContext(ctx, "No license check run found for SHA",
-			"sha", sha,
-		)
-
-		return 0, nil
-	}
-
-	b.logger.DebugContext(ctx, "Found license check run for SHA",
+	h.logger.DebugContext(ctx, "Found vulnerability check run for SHA",
 		"sha", sha,
 		"check_run_id", checkRunID,
 	)

@@ -1,3 +1,5 @@
+// Package handlers provides HTTP handlers for health checks and webhook processing.
+// This file defines the WebhookRouter which routes GitHub webhook events to appropriate handlers.
 package handlers
 
 import (
@@ -147,5 +149,9 @@ func (r *WebhookRouter) handleWebhookError(
 func (r *WebhookRouter) handleWebhookSuccess(w http.ResponseWriter, span trace.Span) {
 	span.SetAttributes(attribute.String("result", "success"))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("Webhook received successfully"))
+
+	_, err := w.Write([]byte("Webhook received successfully"))
+	if err != nil {
+		r.logger.Error("Failed to write response", "error", err)
+	}
 }

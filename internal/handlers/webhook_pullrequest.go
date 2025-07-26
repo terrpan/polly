@@ -1,3 +1,5 @@
+// Package handlers provides HTTP handlers for health checks and webhook processing.
+// This file defines the PullRequestHandler which processes GitHub pull request events.
 package handlers
 
 import (

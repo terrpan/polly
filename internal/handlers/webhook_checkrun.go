@@ -1,3 +1,5 @@
+// Package handlers provides HTTP handlers for health checks and webhook processing.
+// This file defines the CheckRunHandler which processes GitHub check run events.
 package handlers
 
 import (

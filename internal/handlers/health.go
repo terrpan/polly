@@ -1,3 +1,5 @@
+// Package handlers provides HTTP handlers for health checks and webhook processing.
+// This file defines the HealthHandler which responds to health check requests.
 package handlers
 
 import (
@@ -11,6 +13,8 @@ import (
 	"github.com/terrpan/polly/internal/services"
 )
 
+// HealthHandler handles HTTP requests for health checks.
+// It uses a logger and a health service to process requests.
 type HealthHandler struct {
 	logger        *slog.Logger
 	healthService *services.HealthService
