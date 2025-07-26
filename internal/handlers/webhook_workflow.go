@@ -129,7 +129,7 @@ func (h *WorkflowHandler) handleWorkflowCompleted(
 		"owner", owner, "repo", repo, "sha", sha, "workflow_run_id", workflowRunID,
 		"conclusion", event.WorkflowRun.Conclusion, "artifacts_url", event.WorkflowRun.ArtifactsURL)
 
-	// Store workflow run ID for later use
+	// Store workflow run ID for check run reruns and artifact processing
 	if err := h.stateService.StoreWorkflowRunID(ctx, owner, repo, sha, workflowRunID); err != nil {
 		h.logger.ErrorContext(ctx, "Failed to store workflow run ID", "error", err)
 	}
