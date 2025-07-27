@@ -171,6 +171,38 @@ func (h *CheckRunHandler) handleLicenseCheckRerun(
 // SecurityCheckRestartFunc defines the function signature for restarting security checks
 type SecurityCheckRestartFunc func(ctx context.Context, owner, repo, sha string, checkRunID int64, vulnPayloads []*services.VulnerabilityPayload, sbomPayloads []*services.SBOMPayload, prNumber int64) error
 
+// SecurityCheckFunctions holds the functions needed for a specific security check type
+type SecurityCheckFunctions struct {
+	StoreFunc       func(context.Context, string, string, string, int64) error
+	StartFunc       func(context.Context, string, string, int64) error
+	NoArtifactsFunc func(context.Context, string, string, int64) error
+}
+
+// getSecurityCheckFunctions returns the appropriate functions for the given check type
+func (h *CheckRunHandler) getSecurityCheckFunctions(checkType string) SecurityCheckFunctions {
+	switch checkType {
+	case "vulnerability":
+		return SecurityCheckFunctions{
+			StoreFunc:       h.stateService.StoreVulnerabilityCheckRunID,
+			StartFunc:       h.checkService.StartVulnerabilityCheck,
+			NoArtifactsFunc: h.checkService.CompleteVulnerabilityCheckWithNoArtifacts,
+		}
+	case "license":
+		return SecurityCheckFunctions{
+			StoreFunc:       h.stateService.StoreLicenseCheckRunID,
+			StartFunc:       h.checkService.StartLicenseCheck,
+			NoArtifactsFunc: h.checkService.CompleteLicenseCheckWithNoArtifacts,
+		}
+	default:
+		// Should never happen, but return vulnerability as default
+		return SecurityCheckFunctions{
+			StoreFunc:       h.stateService.StoreVulnerabilityCheckRunID,
+			StartFunc:       h.checkService.StartVulnerabilityCheck,
+			NoArtifactsFunc: h.checkService.CompleteVulnerabilityCheckWithNoArtifacts,
+		}
+	}
+}
+
 // restartSecurityCheck is a common handler for restarting security checks
 func (h *CheckRunHandler) restartSecurityCheck(
 	ctx context.Context,
@@ -193,30 +225,23 @@ func (h *CheckRunHandler) restartSecurityCheck(
 		sha,
 	)
 
+	// Get the appropriate functions for this check type
+	checkFuncs := h.getSecurityCheckFunctions(checkType)
+
 	// Store check run ID
-	storeFunc := h.stateService.StoreVulnerabilityCheckRunID
-	startFunc := h.checkService.StartVulnerabilityCheck
-	noArtifactsFunc := h.checkService.CompleteVulnerabilityCheckWithNoArtifacts
-
-	if checkType == "license" {
-		storeFunc = h.stateService.StoreLicenseCheckRunID
-		startFunc = h.checkService.StartLicenseCheck
-		noArtifactsFunc = h.checkService.CompleteLicenseCheckWithNoArtifacts
-	}
-
-	if err := h.storeCheckRunIDWithError(ctx, owner, repo, sha, checkRunID, checkType, storeFunc); err != nil {
+	if err := h.storeCheckRunIDWithError(ctx, owner, repo, sha, checkRunID, checkType, checkFuncs.StoreFunc); err != nil {
 		return err
 	}
 
 	// Start the check run
-	if err := startFunc(ctx, owner, repo, checkRunID); err != nil {
+	if err := checkFuncs.StartFunc(ctx, owner, repo, checkRunID); err != nil {
 		return fmt.Errorf("failed to start %s check: %w", checkType, err)
 	}
 
 	// Get stored artifacts
 	vulnPayloads, sbomPayloads, prNumber, err := h.getStoredArtifactsAndPR(ctx, owner, repo, sha)
 	if err != nil {
-		return noArtifactsFunc(ctx, owner, repo, checkRunID)
+		return checkFuncs.NoArtifactsFunc(ctx, owner, repo, checkRunID)
 	}
 
 	return restartFunc(ctx, owner, repo, sha, checkRunID, vulnPayloads, sbomPayloads, prNumber)
