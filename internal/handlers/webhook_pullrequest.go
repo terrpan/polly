@@ -11,13 +11,13 @@ import (
 
 // PullRequestHandler handles pull request webhook events
 type PullRequestHandler struct {
-	*BaseWebhookHandler
+	*SecurityWebhookHandler
 }
 
 // NewPullRequestHandler creates a new pull request handler
 func NewPullRequestHandler(base *BaseWebhookHandler) *PullRequestHandler {
 	return &PullRequestHandler{
-		BaseWebhookHandler: base,
+		SecurityWebhookHandler: NewSecurityWebhookHandler(base),
 	}
 }
 

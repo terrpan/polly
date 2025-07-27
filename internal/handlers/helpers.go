@@ -18,6 +18,12 @@ type TracingHelper struct {
 	tracer trace.Tracer
 }
 
+// SecurityWebhookHandler extends BaseWebhookHandler with security check management capabilities
+type SecurityWebhookHandler struct {
+	*BaseWebhookHandler
+	securityCheckMgr *SecurityCheckManager
+}
+
 // NewTracingHelper creates a new tracing helper for webhook handlers
 func NewTracingHelper() *TracingHelper {
 	return &TracingHelper{
@@ -54,14 +60,13 @@ func NewSecurityCheckManager(
 
 // BaseWebhookHandler contains the common dependencies for all webhook handlers
 type BaseWebhookHandler struct {
-	logger           *slog.Logger
-	commentService   *services.CommentService
-	checkService     *services.CheckService
-	policyService    *services.PolicyService
-	securityService  *services.SecurityService
-	stateService     *services.StateService
-	tracingHelper    *TracingHelper
-	securityCheckMgr *SecurityCheckManager
+	logger          *slog.Logger
+	commentService  *services.CommentService
+	checkService    *services.CheckService
+	policyService   *services.PolicyService
+	securityService *services.SecurityService
+	stateService    *services.StateService
+	tracingHelper   *TracingHelper
 }
 
 // NewBaseWebhookHandler creates a new base webhook handler with common dependencies
@@ -74,15 +79,28 @@ func NewBaseWebhookHandler(
 	stateService *services.StateService,
 ) *BaseWebhookHandler {
 	return &BaseWebhookHandler{
-		logger:           logger,
-		commentService:   commentService,
-		checkService:     checkService,
-		policyService:    policyService,
-		securityService:  securityService,
-		stateService:     stateService,
-		tracingHelper:    NewTracingHelper(),
-		securityCheckMgr: NewSecurityCheckManager(logger, checkService, stateService),
+		logger:          logger,
+		commentService:  commentService,
+		checkService:    checkService,
+		policyService:   policyService,
+		securityService: securityService,
+		stateService:    stateService,
+		tracingHelper:   NewTracingHelper(),
 	}
+}
+
+// NewSecurityWebhookHandler creates a new security webhook handler with security check management
+func NewSecurityWebhookHandler(base *BaseWebhookHandler) *SecurityWebhookHandler {
+	securityHandler := &SecurityWebhookHandler{
+		BaseWebhookHandler: base,
+	}
+
+	// Only create SecurityCheckManager if we have a valid base handler
+	if base != nil {
+		securityHandler.securityCheckMgr = NewSecurityCheckManager(base.logger, base.checkService, base.stateService)
+	}
+
+	return securityHandler
 }
 
 // PolicyProcessingResult holds the result of processing security payloads

@@ -11,13 +11,13 @@ import (
 
 // WorkflowHandler handles workflow run webhook events
 type WorkflowHandler struct {
-	*BaseWebhookHandler
+	*SecurityWebhookHandler
 }
 
 // NewWorkflowHandler creates a new workflow handler
 func NewWorkflowHandler(base *BaseWebhookHandler) *WorkflowHandler {
 	return &WorkflowHandler{
-		BaseWebhookHandler: base,
+		SecurityWebhookHandler: NewSecurityWebhookHandler(base),
 	}
 }
 
