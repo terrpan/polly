@@ -44,6 +44,9 @@ type PolicyProcessor interface {
 // VulnerabilityPolicyProcessor handles vulnerability policy processing
 type VulnerabilityPolicyProcessor struct{}
 
+// LicensePolicyProcessor handles license policy processing
+type LicensePolicyProcessor struct{}
+
 // ProcessPayloads processes vulnerability payloads and evaluates policies
 func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 	ctx context.Context,
@@ -52,7 +55,12 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 	payloads interface{},
 	owner, repo, sha string,
 ) PolicyProcessingResult {
-	vulnPayloads := payloads.([]*services.VulnerabilityPayload)
+	vulnPayloads, ok := payloads.([]*services.VulnerabilityPayload)
+	if !ok {
+		logger.ErrorContext(ctx, "Invalid payload type for vulnerability processing")
+		return PolicyProcessingResult{AllPassed: false, FailureDetails: []string{"Invalid payload type for vulnerability processing"}}
+	}
+
 	result := PolicyProcessingResult{AllPassed: true}
 
 	for _, payload := range vulnPayloads {
@@ -104,9 +112,6 @@ func (p *VulnerabilityPolicyProcessor) GetPolicyType() string {
 	return "vulnerability"
 }
 
-// LicensePolicyProcessor handles license policy processing
-type LicensePolicyProcessor struct{}
-
 // ProcessPayloads processes SBOM payloads and evaluates license policies
 func (p *LicensePolicyProcessor) ProcessPayloads(
 	ctx context.Context,
@@ -115,7 +120,11 @@ func (p *LicensePolicyProcessor) ProcessPayloads(
 	payloads interface{},
 	owner, repo, sha string,
 ) PolicyProcessingResult {
-	sbomPayloads := payloads.([]*services.SBOMPayload)
+	sbomPayloads, ok := payloads.([]*services.SBOMPayload)
+	if !ok {
+		logger.ErrorContext(ctx, "Invalid payload type for SBOM processing")
+		return PolicyProcessingResult{AllPassed: false, FailureDetails: []string{"Invalid payload type for SBOM processing"}}
+	}
 	result := PolicyProcessingResult{AllPassed: true}
 
 	for _, payload := range sbomPayloads {

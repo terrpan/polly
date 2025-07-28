@@ -16,10 +16,40 @@ type TracingHelper struct {
 	tracer trace.Tracer
 }
 
+// SecurityCheckManager handles the creation and management of security check runs
+type SecurityCheckManager struct {
+	logger        *slog.Logger
+	checkService  *services.CheckService
+	stateService  *services.StateService
+	tracingHelper *TracingHelper
+}
+
+// BaseWebhookHandler contains the common dependencies for all webhook handlers
+type BaseWebhookHandler struct {
+	logger          *slog.Logger
+	commentService  *services.CommentService
+	checkService    *services.CheckService
+	policyService   *services.PolicyService
+	securityService *services.SecurityService
+	stateService    *services.StateService
+	tracingHelper   *TracingHelper
+}
+
 // SecurityWebhookHandler extends BaseWebhookHandler with security check management capabilities
 type SecurityWebhookHandler struct {
 	*BaseWebhookHandler
 	securityCheckMgr *SecurityCheckManager
+}
+
+// WebhookProcessingConfig holds configuration for processing workflow artifacts
+type WebhookProcessingConfig struct {
+	Owner         string
+	Repo          string
+	SHA           string
+	WorkflowRunID int64
+	PRNumber      int64
+	CheckVuln     bool
+	CheckLicense  bool
 }
 
 // NewTracingHelper creates a new tracing helper for webhook handlers
@@ -27,19 +57,6 @@ func NewTracingHelper() *TracingHelper {
 	return &TracingHelper{
 		tracer: otel.Tracer("polly/handlers"),
 	}
-}
-
-// StartSpan creates a new tracing span with the given name
-func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Context, trace.Span) {
-	return t.tracer.Start(ctx, name)
-}
-
-// SecurityCheckManager handles the creation and management of security check runs
-type SecurityCheckManager struct {
-	logger        *slog.Logger
-	checkService  *services.CheckService
-	stateService  *services.StateService
-	tracingHelper *TracingHelper
 }
 
 // NewSecurityCheckManager creates a new security check manager
@@ -54,17 +71,6 @@ func NewSecurityCheckManager(
 		stateService:  stateService,
 		tracingHelper: NewTracingHelper(),
 	}
-}
-
-// BaseWebhookHandler contains the common dependencies for all webhook handlers
-type BaseWebhookHandler struct {
-	logger          *slog.Logger
-	commentService  *services.CommentService
-	checkService    *services.CheckService
-	policyService   *services.PolicyService
-	securityService *services.SecurityService
-	stateService    *services.StateService
-	tracingHelper   *TracingHelper
 }
 
 // NewBaseWebhookHandler creates a new base webhook handler with common dependencies
@@ -105,33 +111,9 @@ func NewSecurityWebhookHandler(base *BaseWebhookHandler) *SecurityWebhookHandler
 	return securityHandler
 }
 
-// WebhookProcessingConfig holds configuration for processing workflow artifacts
-type WebhookProcessingConfig struct {
-	Owner         string
-	Repo          string
-	SHA           string
-	WorkflowRunID int64
-	PRNumber      int64
-	CheckVuln     bool
-	CheckLicense  bool
-}
-
-// getEventInfo extracts common event information for logging using generics
-func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](
-	event T,
-) (owner, repo, sha string, eventID int64) {
-	// We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.
-	switch e := any(event).(type) {
-	case github.PullRequestPayload:
-		return e.Repository.Owner.Login, e.Repository.Name, e.PullRequest.Head.Sha, e.PullRequest.ID
-	case github.CheckRunPayload:
-		return e.Repository.Owner.Login, e.Repository.Name, e.CheckRun.HeadSHA, e.CheckRun.ID
-	case github.WorkflowRunPayload:
-		return e.Repository.Owner.Login, e.Repository.Name, e.WorkflowRun.HeadSha, e.WorkflowRun.ID
-	default:
-		// This should never happen due to type constraints, but just in case
-		return "", "", "", 0
-	}
+// StartSpan creates a new tracing span with the given name
+func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+	return t.tracer.Start(ctx, name)
 }
 
 // storeCheckRunIDWithError is a helper method that handles storing check run IDs with consistent error logging and returns the error
@@ -156,4 +138,22 @@ func (h *BaseWebhookHandler) storeCheckRunIDWithError(
 	}
 
 	return nil
+}
+
+// getEventInfo extracts common event information for logging using generics
+func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](
+	event T,
+) (owner, repo, sha string, eventID int64) {
+	// We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.
+	switch e := any(event).(type) {
+	case github.PullRequestPayload:
+		return e.Repository.Owner.Login, e.Repository.Name, e.PullRequest.Head.Sha, e.PullRequest.ID
+	case github.CheckRunPayload:
+		return e.Repository.Owner.Login, e.Repository.Name, e.CheckRun.HeadSHA, e.CheckRun.ID
+	case github.WorkflowRunPayload:
+		return e.Repository.Owner.Login, e.Repository.Name, e.WorkflowRun.HeadSha, e.WorkflowRun.ID
+	default:
+		// This should never happen due to type constraints, but just in case
+		return "", "", "", 0
+	}
 }
