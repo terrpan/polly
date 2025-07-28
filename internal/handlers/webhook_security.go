@@ -69,7 +69,9 @@ func (s *SecurityCheckManager) getSecurityCheckTypes(
 	}
 }
 
-// CreateSecurityCheckRuns creates and starts security check runs concurrently
+// CreateSecurityCheckRuns creates and starts security check runs sequentially
+// Note: GitHub API calls are processed sequentially to prevent context cancellation
+// and rate limiting issues, while policy processing remains concurrent for performance
 func (s *SecurityCheckManager) CreateSecurityCheckRuns(
 	ctx context.Context,
 	owner, repo, sha string,
@@ -87,49 +89,38 @@ func (s *SecurityCheckManager) CreateSecurityCheckRuns(
 
 	checkTypes := s.getSecurityCheckTypes(ctx, owner, repo, sha)
 
-	tasks := make([]func() error, len(checkTypes))
-	for i, ct := range checkTypes {
-		ct := ct
-		tasks[i] = func() error {
-			checkRun, err := ct.create()
-			if err != nil {
-				s.logger.ErrorContext(ctx, "Failed to create check run",
-					"error", err,
-					"check_type", ct.name,
-					"owner", owner,
-					"repo", repo,
-					"sha", sha,
-				)
-
-				return fmt.Errorf("failed to create %s check: %w", ct.name, err)
-			}
-
-			if err := ct.start(checkRun.GetID()); err != nil {
-				s.logger.ErrorContext(ctx, "Failed to start check",
-					"error", err,
-					"check_type", ct.name,
-					"check_run_id", checkRun.GetID(),
-				)
-
-				return fmt.Errorf("failed to start %s check: %w", ct.name, err)
-			}
-
-			ct.store(checkRun.GetID())
-			s.logger.InfoContext(ctx, "Created pending check run",
+	// Process check run creation sequentially to avoid GitHub API rate limits
+	// and context cancellation issues
+	for _, ct := range checkTypes {
+		checkRun, err := ct.create()
+		if err != nil {
+			s.logger.ErrorContext(ctx, "Failed to create check run",
+				"error", err,
 				"check_type", ct.name,
-				"check_run_id", checkRun.GetID(),
-				"pr_number", prNumber,
+				"owner", owner,
+				"repo", repo,
+				"sha", sha,
 			)
 
-			return nil
+			return fmt.Errorf("failed to create %s check: %w", ct.name, err)
 		}
-	}
 
-	errs := utils.ExecuteConcurrently(tasks)
-	for _, err := range errs {
-		if err != nil {
-			return err
+		if err := ct.start(checkRun.GetID()); err != nil {
+			s.logger.ErrorContext(ctx, "Failed to start check",
+				"error", err,
+				"check_type", ct.name,
+				"check_run_id", checkRun.GetID(),
+			)
+
+			return fmt.Errorf("failed to start %s check: %w", ct.name, err)
 		}
+
+		ct.store(checkRun.GetID())
+		s.logger.InfoContext(ctx, "Created pending check run",
+			"check_type", ct.name,
+			"check_run_id", checkRun.GetID(),
+			"pr_number", prNumber,
+		)
 	}
 
 	return nil
