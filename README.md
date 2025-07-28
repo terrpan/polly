@@ -189,4 +189,11 @@ For detailed information, see the [Refactoring Summary](REFACTORING_SUMMARY.md).
 - [ ] Add integration tests for refactored webhook handlers
 - [ ] Implement event queuing for better event handling
 - [ ] Split server/reception and worker into separate components for scalability
+- [ ] Support more validation rules and policies
+  - [ ] Validate files
+  - [ ] Validate packages, being able to block specific packages
+  - [ ] Validate dependencies, ensuring no vulnerable versions are used
+  - [ ] Validate full language support, including Go, Python, JavaScript, etc.
 - [ ] Add support for validating workflow settings and inputs
+  - [ ] Validate required inputs are provided
+  - [ ] Validate input formats and types
