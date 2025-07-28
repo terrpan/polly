@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/utils"
 )
 
 // processWorkflowSecurityArtifacts is a shared helper for processing security artifacts from workflows
@@ -21,17 +22,30 @@ func (h *BaseWebhookHandler) processWorkflowSecurityArtifacts(
 		return fmt.Errorf("failed to process workflow security artifacts: %w", err)
 	}
 
-	// Process vulnerability checks if requested
+	// Create concurrent tasks for policy processing
+	var tasks []func() error
+
+	// Add vulnerability check task if requested
 	if config.CheckVuln && len(vulnPayloads) > 0 {
-		if err := h.processVulnerabilityArtifacts(ctx, config, vulnPayloads); err != nil {
-			return err
-		}
+		tasks = append(tasks, func() error {
+			return h.processVulnerabilityArtifacts(ctx, config, vulnPayloads)
+		})
 	}
 
-	// Process license checks if requested
+	// Add license check task if requested
 	if config.CheckLicense && len(sbomPayloads) > 0 {
-		if err := h.processLicenseArtifacts(ctx, config, sbomPayloads); err != nil {
-			return err
+		tasks = append(tasks, func() error {
+			return h.processLicenseArtifacts(ctx, config, sbomPayloads)
+		})
+	}
+
+	// Execute policy checks concurrently
+	if len(tasks) > 0 {
+		errs := utils.ExecuteConcurrently(tasks)
+		for _, err := range errs {
+			if err != nil {
+				return fmt.Errorf("concurrent policy processing failed: %w", err)
+			}
 		}
 	}
 

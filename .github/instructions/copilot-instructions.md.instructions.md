@@ -26,6 +26,9 @@ GitHub Webhook → WebhookRouter → Event Handler → SecurityService → Polic
 
 ## Development Workflows
 
+- Always start with a new branch: `git checkout -b feature/your-feature-name` instead of `main`
+- Use conventional commit messages: `feat: add new policy`, `fix: correct validation logic`
+
 ### Testing Strategy
 ```bash
 # Unit tests only (fast)

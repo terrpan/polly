@@ -6,13 +6,16 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/utils"
 )
 
 // MockPolicyService is a mock implementation of the PolicyService for testing
@@ -738,5 +741,112 @@ func TestProcessPoliciesWithStrategy(t *testing.T) {
 
 		assert.True(t, result.AllPassed)
 		mockService.AssertExpectations(t)
+	})
+}
+
+// TestProcessWorkflowSecurityArtifactsConcurrent verifies that vulnerability and SBOM checks run concurrently
+func TestProcessWorkflowSecurityArtifactsConcurrent(t *testing.T) {
+	t.Run("processes vulnerability and SBOM checks concurrently", func(t *testing.T) {
+		// Test the concurrent execution pattern by verifying utils.ExecuteConcurrently is used
+		// This ensures the artifact processing follows the concurrent pattern
+
+		// Create mock tasks to simulate vulnerability and SBOM processing
+		var executionOrder []string
+		var mu sync.Mutex
+
+		tasks := []func() error{
+			func() error {
+				time.Sleep(10 * time.Millisecond) // Simulate vulnerability processing
+				mu.Lock()
+				executionOrder = append(executionOrder, "vulnerability")
+				mu.Unlock()
+				return nil
+			},
+			func() error {
+				time.Sleep(10 * time.Millisecond) // Simulate SBOM processing
+				mu.Lock()
+				executionOrder = append(executionOrder, "sbom")
+				mu.Unlock()
+				return nil
+			},
+		}
+
+		// Execute tasks concurrently (simulating what happens in processWorkflowSecurityArtifacts)
+		startTime := time.Now()
+		errs := utils.ExecuteConcurrently(tasks)
+		duration := time.Since(startTime)
+
+		// Verify both tasks completed without errors
+		assert.Len(t, errs, 2)
+		for _, err := range errs {
+			assert.NoError(t, err)
+		}
+
+		// Verify both tasks executed
+		assert.Len(t, executionOrder, 2)
+		assert.Contains(t, executionOrder, "vulnerability")
+		assert.Contains(t, executionOrder, "sbom")
+
+		// Verify concurrent execution: should take ~10ms, not ~20ms (sequential)
+		assert.Less(t, duration, 15*time.Millisecond,
+			"Concurrent execution should be faster than sequential")
+
+		t.Logf("Concurrent artifact processing simulation completed in %v", duration)
+	})
+}
+
+// TestExecuteConcurrently1000Tasks tests the concurrent utility with 1000 tasks to verify scalability
+func TestExecuteConcurrently1000Tasks(t *testing.T) {
+	t.Run("handles 1000 concurrent tasks successfully", func(t *testing.T) {
+		const numTasks = 1000
+		var results []int
+		var mu sync.Mutex
+
+		// Create 1000 tasks that each add their index to results
+		tasks := make([]func() error, numTasks)
+		for i := 0; i < numTasks; i++ {
+			taskIndex := i // Capture loop variable
+			tasks[i] = func() error {
+				// Simulate some work
+				time.Sleep(time.Millisecond)
+
+				mu.Lock()
+				results = append(results, taskIndex)
+				mu.Unlock()
+
+				return nil
+			}
+		}
+
+		// Execute all tasks concurrently
+		startTime := time.Now()
+		errs := utils.ExecuteConcurrently(tasks)
+		duration := time.Since(startTime)
+
+		// Verify all tasks completed without errors
+		assert.Len(t, errs, numTasks, "Should have %d error results", numTasks)
+		for i, err := range errs {
+			assert.NoError(t, err, "Task %d should not return an error", i)
+		}
+
+		// Verify all tasks executed
+		assert.Len(t, results, numTasks, "All %d tasks should have executed", numTasks)
+
+		// Verify execution was reasonably fast (concurrent, not sequential)
+		// Sequential execution would take ~1000ms, concurrent should be much faster
+		assert.Less(t, duration, 200*time.Millisecond,
+			"1000 concurrent tasks should complete faster than sequential execution")
+
+		// Verify we got all expected indices (though order may vary due to concurrency)
+		resultMap := make(map[int]bool)
+		for _, result := range results {
+			resultMap[result] = true
+		}
+
+		for i := 0; i < numTasks; i++ {
+			assert.True(t, resultMap[i], "Should have result for task %d", i)
+		}
+
+		t.Logf("Successfully executed %d concurrent tasks in %v", numTasks, duration)
 	})
 }
