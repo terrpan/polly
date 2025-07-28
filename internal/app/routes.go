@@ -4,8 +4,8 @@ import "net/http"
 
 // setupRoutes configures all HTTP routes for the application.
 func setupRoutes(mux *http.ServeMux, container *Container) {
-	// Register the webhook handler
-	mux.HandleFunc("/webhook", jsonContentTypeMiddleware(container.WebhookHandler.HandleWebhook))
+	// Register the webhook router
+	mux.HandleFunc("/webhook", jsonContentTypeMiddleware(container.WebhookRouter.HandleWebhook))
 
 	// Register the health check handler
 	mux.HandleFunc("/health", jsonContentTypeMiddleware(container.HealthHandler.HandleHealthCheck))

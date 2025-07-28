@@ -12,6 +12,8 @@ require (
 	github.com/spdx/tools-golang v0.5.5
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
+	github.com/testcontainers/testcontainers-go v0.38.0
+	github.com/testcontainers/testcontainers-go/modules/redis v0.38.0
 	github.com/valkey-io/valkey-go v1.0.63
 	github.com/valkey-io/valkey-go/valkeyotel v1.0.63
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
@@ -64,8 +66,7 @@ require (
 	github.com/samber/lo v1.51.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/testcontainers/testcontainers-go v0.38.0 // indirect
-	github.com/testcontainers/testcontainers-go/modules/redis v0.38.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
