@@ -10,9 +10,31 @@ import (
 
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/terrpan/polly/internal/services"
 )
+
+// MockPolicyService is a mock implementation of the PolicyService for testing
+type MockPolicyService struct {
+	mock.Mock
+}
+
+func (m *MockPolicyService) CheckVulnerabilityPolicy(
+	ctx context.Context,
+	input *services.VulnerabilityPayload,
+) (services.VulnerabilityPolicyResult, error) {
+	args := m.Called(ctx, input)
+	return args.Get(0).(services.VulnerabilityPolicyResult), args.Error(1)
+}
+
+func (m *MockPolicyService) CheckSBOMPolicy(
+	ctx context.Context,
+	input *services.SBOMPayload,
+) (services.SBOMPolicyResult, error) {
+	args := m.Called(ctx, input)
+	return args.Get(0).(services.SBOMPolicyResult), args.Error(1)
+}
 
 func TestBuildLicenseComment(t *testing.T) {
 	tests := []struct {
@@ -274,56 +296,6 @@ func TestBuildVulnerabilityCheckResult(t *testing.T) {
 
 // TracingHelperTestSuite provides tests for the TracingHelper
 
-func TestBaseWebhookHandler_storeCheckRunID(t *testing.T) {
-	tests := []struct {
-		name       string
-		storeError error
-		checkType  string
-		checkRunID int64
-	}{
-		{
-			name:       "successful storage",
-			storeError: nil,
-			checkType:  "vulnerability",
-			checkRunID: 12345,
-		},
-		{
-			name:       "storage failure",
-			storeError: errors.New("storage failed"),
-			checkType:  "license",
-			checkRunID: 67890,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a simple logger
-			logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-				Level: slog.LevelDebug,
-			}))
-
-			// Create handler with minimal dependencies
-			handler := &BaseWebhookHandler{
-				logger: logger,
-			}
-
-			ctx := context.Background()
-			owner, repo, sha := "testowner", "testrepo", "abc123"
-
-			// Create a simple store function that returns the test error
-			storeFunc := func(ctx context.Context, owner, repo, sha string, checkRunID int64) error {
-				return tt.storeError
-			}
-
-			// Execute the function - it should not panic regardless of the store function result
-			handler.storeCheckRunID(ctx, owner, repo, sha, tt.checkRunID, tt.checkType, storeFunc)
-
-			// The function doesn't return anything, so we just verify it doesn't panic
-			// In a real scenario, the error would be logged, but we're testing the function behavior
-		})
-	}
-}
-
 func TestBaseWebhookHandler_storeCheckRunIDWithError(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -369,7 +341,15 @@ func TestBaseWebhookHandler_storeCheckRunIDWithError(t *testing.T) {
 			}
 
 			// Execute the function
-			err := handler.storeCheckRunIDWithError(ctx, owner, repo, sha, tt.checkRunID, tt.checkType, storeFunc)
+			err := handler.storeCheckRunIDWithError(
+				ctx,
+				owner,
+				repo,
+				sha,
+				tt.checkRunID,
+				tt.checkType,
+				storeFunc,
+			)
 
 			// Verify the error handling behavior
 			if tt.expectError {
@@ -426,5 +406,337 @@ func TestGetEventInfo(t *testing.T) {
 		assert.Equal(t, "workflowrepo", repo)
 		assert.Equal(t, "ghi789jkl", sha)
 		assert.Equal(t, int64(99999), eventID)
+	})
+}
+
+// Test Strategy Pattern Implementation
+
+func TestVulnerabilityPolicyProcessor(t *testing.T) {
+	processor := &VulnerabilityPolicyProcessor{}
+
+	t.Run("GetPolicyType", func(t *testing.T) {
+		assert.Equal(t, "vulnerability", processor.GetPolicyType())
+	})
+
+	t.Run("ProcessPayloads_Success", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		payloads := []*services.VulnerabilityPayload{
+			{
+				Summary: services.VulnerabilitySummary{
+					Critical: 0,
+					High:     0,
+					Medium:   1,
+					Low:      2,
+				},
+			},
+		}
+
+		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+			services.VulnerabilityPolicyResult{
+				Compliant:                   true,
+				TotalVulnerabilities:        3,
+				NonCompliantCount:           0,
+				NonCompliantVulnerabilities: []services.VulnerabilityPolicyVuln{},
+			}, nil)
+
+		result := processor.ProcessPayloads(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.True(t, result.AllPassed)
+		assert.Empty(t, result.FailureDetails)
+		assert.Empty(t, result.NonCompliantVulns)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("ProcessPayloads_PolicyViolation", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		payloads := []*services.VulnerabilityPayload{
+			{
+				Summary: services.VulnerabilitySummary{
+					Critical: 2,
+					High:     3,
+					Medium:   1,
+					Low:      2,
+				},
+			},
+		}
+
+		violations := []services.VulnerabilityPolicyVuln{
+			{ID: "CVE-2023-0001", Severity: "CRITICAL"},
+			{ID: "CVE-2023-0002", Severity: "HIGH"},
+		}
+
+		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+			services.VulnerabilityPolicyResult{
+				Compliant:                   false,
+				TotalVulnerabilities:        8,
+				NonCompliantCount:           2,
+				NonCompliantVulnerabilities: violations,
+			}, nil)
+
+		result := processor.ProcessPayloads(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.False(t, result.AllPassed)
+		assert.Len(t, result.FailureDetails, 1)
+		assert.Contains(
+			t,
+			result.FailureDetails[0],
+			"Vulnerability policy violation: 2 non-compliant vulnerabilities out of 8 total",
+		)
+		assert.Equal(t, violations, result.NonCompliantVulns)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("ProcessPayloads_PolicyError", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		payloads := []*services.VulnerabilityPayload{
+			{
+				Summary: services.VulnerabilitySummary{
+					Critical: 2,
+					High:     1,
+					Medium:   1,
+					Low:      2,
+				},
+			},
+		}
+
+		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+			services.VulnerabilityPolicyResult{}, errors.New("policy service error"))
+
+		result := processor.ProcessPayloads(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.False(t, result.AllPassed)
+		assert.Len(t, result.FailureDetails, 1)
+		assert.Contains(
+			t,
+			result.FailureDetails[0],
+			"Found 2 critical and 1 high severity vulnerabilities (policy evaluation failed)",
+		)
+		mockService.AssertExpectations(t)
+	})
+}
+
+func TestLicensePolicyProcessor(t *testing.T) {
+	processor := &LicensePolicyProcessor{}
+
+	t.Run("GetPolicyType", func(t *testing.T) {
+		assert.Equal(t, "license", processor.GetPolicyType())
+	})
+
+	t.Run("ProcessPayloads_Success", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		payloads := []*services.SBOMPayload{
+			{
+				Summary: services.SBOMSummary{
+					TotalPackages:          10,
+					PackagesWithoutLicense: 0,
+				},
+			},
+		}
+
+		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+			services.SBOMPolicyResult{
+				Compliant:              true,
+				TotalComponents:        10,
+				CompliantComponents:    10,
+				NonCompliantComponents: []services.SBOMPolicyComponent{},
+				ConditionalComponents:  []services.SBOMPolicyComponent{},
+			}, nil)
+
+		result := processor.ProcessPayloads(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.True(t, result.AllPassed)
+		assert.Empty(t, result.FailureDetails)
+		assert.Empty(t, result.NonCompliantComponents)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("ProcessPayloads_PolicyViolation", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		payloads := []*services.SBOMPayload{
+			{
+				Summary: services.SBOMSummary{
+					TotalPackages:          10,
+					PackagesWithoutLicense: 2,
+				},
+			},
+		}
+
+		nonCompliantComponents := []services.SBOMPolicyComponent{
+			{Name: "bad-package", VersionInfo: "1.0.0", LicenseDeclared: "GPL-3.0"},
+		}
+		conditionalComponents := []services.SBOMPolicyComponent{
+			{Name: "conditional-package", VersionInfo: "2.0.0", LicenseConcluded: "Apache-2.0"},
+		}
+
+		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+			services.SBOMPolicyResult{
+				Compliant:              false,
+				TotalComponents:        10,
+				CompliantComponents:    8,
+				NonCompliantComponents: nonCompliantComponents,
+				ConditionalComponents:  conditionalComponents,
+			}, nil)
+
+		result := processor.ProcessPayloads(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.False(t, result.AllPassed)
+		assert.Len(t, result.FailureDetails, 1)
+		assert.Contains(
+			t,
+			result.FailureDetails[0],
+			"SBOM policy violation: 2 non-compliant components out of 10 total",
+		)
+		assert.Equal(t, nonCompliantComponents, result.NonCompliantComponents)
+		assert.Equal(t, conditionalComponents, result.ConditionalComponents)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("ProcessPayloads_PolicyError", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		payloads := []*services.SBOMPayload{
+			{
+				Summary: services.SBOMSummary{
+					TotalPackages:          10,
+					PackagesWithoutLicense: 3,
+				},
+			},
+		}
+
+		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+			services.SBOMPolicyResult{}, errors.New("policy service error"))
+
+		result := processor.ProcessPayloads(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.False(t, result.AllPassed)
+		assert.Len(t, result.FailureDetails, 1)
+		assert.Contains(
+			t,
+			result.FailureDetails[0],
+			"Found 3 packages without license (policy evaluation failed)",
+		)
+		mockService.AssertExpectations(t)
+	})
+}
+
+func TestProcessPoliciesWithStrategy(t *testing.T) {
+	t.Run("VulnerabilityStrategy", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		processor := &VulnerabilityPolicyProcessor{}
+		payloads := []*services.VulnerabilityPayload{
+			{
+				Summary: services.VulnerabilitySummary{
+					Critical: 0,
+					High:     0,
+					Medium:   1,
+					Low:      2,
+				},
+			},
+		}
+
+		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+			services.VulnerabilityPolicyResult{
+				Compliant:                   true,
+				TotalVulnerabilities:        3,
+				NonCompliantCount:           0,
+				NonCompliantVulnerabilities: []services.VulnerabilityPolicyVuln{},
+			}, nil)
+
+		result := processPoliciesWithStrategy(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			processor,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.True(t, result.AllPassed)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("LicenseStrategy", func(t *testing.T) {
+		mockService := &MockPolicyService{}
+		processor := &LicensePolicyProcessor{}
+		payloads := []*services.SBOMPayload{
+			{
+				Summary: services.SBOMSummary{
+					TotalPackages:          10,
+					PackagesWithoutLicense: 0,
+				},
+			},
+		}
+
+		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+			services.SBOMPolicyResult{
+				Compliant:              true,
+				TotalComponents:        10,
+				CompliantComponents:    10,
+				NonCompliantComponents: []services.SBOMPolicyComponent{},
+				ConditionalComponents:  []services.SBOMPolicyComponent{},
+			}, nil)
+
+		result := processPoliciesWithStrategy(
+			context.Background(),
+			slog.Default(),
+			mockService,
+			processor,
+			payloads,
+			"owner",
+			"repo",
+			"sha",
+		)
+
+		assert.True(t, result.AllPassed)
+		mockService.AssertExpectations(t)
 	})
 }

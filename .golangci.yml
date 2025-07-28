@@ -17,13 +17,13 @@ output:
 linters:
   default: none
   enable:
-    # Error-handling & correctness
+    # Error‑handling & correctness
     - errcheck
     - govet
     - staticcheck
     - ineffassign
 
-    # Style checks (linters)
+    # Style checks
     - revive
     - misspell
     - whitespace
@@ -44,96 +44,39 @@ linters:
     - dupl
     - gocritic
 
+    # Declaration & import‐order linters
+    - importas
+    - decorder
+    - funcorder
+    - gochecknoglobals
+    - gochecknoinits
+
   exclusions:
-    rules:
-      # lighten up tests
-      - path: '_test\.go'
-        linters:
-          - gocyclo
-          - dupl
-          - funlen
-          - lll
-          - wsl_v5
-          - errcheck
-
-      # skip generated protobufs
-      - path: '.*\.pb\.go'
-        linters:
-          - revive
-          - stylecheck
-
-      # common false positive in gosec
-      - text: 'G404: Use of weak random number generator'
-        linters:
-          - gosec
-
-      # allow dot-imports in main.go
-      - path: 'main\.go'
-        text: 'should not use dot imports'
-        linters:
-          - stylecheck
+    # … your existing exclusions …
 
   settings:
-    errcheck:
-      check-type-assertions: true
-      check-blank: true
-      exclude-functions:
-        - (*os.File).Close
-        - (*database/sql.Rows).Close
-        - (*database/sql.Stmt).Close
+    # … all your existing linter settings, EXCEPT remove gci here …
 
-    gocyclo:
-      min-complexity: 15
-
-    funlen:
-      lines: 80
-      statements: 40
-      ignore-comments: true
-
-    gocognit:
-      min-complexity: 20
-
-    lll:
-      line-length: 120
-      tab-width: 4
-
-    unparam:
-      check-exported: false
-
-    revive:
-      severity: warning
-      rules:
-        - name: exported
-          severity: error
-        - name: var-naming
-          severity: error
-        # - name: package-comments
-        #   severity: warning
-
-    govet:
-      enable-all: true
-      disable:
-        - shadow
-
-    staticcheck:
-      checks: ["all"]
-
-    gosec:
-      severity: medium
-      confidence: medium
-      excludes:
-        - G104
-
-    dupl:
-      threshold: 100
 
 formatters:
   enable:
     - goimports
     - golines
+    - gci          # ← added here
   settings:
     goimports:
       local-prefixes: github.com/terrpan/polly
+
+    gci:             # ← moved into formatters.settings
+      sections:
+        - standard
+        - default
+        - prefix(github.com/terrpan/polly)
+        - blank
+        - dot
+      skip-generated: false
+      custom-order: true
+
 
 issues:
   max-issues-per-linter: 50

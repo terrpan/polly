@@ -217,14 +217,17 @@ func (suite *SecurityCheckManagerTestSuite) TestGetSecurityCheckTypes() {
 
 		// Verify we have both vulnerability and license check types
 		var hasVuln, hasLicense bool
+
 		for _, ct := range checkTypes {
 			if ct.name == "vulnerability" {
 				hasVuln = true
 			}
+
 			if ct.name == "license" {
 				hasLicense = true
 			}
 		}
+
 		assert.True(t, hasVuln, "Should have vulnerability check type")
 		assert.True(t, hasLicense, "Should have license check type")
 	})
