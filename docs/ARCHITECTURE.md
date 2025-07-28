@@ -20,17 +20,27 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - Wire up services with dependency injection
   - Start HTTP server on configured port
 
-#### 2. Webhook Handler (`internal/handlers/webhook.go`)
-- **Purpose**: Process GitHub webhook events
-- **Responsibilities**:
-  - Parse pull request and check run events
-  - Create and manage GitHub check runs
-  - Coordinate policy validation workflow
-  - Handle event-specific logic (new PR vs re-run)
+#### 2. Webhook Handler (`internal/handlers/`)
+- **Purpose**: Process GitHub webhook events with modular, event-specific handlers
+- **Architecture**: Refactored into specialized handlers with shared processing patterns for improved maintainability
+- **Components**:
+  - **WebhookRouter** (`webhook_router.go`): Main dispatcher that routes events to appropriate handlers
+  - **PullRequestHandler** (`webhook_pullrequest.go`): Handles PR opened/reopened/synchronize events
+  - **CheckRunHandler** (`webhook_checkrun.go`): Manages check run rerequests and artifact processing
+  - **WorkflowHandler** (`webhook_workflow.go`): Processes workflow started/completed events
+  - **SecurityCheckManager** (`webhook_security.go`): Centralizes security check lifecycle management
+  - **TracingHelper** (`webhook_utils.go`): Provides consistent OpenTelemetry tracing patterns
+  - **SharedHelpers** (`helpers.go`): Common processing functions and types for policy evaluation
+  - **WebhookHandler** (`webhook.go`): Backward-compatible wrapper maintaining API compatibility
 - **Key Features**:
+  - Event-specific separation of concerns with dedicated handlers
+  - Centralized tracing utilities eliminating boilerplate code
+  - Shared security check processing logic with `PolicyProcessingResult` and `WebhookProcessingConfig` types
+  - Extracted common functions: `processVulnerabilityPolicies()`, `processLicensePolicies()`, `buildVulnerabilityCheckResult()`, `buildLicenseCheckResult()`
+  - Concurrent security check creation and completion
   - Generic `getEventInfo()` function for type-safe event handling
-  - Separate handlers for PR events and check run re-requests
-  - Helper functions for clean code organization
+  - Modular architecture supporting easy extension and testing
+  - Function length compliance with all handlers under 80 lines
 
 #### 3. Policy Service (`internal/services/policy.go`)
 - **Purpose**: OPA policy evaluation with type safety
@@ -124,23 +134,25 @@ Polly implements a **dual-track security validation system** where vulnerability
 ```
 GitHub PR opened/reopened
     ↓
-handlers.WebhookHandler.handlePullRequestEvent()
+handlers.WebhookRouter.HandleWebhook() → PullRequestHandler.HandlePullRequestEvent()
     ↓
 services.StateService.StorePRNumber(owner, repo, sha, prNumber) - Store SHA → PR number mapping
     ↓
-Create Vulnerability + License Check Runs (Concurrent)
+SecurityCheckManager.CreateSecurityCheckRuns() - Create Vulnerability + License Check Runs (Concurrent)
     ↓
 services.StateService.StoreVulnCheckRunID(owner, repo, sha, ID) + StoreLicenseCheckRunID(owner, repo, sha, ID)
     ↓
 GitHub Workflow completed
     ↓
-handlers.WebhookHandler.handleWorkflowCompleted()
+handlers.WebhookRouter.HandleWebhook() → WorkflowHandler.HandleWorkflowRunEvent()
     ↓
 services.StateService.GetPRNumber(owner, repo, sha) - Retrieve PR context by repository
     ↓
 services.SecurityService.ProcessWorkflowSecurityArtifacts()
     ↓
-services.PolicyService.CheckVulnerabilityPolicy() + CheckSBOMPolicy() (Concurrent)
+helpers.processVulnerabilityChecks() + processLicenseChecks() (Concurrent via WorkflowHandler.processSecurityPayloads())
+    ↓
+services.PolicyService.CheckVulnerabilityPolicy() + CheckSBOMPolicy()
     ↓
 clients.OPAClient.EvaluatePolicy()
     ↓
@@ -153,13 +165,15 @@ clients.GitHubClient.UpdateCheckRun()
 ```
 GitHub check run re-requested
     ↓
-handlers.WebhookHandler.handleCheckRunEvent()
+handlers.WebhookRouter.HandleWebhook() → CheckRunHandler.HandleCheckRunEvent()
     ↓
 services.StateService.GetPRNumber(owner, repo, sha) - Retrieve PR context
     ↓
 services.StateService.GetWorkflowRunID(owner, repo, sha) - Find associated workflow
     ↓
-services.CheckService.StartPolicyCheck()
+CheckRunHandler.restartVulnerabilityCheck() or restartLicenseCheck()
+    ↓
+helpers.processVulnerabilityChecks() or processLicenseChecks()
     ↓
 Re-process workflow artifacts and complete check run
 ```
@@ -180,13 +194,52 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 - **Benefits**: Type safety, compile-time checking, flexible policy support
 - **Usage**: `result, err := evaluatePolicy[HelloInput, bool](ctx, service, "/v1/data/playground/hello", input)`
 
-### 2. Dependency Injection Pattern
+### 2. Modular Handler Architecture
+- **Pattern**: Event-specific handlers with shared base functionality
+- **Implementation**: `BaseWebhookHandler` provides common dependencies, specialized handlers for each event type
+- **Benefits**: Clear separation of concerns, easier testing, reduced code duplication
+- **Usage**: `PullRequestHandler`, `CheckRunHandler`, `WorkflowHandler` all extend base functionality
+
+### 3. Centralized Tracing Pattern
+- **Pattern**: Consistent OpenTelemetry tracing across all operations
+- **Implementation**: `TracingHelper` provides standardized span creation
+- **Benefits**: Eliminates boilerplate, consistent observability, easy to extend
+- **Usage**: `ctx, span := tracingHelper.StartSpan(ctx, "operation.name")`
+
+### 4. Shared Processing Functions
+- **Pattern**: Common business logic extracted into reusable functions with standardized types
+- **Implementation**: 
+  - **Types**: `PolicyProcessingResult` for policy evaluation results, `WebhookProcessingConfig` for common parameters
+  - **Functions**: `processVulnerabilityPolicies()`, `processLicensePolicies()`, `postVulnerabilityComments()`, `postLicenseComments()`
+  - **Builders**: `buildVulnerabilityCheckResult()`, `buildLicenseCheckResult()` for standardized check run results
+- **Benefits**: DRY principle, consistent behavior, single point of maintenance, function length compliance (all functions <80 lines)
+- **Usage**: Used by workflow completion, check run rerun handlers, and artifact processing methods
+
+### 5. Policy Processing Standardization
+- **Pattern**: Unified approach to policy evaluation across vulnerability and license checks
+- **Implementation**: 
+  ```go
+  type PolicyProcessingResult struct {
+      AllPassed           bool
+      Violations          []VulnerabilityPolicyVuln
+      ConditionalComponents []SBOMPolicyComponent
+      Summary             string
+      Details             string
+  }
+  
+  func processVulnerabilityPolicies(ctx context.Context, ...) (*PolicyProcessingResult, error)
+  func processLicensePolicies(ctx context.Context, ...) (*PolicyProcessingResult, error)
+  ```
+- **Benefits**: Type safety, consistent error handling, reusable across different event types
+- **Usage**: Eliminates code duplication between workflow and check run handlers
+
+### 6. Dependency Injection Pattern
 - Services receive dependencies through constructors
 - Clear dependency graph: Handlers → Services → Clients
 - Easy testing with interface mocking
 - Configuration injected at startup
 
-### 3. Event-Driven Processing
+### 6. Event-Driven Processing
 - Webhook events trigger policy evaluations
 - Asynchronous check run updates
 - Support for re-running failed checks
@@ -204,9 +257,15 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 - **Trade-off**: Runtime configuration only
 - **Rationale**: Cloud-native deployment and GitOps workflows
 
-### 3. Generic Event Handling
-- **Benefit**: Single function handles multiple webhook payload types
-- **Trade-off**: Requires type switches and `any()` conversion
+### 4. Modular Webhook Handler Architecture
+- **Benefit**: Clear separation of concerns, improved maintainability, easier testing
+- **Trade-off**: More files to manage, slightly more complex initialization
+- **Rationale**: Original monolithic handler (1017 lines) was difficult to maintain and test
+
+### 5. Centralized Utility Functions
+- **Benefit**: Eliminates code duplication, consistent patterns, easier maintenance
+- **Trade-off**: Requires coordination when changing shared functions
+- **Rationale**: Repeated tracing and processing logic across multiple handlers
 - **Rationale**: DRY principle and consistent event processing
 
 ### 4. Policy Service Abstraction

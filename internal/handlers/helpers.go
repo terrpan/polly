@@ -1,152 +1,149 @@
 package handlers
 
 import (
-	"fmt"
-	"strings"
+	"context"
+	"log/slog"
 
 	"github.com/go-playground/webhooks/v6/github"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/terrpan/polly/internal/services"
 )
 
-// buildCheckRunResult builds the check run result based on policy validation outcome.
-func buildCheckRunResult(
-	policyPassed bool,
-	policyError error,
-) (services.CheckRunConclusion, services.CheckRunResult) {
-	if policyError != nil {
-		return services.ConclusionFailure, services.CheckRunResult{
-			Title:   "OPA Policy Check - Error",
-			Summary: "Policy validation failed due to error",
-			Text:    fmt.Sprintf("Error: %v", policyError),
-		}
-	}
-	if policyPassed {
-		return services.ConclusionSuccess, services.CheckRunResult{
-			Title:   "OPA Policy Check - Passed",
-			Summary: "All policies passed",
-			Text:    "The policy validation succeeded.",
-		}
-	}
-	return services.ConclusionFailure, services.CheckRunResult{
-		Title:   "OPA Policy Check - Failed",
-		Summary: "Policy validation failed",
-		Text:    "The policy validation failed.",
+// TracingHelper provides a consistent way to create tracing spans across webhook handlers
+type TracingHelper struct {
+	tracer trace.Tracer
+}
+
+// SecurityCheckManager handles the creation and management of security check runs
+type SecurityCheckManager struct {
+	logger        *slog.Logger
+	checkService  *services.CheckService
+	stateService  *services.StateService
+	tracingHelper *TracingHelper
+}
+
+// BaseWebhookHandler contains the common dependencies for all webhook handlers
+type BaseWebhookHandler struct {
+	logger          *slog.Logger
+	commentService  *services.CommentService
+	checkService    *services.CheckService
+	policyService   *services.PolicyService
+	securityService *services.SecurityService
+	stateService    *services.StateService
+	tracingHelper   *TracingHelper
+}
+
+// SecurityWebhookHandler extends BaseWebhookHandler with security check management capabilities
+type SecurityWebhookHandler struct {
+	*BaseWebhookHandler
+	securityCheckMgr *SecurityCheckManager
+}
+
+// WebhookProcessingConfig holds configuration for processing workflow artifacts
+type WebhookProcessingConfig struct {
+	Owner         string
+	Repo          string
+	SHA           string
+	WorkflowRunID int64
+	PRNumber      int64
+	CheckVuln     bool
+	CheckLicense  bool
+}
+
+// NewTracingHelper creates a new tracing helper for webhook handlers
+func NewTracingHelper() *TracingHelper {
+	return &TracingHelper{
+		tracer: otel.Tracer("polly/handlers"),
 	}
 }
 
-// buildVulnerabilityViolationComment generates a markdown comment for vulnerability policy violations.
-func buildVulnerabilityViolationComment(vulns []services.VulnerabilityPolicyVuln) string {
-	vulnComments := make([]string, 0, len(vulns))
-	for _, vuln := range vulns {
-		comment := fmt.Sprintf("**Package:** `%s@%s`\n**Vulnerability:** %s\n**Severity:** %s",
-			vuln.Package, vuln.Version, vuln.ID, vuln.Severity)
-
-		if vuln.Score > 0 {
-			comment += fmt.Sprintf("\n**CVSS Score:** %.1f", vuln.Score)
-		}
-
-		if vuln.FixedVersion != "" {
-			comment += fmt.Sprintf("\n**Fixed Version:** `%s`", vuln.FixedVersion)
-		}
-
-		vulnComments = append(vulnComments, comment)
+// NewSecurityCheckManager creates a new security check manager
+func NewSecurityCheckManager(
+	logger *slog.Logger,
+	checkService *services.CheckService,
+	stateService *services.StateService,
+) *SecurityCheckManager {
+	return &SecurityCheckManager{
+		logger:        logger,
+		checkService:  checkService,
+		stateService:  stateService,
+		tracingHelper: NewTracingHelper(),
 	}
-	return fmt.Sprintf(
-		"❌ **Vulnerability Policy Violation - %d vulnerabilities blocked**\n\n<details>\n<summary>Click to view policy violation details</summary>\n\n%s\n\n</details>",
-		len(vulnComments),
-		strings.Join(vulnComments, "\n\n---\n\n"),
-	)
 }
 
-// buildLicenseComment generates a single markdown comment for both license violations and conditional licenses.
-func buildLicenseComment(
-	violations []services.SBOMPolicyComponent,
-	conditionals []services.SBOMPolicyComponent,
-) string {
-	var sections []string
+// NewBaseWebhookHandler creates a new base webhook handler with common dependencies
+func NewBaseWebhookHandler(
+	logger *slog.Logger,
+	commentService *services.CommentService,
+	checkService *services.CheckService,
+	policyService *services.PolicyService,
+	securityService *services.SecurityService,
+	stateService *services.StateService,
+) *BaseWebhookHandler {
+	return &BaseWebhookHandler{
+		logger:          logger,
+		commentService:  commentService,
+		checkService:    checkService,
+		policyService:   policyService,
+		securityService: securityService,
+		stateService:    stateService,
+		tracingHelper:   NewTracingHelper(),
+	}
+}
 
-	// Add violations section if there are any
-	if len(violations) > 0 {
-		violationComments := make([]string, 0, len(violations))
-		for _, component := range violations {
-			comment := fmt.Sprintf("**Package:** `%s`", component.Name)
+// NewSecurityWebhookHandler creates a new security webhook handler with security check management
+func NewSecurityWebhookHandler(base *BaseWebhookHandler) *SecurityWebhookHandler {
+	securityHandler := &SecurityWebhookHandler{
+		BaseWebhookHandler: base,
+	}
 
-			if component.VersionInfo != "" {
-				comment += fmt.Sprintf("@%s", component.VersionInfo)
-			}
-
-			if component.LicenseDeclared != "" {
-				comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
-			} else if component.LicenseConcluded != "" {
-				comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
-			}
-
-			if component.Supplier != "" {
-				comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
-			}
-
-			if component.SPDXID != "" {
-				comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
-			}
-
-			violationComments = append(violationComments, comment)
-		}
-
-		sections = append(
-			sections,
-			fmt.Sprintf(
-				"❌ **License Violations Found - %d packages**\n\nThe following packages have licenses that violate our policy and must be addressed:\n\n<details>\n<summary>Click to view license violations</summary>\n\n%s\n\n</details>",
-				len(violationComments),
-				strings.Join(violationComments, "\n\n---\n\n"),
-			),
+	// Only create SecurityCheckManager if we have a valid base handler
+	if base != nil {
+		securityHandler.securityCheckMgr = NewSecurityCheckManager(
+			base.logger,
+			base.checkService,
+			base.stateService,
 		)
 	}
 
-	// Add conditionals section if there are any
-	if len(conditionals) > 0 {
-		conditionalComments := make([]string, 0, len(conditionals))
-		for _, component := range conditionals {
-			comment := fmt.Sprintf("**Package:** `%s`", component.Name)
+	return securityHandler
+}
 
-			if component.VersionInfo != "" {
-				comment += fmt.Sprintf("@%s", component.VersionInfo)
-			}
+// StartSpan creates a new tracing span with the given name
+func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Context, trace.Span) {
+	return t.tracer.Start(ctx, name)
+}
 
-			if component.LicenseDeclared != "" {
-				comment += fmt.Sprintf("\n**License Declared:** %s", component.LicenseDeclared)
-			} else if component.LicenseConcluded != "" {
-				comment += fmt.Sprintf("\n**License Concluded:** %s", component.LicenseConcluded)
-			}
-
-			if component.Supplier != "" {
-				comment += fmt.Sprintf("\n**Supplier:** %s", component.Supplier)
-			}
-
-			if component.SPDXID != "" {
-				comment += fmt.Sprintf("\n**SPDX ID:** `%s`", component.SPDXID)
-			}
-
-			conditionalComments = append(conditionalComments, comment)
-		}
-
-		sections = append(
-			sections,
-			fmt.Sprintf(
-				"ℹ️ **Conditionally Allowed Licenses Found - %d packages require consideration**\n\nThe following packages use licenses that are allowed but should be used with consideration. Please review these packages and their licenses to ensure they meet your project's requirements:\n\n<details>\n<summary>Click to view conditionally allowed licenses</summary>\n\n%s\n\n</details>",
-				len(conditionalComments),
-				strings.Join(conditionalComments, "\n\n---\n\n"),
-			),
+// storeCheckRunIDWithError is a helper method that handles storing check run IDs with consistent error logging and returns the error
+func (h *BaseWebhookHandler) storeCheckRunIDWithError(
+	ctx context.Context,
+	owner, repo, sha string,
+	checkRunID int64,
+	checkType string,
+	storeFunc func(context.Context, string, string, string, int64) error,
+) error {
+	if err := storeFunc(ctx, owner, repo, sha, checkRunID); err != nil {
+		h.logger.ErrorContext(ctx, "Failed to store check run ID",
+			"error", err,
+			"check_type", checkType,
+			"owner", owner,
+			"repo", repo,
+			"sha", sha,
+			"check_run_id", checkRunID,
 		)
+
+		return err
 	}
 
-	return strings.Join(sections, "\n\n")
+	return nil
 }
 
 // getEventInfo extracts common event information for logging using generics
 func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](
 	event T,
-) (owner, repo, sha string, ID int64) {
+) (owner, repo, sha string, eventID int64) {
 	// We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.
 	switch e := any(event).(type) {
 	case github.PullRequestPayload:

@@ -32,9 +32,9 @@ type Container struct {
 	PolicyService   *services.PolicyService
 	SecurityService *services.SecurityService
 
-	// HTTP request handlers
-	WebhookHandler *handlers.WebhookHandler
-	HealthHandler  *handlers.HealthHandler
+	// Handlers
+	WebhookRouter *handlers.WebhookRouter
+	HealthHandler *handlers.HealthHandler
 }
 
 // NewContainer initializes a new Container with all dependencies.
@@ -168,7 +168,8 @@ func (c *Container) initializeServices() {
 func (c *Container) initializeHandlers() error {
 	var err error
 
-	c.WebhookHandler, err = handlers.NewWebhookHandler(
+	// Initialize handlers
+	c.WebhookRouter, err = handlers.NewWebhookRouter(
 		c.Logger,
 		c.CommentService,
 		c.CheckService,
@@ -177,21 +178,13 @@ func (c *Container) initializeHandlers() error {
 		c.StateService,
 	)
 	if err != nil {
-		c.Logger.Error("Failed to create webhook handler", "error", err)
-		return err
+		c.Logger.Error("Failed to create webhook router", "error", err)
+		return nil, err
 	}
 
 	c.HealthHandler = handlers.NewHealthHandler(c.Logger, c.HealthService)
-
-	c.Logger.Info(
-		"Handlers initialized",
-		"webhook_handler",
-		c.WebhookHandler,
-		"health_handler",
-		c.HealthHandler,
-	)
-
-	return nil
+	c.Logger.Info("Handlers initialized", "webhook_router", c.WebhookRouter, "health_handler", c.HealthHandler)
+	return c, nil
 }
 
 // Shutdown gracefully stops the container and its dependencies.

@@ -54,6 +54,7 @@ linters:
           - funlen
           - lll
           - wsl_v5
+          - errcheck
 
       # skip generated protobufs
       - path: '.*\.pb\.go'
@@ -132,7 +133,8 @@ formatters:
     - golines
   settings:
     goimports:
-      local-prefixes: github.com/terrpan/polly
+      local-prefixes:
+        - github.com/terrpan/polly
 
 issues:
   max-issues-per-linter: 50

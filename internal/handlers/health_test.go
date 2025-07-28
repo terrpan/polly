@@ -21,6 +21,7 @@ func TestNewHealthHandler(t *testing.T) {
 	// Create test OPA client
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
 	require.NoError(t, err)
+
 	store := storage.NewMemoryStore()
 
 	healthService := services.NewHealthService(logger, opaClient, store)
@@ -38,6 +39,7 @@ func TestHealthHandler_HandleHealthCheck(t *testing.T) {
 	// Create test OPA client (won't make real calls)
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
 	require.NoError(t, err)
+
 	store := storage.NewMemoryStore()
 
 	healthService := services.NewHealthService(logger, opaClient, store)
@@ -66,6 +68,7 @@ func TestHealthHandler_ContextHandling(t *testing.T) {
 
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
 	require.NoError(t, err)
+
 	store := storage.NewMemoryStore()
 
 	healthService := services.NewHealthService(logger, opaClient, store)
