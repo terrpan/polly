@@ -1,3 +1,5 @@
+// Package storage provides interfaces and types for key-value storage operations.
+// This file defines the Store interface and related types for storage implementations.
 package storage
 
 import (
@@ -7,9 +9,23 @@ import (
 )
 
 var (
+	// ErrKeyNotFound indicates that the requested key does not exist in the store.
 	ErrKeyNotFound = errors.New("key not found")
+	// ErrInvalidType indicates that the storage type is not recognized.
 	ErrInvalidType = errors.New("invalid storage type")
+	// ErrEntrySizeExceeded indicates that the cache entry exceeds the maximum allowed size.
+	ErrEntrySizeExceeded = errors.New("cache entry size exceeds maximum allowed")
+	// ErrPolicyCacheDisabled indicates that policy caching is disabled.
+	ErrPolicyCacheDisabled = errors.New("policy cache is disabled")
 )
+
+// PolicyCacheEntry represents a cached policy evaluation result
+type PolicyCacheEntry struct {
+	Result    interface{} `json:"result"`
+	CachedAt  time.Time   `json:"cached_at"`
+	ExpiresAt time.Time   `json:"expires_at"`
+	Size      int64       `json:"size"` // Size in bytes for monitoring
+}
 
 // Store defines the interface for kv storage operations.
 type Store interface {
@@ -30,6 +46,24 @@ type Store interface {
 
 	// Close closes the storage connection.
 	Close() error
+
+	// Policy Cache Methods
+
+	// StoreCachedPolicyResults caches policy evaluation results with size validation
+	// Returns ErrEntrySizeExceeded if the entry exceeds configured size limits
+	// Returns ErrPolicyCacheDisabled if policy caching is disabled
+	StoreCachedPolicyResults(
+		ctx context.Context,
+		key string,
+		result interface{},
+		ttl time.Duration,
+		maxSize int64,
+	) error
+
+	// GetCachedPolicyResults retrieves cached policy evaluation results
+	// Returns ErrKeyNotFound if the cache entry doesn't exist or has expired
+	// Returns ErrPolicyCacheDisabled if policy caching is disabled
+	GetCachedPolicyResults(ctx context.Context, key string) (*PolicyCacheEntry, error)
 }
 
 // StoreType defines the type of storage being used.
@@ -37,6 +71,8 @@ type Store interface {
 type StoreType string
 
 const (
+	// StoreTypeMemory represents an in-memory storage implementation.
 	StoreTypeMemory StoreType = "memory"
+	// StoreTypeValkey represents a Valkey-based storage implementation.
 	StoreTypeValkey StoreType = "valkey"
 )

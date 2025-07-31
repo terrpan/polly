@@ -85,7 +85,7 @@ func (h *BaseWebhookHandler) processVulnerabilityArtifacts(
 			return processVulnerabilityChecks(
 				ctx,
 				h.logger,
-				h.policyService,
+				h.policyCacheService,
 				h.commentService,
 				h.checkService,
 				payloads,
@@ -114,7 +114,7 @@ func (h *BaseWebhookHandler) processLicenseArtifacts(
 			return processLicenseChecks(
 				ctx,
 				h.logger,
-				h.policyService,
+				h.policyCacheService,
 				h.commentService,
 				h.checkService,
 				payloads,

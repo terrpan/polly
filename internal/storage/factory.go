@@ -16,6 +16,7 @@ func NewStore(cfg config.StorageConfig) (Store, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Valkey store: %w", err)
 		}
+
 		return store, nil
 	default:
 		return nil, fmt.Errorf("%w: unsupported storage type %s", ErrInvalidType, cfg.Type)

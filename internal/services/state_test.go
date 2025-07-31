@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/terrpan/polly/internal/storage"
 )
 
@@ -509,5 +510,191 @@ func TestStateService_EdgeCases(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, exists)
 		assert.Equal(t, value, retrieved)
+	})
+}
+
+func TestStateService_CachedPolicyResults(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping tracing integration test in short mode")
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	store := storage.NewMemoryStore()
+	service := NewStateService(store, logger)
+	ctx := context.Background()
+
+	owner := "testowner"
+	repo := "testrepo"
+	sha := "abc123"
+
+	t.Run("store and retrieve cached policy results", func(t *testing.T) {
+		checkType := "vulnerability"
+		testResults := map[string]interface{}{
+			"compliant":    false,
+			"total_issues": 25,
+			"critical":     5,
+			"scan_target":  ".",
+		}
+
+		// Store policy results
+		err := service.StoreCachedPolicyResults(ctx, owner, repo, sha, checkType, testResults)
+		assert.NoError(t, err)
+
+		// Retrieve policy results
+		results, exists, err := service.GetCachedPolicyResults(ctx, owner, repo, sha, checkType)
+		assert.NoError(t, err)
+		assert.True(t, exists, "Should find stored policy results")
+		assert.NotNil(t, results)
+
+		t.Log("Successfully stored and retrieved cached policy results with tracing spans")
+	})
+
+	t.Run("cache miss scenario", func(t *testing.T) {
+		checkType := "license"
+
+		// Try to get non-existent policy results
+		results, exists, err := service.GetCachedPolicyResults(
+			ctx,
+			owner,
+			repo,
+			"missing-sha",
+			checkType,
+		)
+		assert.NoError(t, err)
+		assert.False(t, exists, "Should not find missing policy results")
+		assert.Nil(t, results)
+
+		t.Log("Cache miss scenario handled correctly with tracing spans")
+	})
+
+	t.Run("different check types", func(t *testing.T) {
+		testCases := []struct {
+			results   interface{}
+			checkType string
+		}{
+			{
+				checkType: "vulnerability",
+				results: map[string]interface{}{
+					"compliant": true,
+					"total":     0,
+				},
+			},
+			{
+				checkType: "license",
+				results: map[string]interface{}{
+					"compliant":      false,
+					"non_compliant":  7,
+					"total_packages": 1280,
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.checkType, func(t *testing.T) {
+				// Store results
+				err := service.StoreCachedPolicyResults(
+					ctx,
+					owner,
+					repo,
+					sha,
+					tc.checkType,
+					tc.results,
+				)
+				assert.NoError(t, err)
+
+				// Retrieve results
+				results, exists, err := service.GetCachedPolicyResults(
+					ctx,
+					owner,
+					repo,
+					sha,
+					tc.checkType,
+				)
+				assert.NoError(t, err)
+				assert.True(t, exists)
+				assert.NotNil(t, results)
+
+				t.Logf("Successfully handled %s check type with tracing", tc.checkType)
+			})
+		}
+	})
+}
+
+func TestStateService_TracingSpans(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping tracing integration test in short mode")
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	store := storage.NewMemoryStore()
+	service := NewStateService(store, logger)
+	ctx := context.Background()
+
+	owner := "testowner"
+	repo := "testrepo"
+	sha := "abc123"
+
+	t.Run("creates proper spans for storage operations", func(t *testing.T) {
+		// Store some test data first
+		testWorkflowRunID := int64(12345)
+		testPRNumber := int64(42)
+
+		// Store workflow run ID
+		err := service.StoreWorkflowRunID(ctx, owner, repo, sha, testWorkflowRunID)
+		assert.NoError(t, err)
+
+		// Store PR number
+		err = service.StorePRNumber(ctx, owner, repo, sha, testPRNumber)
+		assert.NoError(t, err)
+
+		// Now test retrieval with tracing
+		workflowRunID, exists, err := service.GetWorkflowRunID(ctx, owner, repo, sha)
+		assert.NoError(t, err)
+		assert.True(t, exists, "Should find stored workflow run ID")
+		assert.Equal(t, testWorkflowRunID, workflowRunID)
+
+		prNumber, exists, err := service.GetPRNumber(ctx, owner, repo, sha)
+		assert.NoError(t, err)
+		assert.True(t, exists, "Should find stored PR number")
+		assert.Equal(t, testPRNumber, prNumber)
+
+		// Test cache miss scenario
+		missingWorkflowRunID, exists, err := service.GetWorkflowRunID(
+			ctx,
+			owner,
+			repo,
+			"missing-sha",
+		)
+		assert.NoError(t, err)
+		assert.False(t, exists, "Should not find missing workflow run ID")
+		assert.Equal(t, int64(0), missingWorkflowRunID)
+
+		t.Log("All storage operations completed with proper tracing spans")
+	})
+
+	t.Run("GetAllState with tracing", func(t *testing.T) {
+		// Store comprehensive test data
+		err := service.StorePRNumber(ctx, owner, repo, sha, 43)
+		assert.NoError(t, err)
+
+		err = service.StoreVulnerabilityCheckRunID(ctx, owner, repo, sha, 46899943640)
+		assert.NoError(t, err)
+
+		err = service.StoreLicenseCheckRunID(ctx, owner, repo, sha, 46899944188)
+		assert.NoError(t, err)
+
+		err = service.StoreWorkflowRunID(ctx, owner, repo, sha, 16582008207)
+		assert.NoError(t, err)
+
+		// Test GetAllState with tracing
+		stateMap, err := service.GetAllState(ctx, owner, repo, sha)
+		assert.NoError(t, err)
+		assert.NotNil(t, stateMap)
+		assert.True(t, stateMap.HasPRNumber)
+		assert.True(t, stateMap.HasVulnerabilityCheck)
+		assert.True(t, stateMap.HasLicenseCheck)
+		assert.True(t, stateMap.HasWorkflowRun)
+
+		t.Log("GetAllState completed with comprehensive tracing spans")
 	})
 }

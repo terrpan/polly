@@ -23,19 +23,44 @@ type MockPolicyService struct {
 	mock.Mock
 }
 
-func (m *MockPolicyService) CheckVulnerabilityPolicy(
+func (m *MockPolicyService) CheckVulnerabilityPolicyWithCache(
 	ctx context.Context,
 	input *services.VulnerabilityPayload,
+	owner, repo, sha string,
 ) (services.VulnerabilityPolicyResult, error) {
-	args := m.Called(ctx, input)
+	args := m.Called(ctx, input, owner, repo, sha)
 	return args.Get(0).(services.VulnerabilityPolicyResult), args.Error(1)
 }
 
-func (m *MockPolicyService) CheckSBOMPolicy(
+func (m *MockPolicyService) CheckSBOMPolicyWithCache(
 	ctx context.Context,
 	input *services.SBOMPayload,
+	owner, repo, sha string,
 ) (services.SBOMPolicyResult, error) {
-	args := m.Called(ctx, input)
+	args := m.Called(ctx, input, owner, repo, sha)
+	return args.Get(0).(services.SBOMPolicyResult), args.Error(1)
+}
+
+// MockPolicyCacheService is a mock implementation of the PolicyCacheService for testing
+type MockPolicyCacheService struct {
+	mock.Mock
+}
+
+func (m *MockPolicyCacheService) CheckVulnerabilityPolicyWithCache(
+	ctx context.Context,
+	input *services.VulnerabilityPayload,
+	owner, repo, sha string,
+) (services.VulnerabilityPolicyResult, error) {
+	args := m.Called(ctx, input, owner, repo, sha)
+	return args.Get(0).(services.VulnerabilityPolicyResult), args.Error(1)
+}
+
+func (m *MockPolicyCacheService) CheckSBOMPolicyWithCache(
+	ctx context.Context,
+	input *services.SBOMPayload,
+	owner, repo, sha string,
+) (services.SBOMPolicyResult, error) {
+	args := m.Called(ctx, input, owner, repo, sha)
 	return args.Get(0).(services.SBOMPolicyResult), args.Error(1)
 }
 
@@ -422,7 +447,7 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 	})
 
 	t.Run("ProcessPayloads_Success", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		payloads := []*services.VulnerabilityPayload{
 			{
 				Summary: services.VulnerabilitySummary{
@@ -434,7 +459,7 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.VulnerabilityPolicyResult{
 				Compliant:                   true,
 				TotalVulnerabilities:        3,
@@ -459,7 +484,7 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 	})
 
 	t.Run("ProcessPayloads_PolicyViolation", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		payloads := []*services.VulnerabilityPayload{
 			{
 				Summary: services.VulnerabilitySummary{
@@ -476,7 +501,7 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 			{ID: "CVE-2023-0002", Severity: "HIGH"},
 		}
 
-		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.VulnerabilityPolicyResult{
 				Compliant:                   false,
 				TotalVulnerabilities:        8,
@@ -506,7 +531,7 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 	})
 
 	t.Run("ProcessPayloads_PolicyError", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		payloads := []*services.VulnerabilityPayload{
 			{
 				Summary: services.VulnerabilitySummary{
@@ -518,7 +543,7 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.VulnerabilityPolicyResult{}, errors.New("policy service error"))
 
 		result := processor.ProcessPayloads(
@@ -550,7 +575,7 @@ func TestLicensePolicyProcessor(t *testing.T) {
 	})
 
 	t.Run("ProcessPayloads_Success", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		payloads := []*services.SBOMPayload{
 			{
 				Summary: services.SBOMSummary{
@@ -560,7 +585,7 @@ func TestLicensePolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.SBOMPolicyResult{
 				Compliant:              true,
 				TotalComponents:        10,
@@ -586,7 +611,7 @@ func TestLicensePolicyProcessor(t *testing.T) {
 	})
 
 	t.Run("ProcessPayloads_PolicyViolation", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		payloads := []*services.SBOMPayload{
 			{
 				Summary: services.SBOMSummary{
@@ -603,7 +628,7 @@ func TestLicensePolicyProcessor(t *testing.T) {
 			{Name: "conditional-package", VersionInfo: "2.0.0", LicenseConcluded: "Apache-2.0"},
 		}
 
-		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.SBOMPolicyResult{
 				Compliant:              false,
 				TotalComponents:        10,
@@ -635,7 +660,7 @@ func TestLicensePolicyProcessor(t *testing.T) {
 	})
 
 	t.Run("ProcessPayloads_PolicyError", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		payloads := []*services.SBOMPayload{
 			{
 				Summary: services.SBOMSummary{
@@ -645,7 +670,7 @@ func TestLicensePolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.SBOMPolicyResult{}, errors.New("policy service error"))
 
 		result := processor.ProcessPayloads(
@@ -671,7 +696,7 @@ func TestLicensePolicyProcessor(t *testing.T) {
 
 func TestProcessPoliciesWithStrategy(t *testing.T) {
 	t.Run("VulnerabilityStrategy", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		processor := &VulnerabilityPolicyProcessor{}
 		payloads := []*services.VulnerabilityPayload{
 			{
@@ -684,7 +709,7 @@ func TestProcessPoliciesWithStrategy(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckVulnerabilityPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.VulnerabilityPolicyResult{
 				Compliant:                   true,
 				TotalVulnerabilities:        3,
@@ -708,7 +733,7 @@ func TestProcessPoliciesWithStrategy(t *testing.T) {
 	})
 
 	t.Run("LicenseStrategy", func(t *testing.T) {
-		mockService := &MockPolicyService{}
+		mockService := &MockPolicyCacheService{}
 		processor := &LicensePolicyProcessor{}
 		payloads := []*services.SBOMPayload{
 			{
@@ -719,7 +744,7 @@ func TestProcessPoliciesWithStrategy(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckSBOMPolicy", context.Background(), payloads[0]).Return(
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
 			services.SBOMPolicyResult{
 				Compliant:              true,
 				TotalComponents:        10,

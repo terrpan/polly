@@ -29,12 +29,26 @@ type PolicyServiceInterface interface {
 	) (services.SBOMPolicyResult, error)
 }
 
+// PolicyCacheServiceInterface defines the interface for cached policy evaluation services
+type PolicyCacheServiceInterface interface {
+	CheckVulnerabilityPolicyWithCache(
+		ctx context.Context,
+		input *services.VulnerabilityPayload,
+		owner, repo, sha string,
+	) (services.VulnerabilityPolicyResult, error)
+	CheckSBOMPolicyWithCache(
+		ctx context.Context,
+		input *services.SBOMPayload,
+		owner, repo, sha string,
+	) (services.SBOMPolicyResult, error)
+}
+
 // PolicyProcessor defines the strategy interface for processing different types of security policies
 type PolicyProcessor interface {
 	ProcessPayloads(
 		ctx context.Context,
 		logger *slog.Logger,
-		policyService PolicyServiceInterface,
+		policyCacheService PolicyCacheServiceInterface,
 		payloads interface{},
 		owner, repo, sha string,
 	) PolicyProcessingResult
@@ -51,7 +65,7 @@ type LicensePolicyProcessor struct{}
 func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 	ctx context.Context,
 	logger *slog.Logger,
-	policyService PolicyServiceInterface,
+	policyCacheService PolicyCacheServiceInterface,
 	payloads interface{},
 	owner, repo, sha string,
 ) PolicyProcessingResult {
@@ -69,7 +83,8 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 			"payload_vulnerability_summary", payload.Summary,
 		)
 
-		policyResult, err := policyService.CheckVulnerabilityPolicy(ctx, payload)
+		// Use cache-aware policy evaluation
+		policyResult, err := policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, payload, owner, repo, sha)
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to evaluate vulnerability policy", "error", err)
 
@@ -116,7 +131,7 @@ func (p *VulnerabilityPolicyProcessor) GetPolicyType() string {
 func (p *LicensePolicyProcessor) ProcessPayloads(
 	ctx context.Context,
 	logger *slog.Logger,
-	policyService PolicyServiceInterface,
+	policyCacheService PolicyCacheServiceInterface,
 	payloads interface{},
 	owner, repo, sha string,
 ) PolicyProcessingResult {
@@ -133,7 +148,8 @@ func (p *LicensePolicyProcessor) ProcessPayloads(
 			"package_count", payload.Summary.TotalPackages,
 		)
 
-		policyResult, err := policyService.CheckSBOMPolicy(ctx, payload)
+		// Use cache-aware policy evaluation
+		policyResult, err := policyCacheService.CheckSBOMPolicyWithCache(ctx, payload, owner, repo, sha)
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to evaluate SBOM policy", "error", err)
 
@@ -177,19 +193,19 @@ func (p *LicensePolicyProcessor) GetPolicyType() string {
 func processPoliciesWithStrategy(
 	ctx context.Context,
 	logger *slog.Logger,
-	policyService PolicyServiceInterface,
+	policyCacheService PolicyCacheServiceInterface,
 	processor PolicyProcessor,
 	payloads interface{},
 	owner, repo, sha string,
 ) PolicyProcessingResult {
-	return processor.ProcessPayloads(ctx, logger, policyService, payloads, owner, repo, sha)
+	return processor.ProcessPayloads(ctx, logger, policyCacheService, payloads, owner, repo, sha)
 }
 
 // processVulnerabilityPolicies evaluates vulnerability policies for all payloads using strategy pattern
 func processVulnerabilityPolicies(
 	ctx context.Context,
 	logger *slog.Logger,
-	policyService *services.PolicyService,
+	policyCacheService *services.PolicyCacheService,
 	payloads []*services.VulnerabilityPayload,
 	owner, repo, sha string,
 ) PolicyProcessingResult {
@@ -198,7 +214,7 @@ func processVulnerabilityPolicies(
 	return processPoliciesWithStrategy(
 		ctx,
 		logger,
-		policyService,
+		policyCacheService,
 		processor,
 		payloads,
 		owner,
@@ -211,7 +227,7 @@ func processVulnerabilityPolicies(
 func processLicensePolicies(
 	ctx context.Context,
 	logger *slog.Logger,
-	policyService *services.PolicyService,
+	policyCacheService *services.PolicyCacheService,
 	payloads []*services.SBOMPayload,
 	owner, repo, sha string,
 ) PolicyProcessingResult {
@@ -220,7 +236,7 @@ func processLicensePolicies(
 	return processPoliciesWithStrategy(
 		ctx,
 		logger,
-		policyService,
+		policyCacheService,
 		processor,
 		payloads,
 		owner,

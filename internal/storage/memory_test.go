@@ -481,11 +481,11 @@ func TestMemoryStore_IntegrationComplexOperations(t *testing.T) {
 
 	t.Run("complex data structures", func(t *testing.T) {
 		type NestedStruct struct {
-			ID       int                    `json:"id"`
+			Metadata map[string]interface{} `json:"metadata"`
 			Name     string                 `json:"name"`
 			Tags     []string               `json:"tags"`
-			Metadata map[string]interface{} `json:"metadata"`
 			Children []NestedStruct         `json:"children"`
+			ID       int                    `json:"id"`
 		}
 
 		key := "integration-nested-key"
@@ -562,5 +562,171 @@ func TestMemoryStore_IntegrationComplexOperations(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, exists, "Key %s should have expired", key)
 		}
+	})
+}
+
+// Policy Cache Tests - Testing specialized policy caching functionality
+
+func TestMemoryStore_PolicyCache(t *testing.T) {
+	store := NewMemoryStore()
+	defer store.Close()
+
+	ctx := context.Background()
+	key := "test:policy:cache"
+	result := map[string]interface{}{
+		"allowed":    true,
+		"violations": []string{},
+		"severity":   "low",
+		"policy":     "security-policy-v1",
+	}
+	ttl := 5 * time.Minute
+	maxSize := int64(1024) // 1KB
+
+	t.Run("store and retrieve policy cache", func(t *testing.T) {
+		// Store the policy result
+		err := store.StoreCachedPolicyResults(ctx, key, result, ttl, maxSize)
+		assert.NoError(t, err)
+
+		// Retrieve the policy result
+		entry, err := store.GetCachedPolicyResults(ctx, key)
+		require.NoError(t, err)
+		require.NotNil(t, entry)
+
+		// Verify the entry
+		assert.Equal(t, result, entry.Result)
+		assert.True(t, entry.Size > 0)
+		assert.True(t, entry.CachedAt.Before(time.Now()))
+		assert.True(t, entry.ExpiresAt.After(time.Now()))
+		assert.True(t, entry.ExpiresAt.Sub(entry.CachedAt) >= ttl)
+	})
+
+	t.Run("size limit enforcement", func(t *testing.T) {
+		largeResult := make(map[string]interface{})
+		// Create a large result that exceeds maxSize
+		for i := 0; i < 100; i++ {
+			largeResult[string(rune('a'+i%26))+string(rune('a'+(i/26)%26))] = "very long string value that makes this entry quite large"
+		}
+
+		smallMaxSize := int64(50) // 50 bytes
+
+		err := store.StoreCachedPolicyResults(ctx, "large:key", largeResult, ttl, smallMaxSize)
+		assert.Error(t, err)
+		assert.Equal(t, ErrEntrySizeExceeded, err)
+	})
+
+	t.Run("cache miss scenarios", func(t *testing.T) {
+		// Non-existent key
+		entry, err := store.GetCachedPolicyResults(ctx, "nonexistent:key")
+		assert.Error(t, err)
+		assert.Equal(t, ErrKeyNotFound, err)
+		assert.Nil(t, entry)
+	})
+
+	t.Run("expiration handling", func(t *testing.T) {
+		shortTTL := 10 * time.Millisecond
+
+		// Store with very short TTL
+		err := store.StoreCachedPolicyResults(ctx, "short:ttl:key", result, shortTTL, maxSize)
+		assert.NoError(t, err)
+
+		// Wait for expiration
+		time.Sleep(20 * time.Millisecond)
+
+		// Should now be expired
+		entry, err := store.GetCachedPolicyResults(ctx, "short:ttl:key")
+		assert.Error(t, err)
+		assert.Equal(t, ErrKeyNotFound, err)
+		assert.Nil(t, entry)
+	})
+
+	t.Run("zero max size allows any size", func(t *testing.T) {
+		largeResult := make(map[string]interface{})
+		for i := 0; i < 100; i++ {
+			largeResult[string(rune('a'+i%26))] = "large value"
+		}
+
+		zeroMaxSize := int64(0) // No size limit
+
+		err := store.StoreCachedPolicyResults(ctx, "unlimited:key", largeResult, ttl, zeroMaxSize)
+		assert.NoError(t, err)
+
+		entry, err := store.GetCachedPolicyResults(ctx, "unlimited:key")
+		assert.NoError(t, err)
+		assert.NotNil(t, entry)
+		assert.Equal(t, largeResult, entry.Result)
+	})
+}
+
+func TestMemoryStore_PolicyCacheIntegration(t *testing.T) {
+	t.Run("realistic security policy scenario", func(t *testing.T) {
+		store := NewMemoryStore()
+		defer store.Close()
+
+		ctx := context.Background()
+
+		// Simulate a large SBOM vulnerability scan result
+		sbomResult := map[string]interface{}{
+			"scan_id":     "vuln-scan-123",
+			"repository":  "owner/repo",
+			"commit_sha":  "abc123def456",
+			"scan_time":   time.Now().Format(time.RFC3339),
+			"total_vulns": 5,
+			"vulnerabilities": []map[string]interface{}{
+				{
+					"id":          "CVE-2024-1234",
+					"severity":    "HIGH",
+					"package":     "example-package",
+					"version":     "1.2.3",
+					"fixed_in":    "1.2.4",
+					"description": "Example vulnerability description",
+				},
+				{
+					"id":          "CVE-2024-5678",
+					"severity":    "MEDIUM",
+					"package":     "another-package",
+					"version":     "2.1.0",
+					"fixed_in":    "2.1.1",
+					"description": "Another vulnerability description",
+				},
+			},
+			"policy_result": map[string]interface{}{
+				"allowed":     false,
+				"reason":      "High severity vulnerabilities found",
+				"policy_name": "security-policy-v2",
+				"enforced":    true,
+			},
+		}
+
+		cacheKey := "policy:vuln:owner/repo:abc123def456"
+		ttl := 30 * time.Minute
+		maxSize := int64(10 * 1024 * 1024) // 10MB
+
+		// Store the scan result
+		err := store.StoreCachedPolicyResults(ctx, cacheKey, sbomResult, ttl, maxSize)
+		require.NoError(t, err)
+
+		// Simulate check run re-run - retrieve cached result
+		entry, err := store.GetCachedPolicyResults(ctx, cacheKey)
+		require.NoError(t, err)
+		require.NotNil(t, entry)
+
+		// Verify the cached result matches
+		cachedResult, ok := entry.Result.(map[string]interface{})
+		require.True(t, ok)
+
+		assert.Equal(t, "vuln-scan-123", cachedResult["scan_id"])
+		// The value should be preserved as-is since we're storing directly in memory
+		assert.Equal(t, 5, cachedResult["total_vulns"])
+
+		// Verify policy result is preserved
+		policyResult, ok := cachedResult["policy_result"].(map[string]interface{})
+		require.True(t, ok)
+		assert.Equal(t, false, policyResult["allowed"])
+		assert.Equal(t, "High severity vulnerabilities found", policyResult["reason"])
+
+		// Verify timing information
+		assert.True(t, entry.Size > 0)
+		assert.True(t, time.Since(entry.CachedAt) < time.Minute)
+		assert.True(t, entry.ExpiresAt.After(time.Now().Add(25*time.Minute)))
 	})
 }

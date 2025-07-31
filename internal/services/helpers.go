@@ -39,12 +39,14 @@ func normalizeTrivyVulnerability(vuln types.DetectedVulnerability, target string
 // extractLicenseFromPackage extracts the best available license from an SPDX package
 func extractLicenseFromPackage(pkg *v2_3.Package) string {
 	// First try LicenseConcluded
-	if pkg.PackageLicenseConcluded != "" && pkg.PackageLicenseConcluded != "NOASSERTION" && pkg.PackageLicenseConcluded != "NONE" {
+	if pkg.PackageLicenseConcluded != "" && pkg.PackageLicenseConcluded != "NOASSERTION" &&
+		pkg.PackageLicenseConcluded != "NONE" {
 		return pkg.PackageLicenseConcluded
 	}
 
 	// Then try LicenseDeclared
-	if pkg.PackageLicenseDeclared != "" && pkg.PackageLicenseDeclared != "NOASSERTION" && pkg.PackageLicenseDeclared != "NONE" {
+	if pkg.PackageLicenseDeclared != "" && pkg.PackageLicenseDeclared != "NOASSERTION" &&
+		pkg.PackageLicenseDeclared != "NONE" {
 		return pkg.PackageLicenseDeclared
 	}
 
@@ -75,6 +77,7 @@ func extractCVSSScore(vuln types.DetectedVulnerability) float64 {
 			max = s
 		}
 	}
+
 	return max
 }
 
@@ -83,12 +86,15 @@ func bestScore(c dbtypes.CVSS) float64 {
 	if c.V40Score > 0 {
 		return c.V40Score
 	}
+
 	if c.V3Score > 0 {
 		return c.V3Score
 	}
+
 	if c.V2Score > 0 {
 		return c.V2Score
 	}
+
 	return 0
 }
 
@@ -118,7 +124,6 @@ func detectEcosystem(target string) string {
 
 	// Default to "unknown" if no match found
 	return "unknown"
-
 }
 
 // isSarifContent checks if the content is a valid SARIF document
@@ -128,6 +133,7 @@ func isSarifContent(content []byte) bool {
 	if err != nil {
 		return false
 	}
+
 	if doc == nil {
 		return false
 	}
@@ -173,9 +179,11 @@ func isSPDXContent(content []byte) bool {
 	if doc.DocumentName == "" {
 		return false
 	}
+
 	if doc.DocumentNamespace == "" {
 		return false
 	}
+
 	if doc.CreationInfo == nil {
 		return false
 	}
@@ -183,6 +191,7 @@ func isSPDXContent(content []byte) bool {
 	if !strings.HasPrefix(doc.SPDXVersion, "SPDX-") {
 		return false
 	}
+
 	if doc.DataLicense != "CC0-1.0" {
 		return false
 	}
@@ -214,7 +223,11 @@ func isTrivyJSONContent(content []byte) bool {
 }
 
 // buildPayloadMetadata builds the metadata for a security payload
-func buildPayloadMetadata(SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string, PRNumber int, ScanTime string) PayloadMetadata {
+func buildPayloadMetadata(
+	SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string,
+	PRNumber int,
+	ScanTime string,
+) PayloadMetadata {
 	return PayloadMetadata{
 		SourceFormat:  SourceFormat,
 		ToolName:      ToolName,

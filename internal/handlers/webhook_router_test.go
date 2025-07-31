@@ -29,12 +29,14 @@ func TestNewWebhookRouter_Unit(t *testing.T) {
 		policyService := services.NewPolicyService(opaClient, logger)
 		securityService := services.NewSecurityService(githubClient, logger)
 		stateService := services.NewStateService(store, logger)
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
 
 		router, err := NewWebhookRouter(
 			logger,
 			commentService,
 			checkService,
 			policyService,
+			policyCacheService,
 			securityService,
 			stateService,
 		)
@@ -62,12 +64,14 @@ func TestNewWebhookRouter_Unit(t *testing.T) {
 		policyService := services.NewPolicyService(opaClient, logger)
 		securityService := services.NewSecurityService(githubClient, logger)
 		stateService := services.NewStateService(store, logger)
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
 
 		router, err := NewWebhookRouter(
 			logger,
 			commentService,
 			checkService,
 			policyService,
+			policyCacheService,
 			securityService,
 			stateService,
 		)

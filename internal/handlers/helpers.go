@@ -26,13 +26,14 @@ type SecurityCheckManager struct {
 
 // BaseWebhookHandler contains the common dependencies for all webhook handlers
 type BaseWebhookHandler struct {
-	logger          *slog.Logger
-	commentService  *services.CommentService
-	checkService    *services.CheckService
-	policyService   *services.PolicyService
-	securityService *services.SecurityService
-	stateService    *services.StateService
-	tracingHelper   *TracingHelper
+	logger             *slog.Logger
+	commentService     *services.CommentService
+	checkService       *services.CheckService
+	policyService      *services.PolicyService
+	policyCacheService *services.PolicyCacheService
+	securityService    *services.SecurityService
+	stateService       *services.StateService
+	tracingHelper      *TracingHelper
 }
 
 // SecurityWebhookHandler extends BaseWebhookHandler with security check management capabilities
@@ -79,17 +80,19 @@ func NewBaseWebhookHandler(
 	commentService *services.CommentService,
 	checkService *services.CheckService,
 	policyService *services.PolicyService,
+	policyCacheService *services.PolicyCacheService,
 	securityService *services.SecurityService,
 	stateService *services.StateService,
 ) *BaseWebhookHandler {
 	return &BaseWebhookHandler{
-		logger:          logger,
-		commentService:  commentService,
-		checkService:    checkService,
-		policyService:   policyService,
-		securityService: securityService,
-		stateService:    stateService,
-		tracingHelper:   NewTracingHelper(),
+		logger:             logger,
+		commentService:     commentService,
+		checkService:       checkService,
+		policyService:      policyService,
+		policyCacheService: policyCacheService,
+		securityService:    securityService,
+		stateService:       stateService,
+		tracingHelper:      NewTracingHelper(),
 	}
 }
 

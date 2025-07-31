@@ -9,9 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/terrpan/polly/internal/config"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
 func TestNewStore_Memory(t *testing.T) {

@@ -13,9 +13,10 @@ import (
 
 	dbtypes "github.com/aquasecurity/trivy-db/pkg/types"
 	spdxjson "github.com/spdx/tools-golang/json"
-	"github.com/terrpan/polly/internal/clients"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/clients"
 )
 
 // SecurityService provides methods to process security artifacts from GitHub workflows.
@@ -28,8 +29,8 @@ type SecurityService struct {
 type SecurityArtifact struct {
 	ArtifactName string       `json:"artifact_name"`
 	FileName     string       `json:"file_name"`
-	Content      []byte       `json:"content"`
 	Type         ArtifactType `json:"type"`
+	Content      []byte       `json:"content"`
 }
 
 // PayloadMetadata contains metadata for security payloads
@@ -56,12 +57,12 @@ type SBOMPackage struct {
 	VersionInfo      string            `json:"versionInfo"`
 	Supplier         string            `json:"supplier,omitempty"`
 	DownloadLocation string            `json:"downloadLocation,omitempty"`
-	FilesAnalyzed    bool              `json:"filesAnalyzed,omitempty"`
 	SourceInfo       string            `json:"sourceInfo,omitempty"`
 	LicenseConcluded string            `json:"licenseConcluded,omitempty"`
 	LicenseDeclared  string            `json:"licenseDeclared,omitempty"`
 	CopyrightText    string            `json:"copyrightText,omitempty"`
 	ExternalRefs     []SBOMExternalRef `json:"externalRefs,omitempty"`
+	FilesAnalyzed    bool              `json:"filesAnalyzed,omitempty"`
 }
 
 // SPDX/SBOM external reference details
@@ -73,18 +74,18 @@ type SBOMExternalRef struct {
 
 // SBOMSummary contains summary information about the SBOM
 type SBOMSummary struct {
-	TotalPackages          int            `json:"total_packages"`
-	AllLicenses            []string       `json:"all_licenses"`
 	LicenseDistribution    map[string]int `json:"license_distribution"`
+	AllLicenses            []string       `json:"all_licenses"`
+	TotalPackages          int            `json:"total_packages"`
 	PackagesWithoutLicense int            `json:"packages_without_license"`
 }
 
 // Vulnerability payload (summary + vulnerabilities)
 type VulnerabilityPayload struct {
-	Type            string               `json:"type"` // e.g. "vulnerability_scan"
 	Metadata        PayloadMetadata      `json:"metadata"`
-	Summary         VulnerabilitySummary `json:"summary"`
+	Type            string               `json:"type"`
 	Vulnerabilities []Vulnerability      `json:"vulnerabilities"`
+	Summary         VulnerabilitySummary `json:"summary"`
 }
 
 // PayloadMetadata contains metadata about the scan and tool used
@@ -95,21 +96,21 @@ type PayloadMetadata struct {
 	ScanTime      string `json:"scan_time"`
 	Repository    string `json:"repository"`
 	CommitSHA     string `json:"commit_sha"`
-	PRNumber      int    `json:"pr_number,omitempty"`
 	ScanTarget    string `json:"scan_target"`
 	SchemaVersion string `json:"schema_version"`
+	PRNumber      int    `json:"pr_number,omitempty"`
 }
 
 // Vulnerability represents a single vulnerability found in a scan.
 type Vulnerability struct {
+	Package      Package  `json:"package"`
 	ID           string   `json:"id"`
 	Severity     string   `json:"severity"`
-	Score        float64  `json:"score,omitempty"`
-	Package      Package  `json:"package"`
-	Location     Location `json:"location"`
 	Description  string   `json:"description"`
 	FixedVersion string   `json:"fixed_version,omitempty"`
+	Location     Location `json:"location"`
 	References   []string `json:"references,omitempty"`
+	Score        float64  `json:"score,omitempty"`
 }
 
 // Package represents a software package with its name, version, and ecosystem.
@@ -146,8 +147,13 @@ func NewSecurityService(githubClient *clients.GitHubClient, logger *slog.Logger)
 }
 
 // ProcessWorkflowSecurityArtifacts processes security artifacts and returns normalized payloads
-func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
+func (s *SecurityService) ProcessWorkflowSecurityArtifacts(
+	ctx context.Context,
+	owner, repo, sha string,
+	workflowID int64,
+) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
 	tracer := otel.Tracer("polly/services")
+
 	ctx, span := tracer.Start(ctx, "security.process_workflow_artifacts")
 	defer span.End()
 
@@ -174,12 +180,21 @@ func (s *SecurityService) ProcessWorkflowSecurityArtifacts(ctx context.Context, 
 }
 
 // DiscoverSecurityArtifacts finds and downloads security-related artifacts
-func (s *SecurityService) DiscoverSecurityArtifacts(ctx context.Context, owner, repo string, workflowID int64) ([]*SecurityArtifact, error) {
+func (s *SecurityService) DiscoverSecurityArtifacts(
+	ctx context.Context,
+	owner, repo string,
+	workflowID int64,
+) ([]*SecurityArtifact, error) {
 	return s.checkArtifactForSecurityContent(ctx, owner, repo, workflowID)
 }
 
 // BuildPayloadsFromArtifacts converts security artifacts into normalized payloads
-func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifacts []*SecurityArtifact, owner, repo, sha string, workflowID int64) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
+func (s *SecurityService) BuildPayloadsFromArtifacts(
+	ctx context.Context,
+	artifacts []*SecurityArtifact,
+	owner, repo, sha string,
+	workflowID int64,
+) ([]*VulnerabilityPayload, []*SBOMPayload, error) {
 	vulnPayloads := make([]*VulnerabilityPayload, 0)
 	sbomPayloads := make([]*SBOMPayload, 0)
 
@@ -194,27 +209,47 @@ func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifa
 
 		switch artifact.Type {
 		case ArtifactTypeVulnerabilityJSON:
-			payload, err := s.BuildVulnerabilityPayloadFromTrivy(ctx, artifact, owner, repo, sha, 0, workflowID)
+			payload, err := s.BuildVulnerabilityPayloadFromTrivy(
+				ctx,
+				artifact,
+				owner,
+				repo,
+				sha,
+				0,
+				workflowID,
+			)
 			if err != nil {
 				s.logger.ErrorContext(ctx, "Failed to build vulnerability payload",
 					"artifact_name", artifact.ArtifactName,
 					"file_name", artifact.FileName,
 					"error", err,
 				)
+
 				continue
 			}
+
 			vulnPayloads = append(vulnPayloads, payload)
 
 		case ArtifactTypeSBOMSPDX:
-			payload, err := s.BuildSBOMPayloadFromSPDX(ctx, artifact, owner, repo, sha, 0, workflowID)
+			payload, err := s.BuildSBOMPayloadFromSPDX(
+				ctx,
+				artifact,
+				owner,
+				repo,
+				sha,
+				0,
+				workflowID,
+			)
 			if err != nil {
 				s.logger.ErrorContext(ctx, "Failed to build SBOM payload",
 					"artifact_name", artifact.ArtifactName,
 					"file_name", artifact.FileName,
 					"error", err,
 				)
+
 				continue
 			}
+
 			sbomPayloads = append(sbomPayloads, payload)
 
 		default:
@@ -234,8 +269,13 @@ func (s *SecurityService) BuildPayloadsFromArtifacts(ctx context.Context, artifa
 }
 
 // checkArtifactForSecurityContent downloads and inspects for security-related content.
-func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, owner, repo string, workflowID int64) ([]*SecurityArtifact, error) {
+func (s *SecurityService) checkArtifactForSecurityContent(
+	ctx context.Context,
+	owner, repo string,
+	workflowID int64,
+) ([]*SecurityArtifact, error) {
 	tracer := otel.Tracer("polly/services")
+
 	ctx, span := tracer.Start(ctx, "security.check_artifacts")
 	defer span.End()
 
@@ -251,6 +291,7 @@ func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, o
 			"repo", repo,
 			"workflow_id", workflowID,
 		)
+
 		return nil, nil
 	}
 
@@ -262,6 +303,7 @@ func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, o
 	)
 
 	var securityArtifacts []*SecurityArtifact
+
 	for _, artifact := range artifacts {
 		s.logger.DebugContext(ctx, "Checking artifact for security content",
 			"artifact_name", artifact.GetName(),
@@ -277,6 +319,7 @@ func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, o
 				"artifact_id", artifact.GetID(),
 				"error", err,
 			)
+
 			continue
 		}
 
@@ -286,6 +329,7 @@ func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, o
 			s.logger.WarnContext(ctx, "Failed to inspect ZIP content",
 				"artifact", artifact.GetName(),
 				"error", err)
+
 			continue
 		}
 
@@ -293,11 +337,15 @@ func (s *SecurityService) checkArtifactForSecurityContent(ctx context.Context, o
 	}
 
 	span.SetAttributes(attribute.Int("security_artifacts.found", len(securityArtifacts)))
+
 	return securityArtifacts, nil
 }
 
 // inspectZipContent inspects the content of a ZIP file for security-related files.
-func (s *SecurityService) inspectZipContent(zipData []byte, artifactName string) ([]*SecurityArtifact, error) {
+func (s *SecurityService) inspectZipContent(
+	zipData []byte,
+	artifactName string,
+) ([]*SecurityArtifact, error) {
 	// Create ZIP reader
 	zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
@@ -323,6 +371,7 @@ func (s *SecurityService) inspectZipContent(zipData []byte, artifactName string)
 
 		content, err := io.ReadAll(rc)
 		_ = rc.Close()
+
 		if err != nil {
 			s.logger.Warn("Failed to read file content", "filename", file.Name, "error", err)
 			continue
@@ -353,7 +402,6 @@ func (s *SecurityService) inspectZipContent(zipData []byte, artifactName string)
 func (s *SecurityService) detectSecurityContent(content []byte, filename string) ArtifactType {
 	// Try SPDX detection first
 	if isSPDXContent(content) {
-
 		s.logger.Debug("Detected SPDX content", "filename", filename)
 		return ArtifactTypeSBOMSPDX
 	}
@@ -374,7 +422,13 @@ func (s *SecurityService) detectSecurityContent(content []byte, filename string)
 }
 
 // BuildSBOMPayloadFromSPDX builds a normalized SBOM payload from SPDX content
-func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*SBOMPayload, error) {
+func (s *SecurityService) BuildSBOMPayloadFromSPDX(
+	ctx context.Context,
+	artifact *SecurityArtifact,
+	owner, repo, sha string,
+	prNumber int,
+	workflowID int64,
+) (*SBOMPayload, error) {
 	// Parse the SPDX JSON content
 	doc, err := spdxjson.Read(bytes.NewReader(artifact.Content))
 	if err != nil {
@@ -383,6 +437,7 @@ func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact
 			"file_name", artifact.FileName,
 			"error", err,
 		)
+
 		return nil, err
 	}
 
@@ -408,7 +463,9 @@ func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact
 	// Extract all packages from SPDX document
 	packages := []SBOMPackage{}
 	licenseDistribution := make(map[string]int)
+
 	var allLicenses []string
+
 	packagesWithoutLicense := 0
 	seenLicenses := make(map[string]bool)
 
@@ -420,6 +477,7 @@ func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact
 
 		// Convert supplier to string
 		supplierStr := ""
+
 		if pkg.PackageSupplier != nil {
 			if pkg.PackageSupplier.Supplier != "" {
 				supplierStr = pkg.PackageSupplier.Supplier
@@ -481,7 +539,13 @@ func (s *SecurityService) BuildSBOMPayloadFromSPDX(ctx context.Context, artifact
 }
 
 // BuildVulnerabilityPayloadFromTrivy creates a normalized vulnerability payload from Trivy JSON report
-func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*VulnerabilityPayload, error) {
+func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(
+	ctx context.Context,
+	artifact *SecurityArtifact,
+	owner, repo, sha string,
+	prNumber int,
+	workflowID int64,
+) (*VulnerabilityPayload, error) {
 	// parse the trivy report
 	var trivyReport types.Report
 	if err := json.Unmarshal(artifact.Content, &trivyReport); err != nil {
@@ -490,6 +554,7 @@ func (s *SecurityService) BuildVulnerabilityPayloadFromTrivy(ctx context.Context
 			"file_name", artifact.FileName,
 			"error", err,
 		)
+
 		return nil, err
 	}
 
