@@ -46,8 +46,8 @@ type VulnerabilitySummary struct {
 // SPDX/SBOM payload (summary + packages)
 type SBOMPayload struct {
 	Metadata PayloadMetadata `json:"metadata"`
-	Summary  SBOMSummary     `json:"summary"`
 	Packages []SBOMPackage   `json:"packages"`
+	Summary  SBOMSummary     `json:"summary"`
 }
 
 // SPDX/SBOM package details

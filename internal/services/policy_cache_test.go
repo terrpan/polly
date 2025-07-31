@@ -55,7 +55,9 @@ func (suite *PolicyCacheIntegrationTestSuite) SetupSuite() {
 	// Store original config
 	suite.originalConfig = config.AppConfig.Storage
 
-	suite.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	suite.logger = slog.New(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
+	)
 
 	// Setup testcontainers
 	ctx := context.Background()
@@ -82,7 +84,9 @@ func (suite *PolicyCacheIntegrationTestSuite) SetupSuite() {
 }
 
 // createOPAContainer creates an OPA container with our policy bundle
-func (suite *PolicyCacheIntegrationTestSuite) createOPAContainer(ctx context.Context) (testcontainers.Container, error) {
+func (suite *PolicyCacheIntegrationTestSuite) createOPAContainer(
+	ctx context.Context,
+) (testcontainers.Container, error) {
 	// Get the absolute path to the OPA bundle
 	bundlePath, err := filepath.Abs("../../tools/opa/bundle")
 	if err != nil {
@@ -151,7 +155,11 @@ func (suite *PolicyCacheIntegrationTestSuite) SetupTest() {
 	require.NoError(suite.T(), err)
 
 	suite.policyService = NewPolicyService(opaClient, suite.logger)
-	suite.policyCacheService = NewPolicyCacheService(suite.policyService, suite.stateService, suite.logger)
+	suite.policyCacheService = NewPolicyCacheService(
+		suite.policyService,
+		suite.stateService,
+		suite.logger,
+	)
 }
 
 func (suite *PolicyCacheIntegrationTestSuite) TearDownTest() {
@@ -185,16 +193,38 @@ func (suite *PolicyCacheIntegrationTestSuite) TestVulnerabilityPolicyCacheEnable
 	}
 
 	// First call - should hit OPA and cache result
-	result1, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
+	result1, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err)
 
 	// HIGH severity should be non-compliant based on our OPA policy (max allowed is MEDIUM)
 	assert.False(suite.T(), result1.Compliant, "HIGH vulnerability should be non-compliant")
-	assert.Equal(suite.T(), 1, result1.TotalVulnerabilities, "Should have 1 vulnerability from input")
-	assert.Equal(suite.T(), 1, result1.NonCompliantCount, "Should have 1 non-compliant vulnerability")
+	assert.Equal(
+		suite.T(),
+		1,
+		result1.TotalVulnerabilities,
+		"Should have 1 vulnerability from input",
+	)
+	assert.Equal(
+		suite.T(),
+		1,
+		result1.NonCompliantCount,
+		"Should have 1 non-compliant vulnerability",
+	)
 
 	// Verify result was cached
-	cachedResult, found, err := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "vulnerability")
+	cachedResult, found, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"vulnerability",
+	)
 	require.NoError(suite.T(), err)
 	assert.True(suite.T(), found, "Result should be cached")
 
@@ -211,7 +241,13 @@ func (suite *PolicyCacheIntegrationTestSuite) TestVulnerabilityPolicyCacheEnable
 	}
 
 	// Second call - should hit cache, not OPA
-	result2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
+	result2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), result1, result2, "Should get same result from cache")
 
@@ -247,7 +283,13 @@ func (suite *PolicyCacheIntegrationTestSuite) TestSBOMPolicyCacheEnabled() {
 	assert.Equal(suite.T(), 1, result1.CompliantComponents, "Should have 1 compliant component")
 
 	// Verify result was cached
-	cachedResult, found, err := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "sbom")
+	cachedResult, found, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"sbom",
+	)
 	require.NoError(suite.T(), err)
 	assert.True(suite.T(), found, "Result should be cached")
 
@@ -289,19 +331,37 @@ func (suite *PolicyCacheIntegrationTestSuite) TestPolicyCacheDisabled() {
 	}
 
 	// Call with cache disabled - should still work with OPA but not cache
-	result1, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
+	result1, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err)
 
 	// MEDIUM severity should be compliant based on our OPA policy (max allowed is MEDIUM)
 	assert.True(suite.T(), result1.Compliant, "MEDIUM vulnerability should be compliant")
 
 	// Verify nothing was cached (cache disabled)
-	_, found, err := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "vulnerability")
+	_, found, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"vulnerability",
+	)
 	require.NoError(suite.T(), err)
 	assert.False(suite.T(), found, "Should not cache when cache is disabled")
 
 	// Second call - should hit OPA again (no cache)
-	result2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
+	result2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), result1, result2, "Should get same result from OPA")
 
@@ -330,21 +390,45 @@ func (suite *PolicyCacheIntegrationTestSuite) TestCacheMissScenarios() {
 	sha1 := "sha1abc"
 	sha2 := "sha2def"
 
-	result1, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha1)
+	result1, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha1,
+	)
 	require.NoError(suite.T(), err)
 
-	result2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha2)
+	result2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha2,
+	)
 	require.NoError(suite.T(), err)
 
 	// Both should be equal (same policy result) but cached separately
 	assert.Equal(suite.T(), result1, result2, "Same input should produce same policy result")
 
 	// Verify both are cached independently
-	cached1, found1, err1 := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha1, "vulnerability")
+	cached1, found1, err1 := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha1,
+		"vulnerability",
+	)
 	require.NoError(suite.T(), err1)
 	assert.True(suite.T(), found1, "SHA1 result should be cached")
 
-	cached2, found2, err2 := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha2, "vulnerability")
+	cached2, found2, err2 := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha2,
+		"vulnerability",
+	)
 	require.NoError(suite.T(), err2)
 	assert.True(suite.T(), found2, "SHA2 result should be cached")
 
@@ -371,16 +455,33 @@ func (suite *PolicyCacheIntegrationTestSuite) TestCacheErrorHandling() {
 	}
 
 	// Test policy evaluation with empty vulnerabilities (should succeed but return compliant=true)
-	result, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
+	result, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err, "Empty vulnerabilities should be handled gracefully")
 
 	// Empty vulnerabilities should be compliant (no vulnerabilities = no policy violations)
 	// Note: This depends on the OPA policy implementation
 	assert.Equal(suite.T(), 0, result.TotalVulnerabilities, "Should have 0 vulnerabilities")
-	assert.Equal(suite.T(), 0, result.NonCompliantCount, "Should have 0 non-compliant vulnerabilities")
+	assert.Equal(
+		suite.T(),
+		0,
+		result.NonCompliantCount,
+		"Should have 0 non-compliant vulnerabilities",
+	)
 
 	// Verify result was cached
-	_, found, err := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "vulnerability")
+	_, found, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"vulnerability",
+	)
 	require.NoError(suite.T(), err)
 	assert.True(suite.T(), found, "Valid results should be cached even if empty")
 
@@ -412,7 +513,13 @@ func (suite *PolicyCacheIntegrationTestSuite) TestConcurrentCacheAccess() {
 
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
-			result, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
+			result, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+				ctx,
+				input,
+				owner,
+				repo,
+				sha,
+			)
 			if err != nil {
 				errorsChan <- err
 				return
@@ -454,7 +561,13 @@ func (suite *PolicyCacheIntegrationTestSuite) TestConcurrentCacheAccess() {
 	}
 
 	// Verify result is cached
-	cachedResult, found, err := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "vulnerability")
+	cachedResult, found, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"vulnerability",
+	)
 	require.NoError(suite.T(), err)
 	assert.True(suite.T(), found, "Result should be cached")
 
@@ -499,20 +612,43 @@ func (suite *PolicyCacheIntegrationTestSuite) TestCacheWithDifferentPolicyTypes(
 	}
 
 	// Test both policy types with same SHA
-	vulnResult, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, vulnInput, owner, repo, sha)
+	vulnResult, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		vulnInput,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err, "Vulnerability policy check should succeed")
 
-	sbomResult, err := suite.policyCacheService.CheckSBOMPolicyWithCache(ctx, sbomInput, owner, repo, sha)
+	sbomResult, err := suite.policyCacheService.CheckSBOMPolicyWithCache(
+		ctx,
+		sbomInput,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err, "SBOM policy check should succeed")
 
 	// Verify both are cached independently
-	cachedVuln, foundVuln, err := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "vulnerability")
+	cachedVuln, foundVuln, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"vulnerability",
+	)
 	require.NoError(suite.T(), err)
 	assert.True(suite.T(), foundVuln, "Vulnerability result should be cached")
 
 	// Handle both struct and map types from cache for vulnerability
 	if resultStruct, ok := cachedVuln.(VulnerabilityPolicyResult); ok {
-		assert.Equal(suite.T(), vulnResult, resultStruct, "Cached vulnerability result should match original")
+		assert.Equal(
+			suite.T(),
+			vulnResult,
+			resultStruct,
+			"Cached vulnerability result should match original",
+		)
 	} else if resultMap, ok := cachedVuln.(map[string]interface{}); ok {
 		convertedResult, err := convertMapToVulnerabilityPolicyResult(resultMap)
 		require.NoError(suite.T(), err)
@@ -520,13 +656,24 @@ func (suite *PolicyCacheIntegrationTestSuite) TestCacheWithDifferentPolicyTypes(
 		assert.Equal(suite.T(), vulnResult.TotalVulnerabilities, convertedResult.TotalVulnerabilities)
 	}
 
-	cachedSBOM, foundSBOM, err := suite.stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "sbom")
+	cachedSBOM, foundSBOM, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"sbom",
+	)
 	require.NoError(suite.T(), err)
 	assert.True(suite.T(), foundSBOM, "SBOM result should be cached")
 
 	// Handle both struct and map types from cache for SBOM
 	if resultStruct, ok := cachedSBOM.(SBOMPolicyResult); ok {
-		assert.Equal(suite.T(), sbomResult, resultStruct, "Cached SBOM result should match original")
+		assert.Equal(
+			suite.T(),
+			sbomResult,
+			resultStruct,
+			"Cached SBOM result should match original",
+		)
 	} else if resultMap, ok := cachedSBOM.(map[string]interface{}); ok {
 		convertedResult, err := convertMapToSBOMPolicyResult(resultMap)
 		require.NoError(suite.T(), err)
@@ -535,88 +682,108 @@ func (suite *PolicyCacheIntegrationTestSuite) TestCacheWithDifferentPolicyTypes(
 	}
 
 	// Test cache hits - should return cached results, not hit OPA again
-	vulnResult2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, vulnInput, owner, repo, sha)
+	vulnResult2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		vulnInput,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err)
-	assert.Equal(suite.T(), vulnResult, vulnResult2, "Second vulnerability call should return cached result")
+	assert.Equal(
+		suite.T(),
+		vulnResult,
+		vulnResult2,
+		"Second vulnerability call should return cached result",
+	)
 
-	sbomResult2, err := suite.policyCacheService.CheckSBOMPolicyWithCache(ctx, sbomInput, owner, repo, sha)
+	sbomResult2, err := suite.policyCacheService.CheckSBOMPolicyWithCache(
+		ctx,
+		sbomInput,
+		owner,
+		repo,
+		sha,
+	)
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), sbomResult, sbomResult2, "Second SBOM call should return cached result")
 
 	suite.T().Log("Mixed policy types cache test completed successfully")
 }
 
-// Run the integration test suite
-func TestPolicyCacheIntegrationSuite(t *testing.T) {
-	suite.Run(t, new(PolicyCacheIntegrationTestSuite))
-}
-
-// Individual integration test functions for specific scenarios
-func TestPolicyCacheIntegration_ConfigToggle(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	// Store original config
-	originalConfig := config.AppConfig.Storage
-
-	// Cleanup
-	defer func() {
-		config.AppConfig.Storage = originalConfig
-	}()
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	store, err := storage.NewStore(config.StorageConfig{Type: "memory"})
-	require.NoError(t, err)
-	defer store.Close()
-
-	stateService := NewStateService(store, logger)
-	opaClient, _ := clients.NewOPAClient("http://localhost:8181")
-	policyService := NewPolicyService(opaClient, logger)
-	policyCacheService := NewPolicyCacheService(policyService, stateService, logger)
-
+func (suite *PolicyCacheIntegrationTestSuite) TestCacheConfigToggle() {
 	ctx := context.Background()
-	owner, repo, sha := "test", "repo", "sha"
+	owner, repo, sha := "testowner", "testrepo", "config-toggle-test"
 
 	input := &VulnerabilityPayload{
-		Vulnerabilities: []Vulnerability{{ID: "CVE-TEST", Severity: "HIGH"}},
-		Metadata:        PayloadMetadata{ScanTarget: ".", ToolName: "trivy"},
+		Vulnerabilities: []Vulnerability{
+			{ID: "CVE-2024-CONFIG", Severity: "HIGH", Score: 8.5},
+		},
+		Metadata: PayloadMetadata{
+			ScanTarget: ".",
+			ToolName:   "trivy",
+		},
 	}
 
 	// Test with cache enabled
 	config.AppConfig.Storage.PolicyCache.Enabled = true
 	config.AppConfig.Storage.PolicyCache.TTL = "30m"
 
-	result1, err := policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
-	if err != nil {
-		t.Log("OPA not available for config toggle test, skipping cache verification:", err)
-		t.Log("Config toggle integration test completed successfully")
-		return
-	}
+	result1, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha,
+	)
+	require.NoError(suite.T(), err)
 
-	// Verify cached
-	_, found, err := stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "vulnerability")
-	require.NoError(t, err)
-	assert.True(t, found, "Result should be cached when enabled")
+	// Verify result was cached
+	_, found, err := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"vulnerability",
+	)
+	require.NoError(suite.T(), err)
+	assert.True(suite.T(), found, "Result should be cached when enabled")
 
-	// Clear cache and disable
-	require.NoError(t, stateService.DeletePStates(ctx, owner, repo, sha))
+	// Clear cache and disable caching
+	require.NoError(suite.T(), suite.stateService.DeletePStates(ctx, owner, repo, sha))
 	config.AppConfig.Storage.PolicyCache.Enabled = false
 
-	result2, err := policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, input, owner, repo, sha)
-	if err != nil {
-		t.Log("OPA not available for second call, expected:", err)
-		t.Log("Config toggle integration test completed successfully")
-		return
-	}
+	result2, err := suite.policyCacheService.CheckVulnerabilityPolicyWithCache(
+		ctx,
+		input,
+		owner,
+		repo,
+		sha,
+	)
+	require.NoError(suite.T(), err)
 
-	// Verify not cached
-	_, found, err = stateService.GetCachedPolicyResults(ctx, owner, repo, sha, "vulnerability")
-	require.NoError(t, err)
-	assert.False(t, found, "Result should not be cached when disabled")
+	// Verify nothing was cached (cache disabled)
+	_, found, err = suite.stateService.GetCachedPolicyResults(
+		ctx,
+		owner,
+		repo,
+		sha,
+		"vulnerability",
+	)
+	require.NoError(suite.T(), err)
+	assert.False(suite.T(), found, "Result should not be cached when disabled")
 
-	// Results should be the same
-	assert.Equal(t, result1, result2)
+	// Results should be the same (same policy evaluation)
+	assert.Equal(
+		suite.T(),
+		result1,
+		result2,
+		"Policy results should be identical regardless of caching",
+	)
 
-	t.Log("Config toggle integration test completed successfully")
+	suite.T().Log("Cache config toggle test completed successfully")
+}
+
+// Run the integration test suite
+func TestPolicyCacheIntegrationSuite(t *testing.T) {
+	suite.Run(t, new(PolicyCacheIntegrationTestSuite))
 }

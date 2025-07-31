@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 
 	"go.opentelemetry.io/otel"
@@ -10,38 +9,6 @@ import (
 
 	"github.com/terrpan/polly/internal/config"
 )
-
-// convertMapToVulnerabilityPolicyResult converts a map[string]interface{} to VulnerabilityPolicyResult
-func convertMapToVulnerabilityPolicyResult(data map[string]interface{}) (VulnerabilityPolicyResult, error) {
-	// Use JSON marshaling/unmarshaling for reliable conversion
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return VulnerabilityPolicyResult{}, err
-	}
-
-	var result VulnerabilityPolicyResult
-	if err := json.Unmarshal(jsonData, &result); err != nil {
-		return VulnerabilityPolicyResult{}, err
-	}
-
-	return result, nil
-}
-
-// convertMapToSBOMPolicyResult converts a map[string]interface{} to SBOMPolicyResult
-func convertMapToSBOMPolicyResult(data map[string]interface{}) (SBOMPolicyResult, error) {
-	// Use JSON marshaling/unmarshaling for reliable conversion
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return SBOMPolicyResult{}, err
-	}
-
-	var result SBOMPolicyResult
-	if err := json.Unmarshal(jsonData, &result); err != nil {
-		return SBOMPolicyResult{}, err
-	}
-
-	return result, nil
-}
 
 // PolicyCacheService provides cached policy evaluation
 type PolicyCacheService struct {
@@ -90,12 +57,14 @@ func (s *PolicyCacheService) CheckVulnerabilityPolicyWithCache(
 			if result, ok := cachedResult.(VulnerabilityPolicyResult); ok {
 				span.SetAttributes(attribute.Bool("cache.hit", true))
 				s.logger.DebugContext(ctx, "Using cached vulnerability policy result")
+
 				return result, nil
 			} else if resultMap, ok := cachedResult.(map[string]interface{}); ok {
 				// Convert map back to struct
 				if result, err := convertMapToVulnerabilityPolicyResult(resultMap); err == nil {
 					span.SetAttributes(attribute.Bool("cache.hit", true))
 					s.logger.DebugContext(ctx, "Using cached vulnerability policy result (converted from map)")
+
 					return result, nil
 				} else {
 					s.logger.WarnContext(ctx, "Failed to convert cached map to VulnerabilityPolicyResult", "error", err)
@@ -151,12 +120,14 @@ func (s *PolicyCacheService) CheckSBOMPolicyWithCache(
 			if result, ok := cachedResult.(SBOMPolicyResult); ok {
 				span.SetAttributes(attribute.Bool("cache.hit", true))
 				s.logger.DebugContext(ctx, "Using cached SBOM policy result")
+
 				return result, nil
 			} else if resultMap, ok := cachedResult.(map[string]interface{}); ok {
 				// Convert map back to struct
 				if result, err := convertMapToSBOMPolicyResult(resultMap); err == nil {
 					span.SetAttributes(attribute.Bool("cache.hit", true))
 					s.logger.DebugContext(ctx, "Using cached SBOM policy result (converted from map)")
+
 					return result, nil
 				} else {
 					s.logger.WarnContext(ctx, "Failed to convert cached map to SBOMPolicyResult", "error", err)

@@ -239,3 +239,37 @@ func buildPayloadMetadata(
 		SchemaVersion: SchemaVersion,
 	}
 }
+
+// convertMapToVulnerabilityPolicyResult converts a map[string]interface{} to VulnerabilityPolicyResult
+func convertMapToVulnerabilityPolicyResult(
+	data map[string]interface{},
+) (VulnerabilityPolicyResult, error) {
+	// Use JSON marshaling/unmarshaling for reliable conversion
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return VulnerabilityPolicyResult{}, err
+	}
+
+	var result VulnerabilityPolicyResult
+	if err := json.Unmarshal(jsonData, &result); err != nil {
+		return VulnerabilityPolicyResult{}, err
+	}
+
+	return result, nil
+}
+
+// convertMapToSBOMPolicyResult converts a map[string]interface{} to SBOMPolicyResult
+func convertMapToSBOMPolicyResult(data map[string]interface{}) (SBOMPolicyResult, error) {
+	// Use JSON marshaling/unmarshaling for reliable conversion
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return SBOMPolicyResult{}, err
+	}
+
+	var result SBOMPolicyResult
+	if err := json.Unmarshal(jsonData, &result); err != nil {
+		return SBOMPolicyResult{}, err
+	}
+
+	return result, nil
+}
