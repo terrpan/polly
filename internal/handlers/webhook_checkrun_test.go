@@ -42,6 +42,7 @@ func (suite *CheckRunHandlerTestSuite) SetupTest() {
 	commentService := services.NewCommentService(githubClient, suite.logger)
 	checkService := services.NewCheckService(githubClient, suite.logger)
 	policyService := services.NewPolicyService(opaClient, suite.logger)
+	policyCacheService := services.NewPolicyCacheService(policyService, suite.stateService, suite.logger)
 	securityService := services.NewSecurityService(githubClient, suite.logger)
 	suite.stateService = services.NewStateService(store, suite.logger)
 
@@ -51,6 +52,7 @@ func (suite *CheckRunHandlerTestSuite) SetupTest() {
 		commentService,
 		checkService,
 		policyService,
+		policyCacheService,
 		securityService,
 		suite.stateService,
 	)
@@ -158,14 +160,18 @@ func TestNewCheckRunHandler_Unit(t *testing.T) {
 		store := storage.NewMemoryStore()
 		githubClient := clients.NewGitHubClient(context.Background())
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+		stateService := services.NewStateService(store, logger)
+		policyService := services.NewPolicyService(opaClient, logger)
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
 
 		baseHandler := NewBaseWebhookHandler(
 			logger,
 			services.NewCommentService(githubClient, logger),
 			services.NewCheckService(githubClient, logger),
-			services.NewPolicyService(opaClient, logger),
+			policyService,
+			policyCacheService,
 			services.NewSecurityService(githubClient, logger),
-			services.NewStateService(store, logger),
+			stateService,
 		)
 
 		handler := NewCheckRunHandler(baseHandler)

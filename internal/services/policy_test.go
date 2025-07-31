@@ -9,8 +9,15 @@ import (
 	"os"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/terrpan/polly/internal/clients"
 )
+
+func createTestPolicyService() (*PolicyService, *slog.Logger) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+	return NewPolicyService(opaClient, logger), logger
+}
 
 func TestNewPolicyService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -67,15 +74,13 @@ func TestPolicyService_SBOMPolicyResult_Structure(t *testing.T) {
 
 // TestPolicyService_CheckVulnerabilityPolicy_EdgeCases tests edge cases for vulnerability policy
 func TestPolicyService_CheckVulnerabilityPolicy_EdgeCases(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-	service := NewPolicyService(opaClient, logger)
+	service, _ := createTestPolicyService()
 
 	ctx := context.Background()
 
 	tests := []struct {
-		name    string
 		payload *VulnerabilityPayload
+		name    string
 		wantErr bool
 	}{
 		{
@@ -121,11 +126,9 @@ func TestPolicyService_CheckVulnerabilityPolicy_EdgeCases(t *testing.T) {
 
 // TestPolicyService_CheckSBOMPolicy_EdgeCases tests edge cases for SBOM policy
 func TestPolicyService_CheckSBOMPolicy_EdgeCases(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-
 	tests := []struct {
-		name    string
 		payload *SBOMPayload
+		name    string
 		wantErr bool
 	}{
 		{
@@ -168,8 +171,7 @@ func TestPolicyService_CheckSBOMPolicy_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-			service := NewPolicyService(opaClient, logger)
+			service, _ := createTestPolicyService()
 
 			ctx := context.Background()
 			result, err := service.CheckSBOMPolicy(ctx, tt.payload)
@@ -187,9 +189,7 @@ func TestPolicyService_CheckSBOMPolicy_EdgeCases(t *testing.T) {
 
 // TestPolicyService_EvaluatePolicy_ErrorHandling tests error scenarios in policy evaluation
 func TestPolicyService_EvaluatePolicy_ErrorHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-	service := NewPolicyService(opaClient, logger)
+	service, _ := createTestPolicyService()
 
 	ctx := context.Background()
 
@@ -214,9 +214,7 @@ func TestPolicyService_EvaluatePolicy_ErrorHandling(t *testing.T) {
 
 // TestPolicyService_ContextTimeout tests context timeout handling
 func TestPolicyService_ContextTimeout(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-	service := NewPolicyService(opaClient, logger)
+	service, _ := createTestPolicyService()
 
 	// Create a context with very short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
@@ -252,9 +250,7 @@ func TestPolicyService_PolicyPaths(t *testing.T) {
 
 // TestPolicyService_EvaluatePolicy_EmptyInput tests policy evaluation with empty inputs
 func TestPolicyService_EvaluatePolicy_EmptyInput(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-	service := NewPolicyService(opaClient, logger)
+	service, _ := createTestPolicyService()
 
 	ctx := context.Background()
 

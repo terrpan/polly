@@ -48,6 +48,7 @@ func (suite *PullRequestHandlerTestSuite) SetupTest() {
 	suite.policyService = services.NewPolicyService(opaClient, suite.logger)
 	suite.securityService = services.NewSecurityService(githubClient, suite.logger)
 	suite.stateService = services.NewStateService(store, suite.logger)
+	policyCacheService := services.NewPolicyCacheService(suite.policyService, suite.stateService, suite.logger)
 
 	// Create base handler and pull request handler
 	suite.baseHandler = NewBaseWebhookHandler(
@@ -55,6 +56,7 @@ func (suite *PullRequestHandlerTestSuite) SetupTest() {
 		suite.commentService,
 		suite.checkService,
 		suite.policyService,
+		policyCacheService,
 		suite.securityService,
 		suite.stateService,
 	)
@@ -160,14 +162,18 @@ func TestNewPullRequestHandler_Unit(t *testing.T) {
 		store := storage.NewMemoryStore()
 		githubClient := clients.NewGitHubClient(context.Background())
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+		stateService := services.NewStateService(store, logger)
+		policyService := services.NewPolicyService(opaClient, logger)
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
 
 		baseHandler := NewBaseWebhookHandler(
 			logger,
 			services.NewCommentService(githubClient, logger),
 			services.NewCheckService(githubClient, logger),
-			services.NewPolicyService(opaClient, logger),
+			policyService,
+			policyCacheService,
 			services.NewSecurityService(githubClient, logger),
-			services.NewStateService(store, logger),
+			stateService,
 		)
 
 		handler := NewPullRequestHandler(baseHandler)

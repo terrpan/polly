@@ -16,11 +16,17 @@ All storage backends implement a common interface:
 
 ```go
 type Store interface {
+    // Basic storage operations
     Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
-    Get(ctx context.Context, key string, dest interface{}) error
+    Get(ctx context.Context, key string) (interface{}, error)
     Delete(ctx context.Context, key string) error
     Exists(ctx context.Context, key string) (bool, error)
+    Ping(ctx context.Context) (string, error)
     Close() error
+
+    // Policy cache operations (optimized for large security artifacts)
+    StoreCachedPolicyResults(ctx context.Context, key string, result interface{}, ttl time.Duration, maxSize int64) error
+    GetCachedPolicyResults(ctx context.Context, key string) (*PolicyCacheEntry, error)
 }
 ```
 
@@ -28,6 +34,7 @@ type Store interface {
 - **Context Support**: All operations accept context for cancellation and tracing
 - **Generic Values**: Automatic JSON serialization for complex data types
 - **Expiration**: Built-in TTL support for automatic cleanup
+- **Policy Caching**: Specialized methods for caching policy evaluation results with size validation
 - **Error Handling**: Consistent error patterns across backends
 
 ## Storage Backends
@@ -143,6 +150,113 @@ Manages workflow run IDs for handling re-runs and concurrent processing:
 func (s *StateService) StoreWorkflowRunID(ctx context.Context, owner, repo, sha string, workflowRunID int64) error
 func (s *StateService) GetWorkflowRunID(ctx context.Context, owner, repo, sha string) (int64, bool, error)
 ```
+
+#### Policy Result Caching
+Caches policy evaluation results to optimize performance during check run re-runs, especially for large SBOM files that can contain tens of thousands of lines.
+
+```go
+type PolicyCacheEntry struct {
+    Result    interface{} `json:"result"`
+    CachedAt  time.Time   `json:"cached_at"`
+    ExpiresAt time.Time   `json:"expires_at"`
+    Size      int64       `json:"size"` // Size in bytes for monitoring
+}
+
+// Storage interface methods
+func StoreCachedPolicyResults(ctx context.Context, key string, result interface{}, ttl time.Duration, maxSize int64) error
+func GetCachedPolicyResults(ctx context.Context, key string) (*PolicyCacheEntry, error)
+```
+
+**Implementation Details**:
+
+*Memory Store*:
+- Size validation using simple object estimation
+- Direct object storage (no serialization overhead)
+- Automatic cleanup of expired entries using existing TTL mechanism
+- Thread-safe access with `sync.RWMutex`
+
+*Valkey Store*:
+- JSON serialization/deserialization for persistence
+- Integration with existing zlib compression for large entries
+- Size validation before storage to prevent memory issues
+- Background cleanup of expired entries
+- Compression ratio tracking for performance monitoring
+
+**Key Features**:
+- **Size Validation**: Prevents caching of extremely large entries (configurable via `max_size`)
+- **TTL Support**: Automatic expiration of cached results (configurable via `ttl`)
+- **Error Handling**: Returns `ErrEntrySizeExceeded` for oversized entries, `ErrPolicyCacheDisabled` when disabled
+- **Observability**: Full OpenTelemetry tracing with cache hit/miss metrics and compression ratios
+- **Compression**: Automatic compression for Valkey backend to reduce storage footprint
+- **Safety**: Size limits prevent memory exhaustion from large SBOM files
+
+**Configuration Examples**:
+
+*Basic Configuration*:
+```yaml
+storage:
+  type: "memory"
+  policy_cache:
+    enabled: true
+    ttl: "30m"           # Cache TTL (e.g., "30m", "1h", "24h")
+    max_size: 10485760   # 10MB max size per cache entry
+```
+
+*Production Configuration with Valkey*:
+```yaml
+storage:
+  type: "valkey"
+  valkey:
+    address: "localhost:6379"
+    enable_compression: true
+    enable_otel: true
+  policy_cache:
+    enabled: true
+    ttl: "1h"
+    max_size: 52428800  # 50MB for large SBOMs
+```
+
+*Environment Variables*:
+```bash
+export POLLY_STORAGE_POLICY_CACHE_ENABLED=true
+export POLLY_STORAGE_POLICY_CACHE_TTL=30m
+export POLLY_STORAGE_POLICY_CACHE_MAX_SIZE=10485760
+```
+
+**Usage Pattern**:
+```go
+// Generate cache key for policy result
+cacheKey := fmt.Sprintf("policy:%s:%s:%s:%s", policyName, owner, repo, sha)
+
+// Try to get cached result first
+if config.AppConfig.Storage.PolicyCache.Enabled {
+    if entry, err := store.GetCachedPolicyResults(ctx, cacheKey); err == nil {
+        // Cache hit - return cached result
+        return entry.Result, nil
+    }
+}
+
+// Cache miss - evaluate policy
+result, err := evaluatePolicy(ctx, input)
+if err != nil {
+    return nil, err
+}
+
+// Cache the result for future re-runs
+if config.AppConfig.Storage.PolicyCache.Enabled {
+    ttl, _ := time.ParseDuration(config.AppConfig.Storage.PolicyCache.TTL)
+    store.StoreCachedPolicyResults(ctx, cacheKey, result, ttl, config.AppConfig.Storage.PolicyCache.MaxSize)
+}
+
+return result, nil
+```
+
+**Use Cases**:
+- Check run re-runs avoid re-processing identical SBOM files
+- Large security artifacts (10k+ lines) benefit from caching
+- Reduces OPA evaluation overhead for repeated policy checks
+- Improves response times for GitHub webhooks during re-runs
+- Handles enterprise-scale repositories with massive dependency graphs
 
 ### Comprehensive State Access
 

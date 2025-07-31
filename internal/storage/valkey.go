@@ -10,20 +10,21 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/terrpan/polly/internal/config"
 	"github.com/valkey-io/valkey-go"
 	"github.com/valkey-io/valkey-go/valkeyotel"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
 // ValkeyStore implements Store interface using Valkey storage.
 type ValkeyStore struct {
 	client            valkey.Client
-	enableCompression bool
-	logger            *slog.Logger
 	tracer            trace.Tracer
+	logger            *slog.Logger
+	enableCompression bool
 }
 
 // applyCommonValkeyConfig applies common configuration settings to both Sentinel and standard client options
@@ -33,6 +34,7 @@ func applyCommonValkeyConfig(clientOpts *valkey.ClientOption, cfg config.ValkeyC
 	clientOpts.SelectDB = cfg.DB
 }
 
+// NewValkeyStore creates a new ValkeyStore instance with the provided configuration.
 func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 	logger := slog.Default().With("component", "valkey_store")
 
@@ -62,21 +64,26 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 	// Apply common configuration settings
 	applyCommonValkeyConfig(&clientOpts, cfg)
 
-	var client valkey.Client
-	var err error
+	var (
+		client valkey.Client
+		err    error
+	)
 
 	// Create client with or without OpenTelemetry
+
 	if cfg.EnableOTel && config.AppConfig != nil && config.AppConfig.OTLP.EnableOTLP {
 		client, err = valkeyotel.NewClient(clientOpts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Valkey client with OpenTelemetry: %w", err)
 		}
+
 		logger.Info("Valkey client created with OpenTelemetry support")
 	} else {
 		client, err = valkey.NewClient(clientOpts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Valkey client: %w", err)
 		}
+
 		logger.Info("Valkey client created without OpenTelemetry")
 	}
 
@@ -95,6 +102,7 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 		if closeErr := store.Close(); closeErr != nil {
 			logger.Error("failed to close Valkey client during cleanup", "error", closeErr)
 		}
+
 		return nil, fmt.Errorf("failed to connect to Valkey server: %w", err)
 	}
 
@@ -106,21 +114,27 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 }
 
 // handleValkeyNilError is a helper function to handle Valkey nil errors consistently
-func (v *ValkeyStore) handleValkeyNilError(err error, span trace.Span, logMessage string) (handled bool, resultErr error) {
+func (v *ValkeyStore) handleValkeyNilError(
+	err error,
+	span trace.Span,
+	logMessage string,
+) (handled bool, resultErr error) {
 	if valkey.IsValkeyNil(err) {
 		span.SetAttributes(attribute.String("valkey.result", logMessage))
 		return true, ErrKeyNotFound
 	}
+
 	if err != nil {
 		span.RecordError(err)
 		return true, err
 	}
+
 	return false, nil
 }
 
 // compress compresses data using zlib if compression is enabled
 func (v *ValkeyStore) compress(ctx context.Context, data []byte) ([]byte, error) {
-	ctx, span := v.tracer.Start(ctx, "valkey.compress",
+	_, span := v.tracer.Start(ctx, "valkey.compress",
 		trace.WithAttributes(
 			attribute.Int("data.original.size.bytes", len(data)),
 			attribute.Bool("compression.enabled", v.enableCompression),
@@ -133,14 +147,28 @@ func (v *ValkeyStore) compress(ctx context.Context, data []byte) ([]byte, error)
 		return data, nil
 	}
 
+	// Don't compress small data (less than 100 bytes) as compression overhead is likely to increase size
+	const compressionThreshold = 100
+	if len(data) < compressionThreshold {
+		span.SetAttributes(
+			attribute.String("compression.status", "skipped_small_data"),
+			attribute.Int("compression.threshold_bytes", compressionThreshold),
+		)
+
+		return data, nil
+	}
+
 	var buf bytes.Buffer
+
 	writer := zlib.NewWriter(&buf)
 
 	if _, err := writer.Write(data); err != nil {
 		if closeErr := writer.Close(); closeErr != nil {
 			span.RecordError(closeErr)
 		}
+
 		span.RecordError(err)
+
 		return nil, fmt.Errorf("failed to write data: %w", err)
 	}
 
@@ -150,6 +178,18 @@ func (v *ValkeyStore) compress(ctx context.Context, data []byte) ([]byte, error)
 	}
 
 	compressed := buf.Bytes()
+
+	// If compression actually made it larger, return original data
+	if len(compressed) >= len(data) {
+		span.SetAttributes(
+			attribute.String("compression.status", "skipped_no_benefit"),
+			attribute.Int("data.compressed.size.bytes", len(compressed)),
+			attribute.Float64("compression.ratio", float64(len(compressed))/float64(len(data))),
+		)
+
+		return data, nil
+	}
+
 	span.SetAttributes(
 		attribute.Int("data.compressed.size.bytes", len(compressed)),
 		attribute.Float64("compression.ratio", float64(len(data))/float64(len(compressed))),
@@ -161,7 +201,7 @@ func (v *ValkeyStore) compress(ctx context.Context, data []byte) ([]byte, error)
 
 // decompress decompresses data using zlib if compression is enabled
 func (v *ValkeyStore) decompress(ctx context.Context, data []byte) ([]byte, error) {
-	ctx, span := v.tracer.Start(ctx, "valkey.decompress",
+	_, span := v.tracer.Start(ctx, "valkey.decompress",
 		trace.WithAttributes(
 			attribute.Int("data.compressed.size.bytes", len(data)),
 			attribute.Bool("compression.enabled", v.enableCompression),
@@ -174,17 +214,35 @@ func (v *ValkeyStore) decompress(ctx context.Context, data []byte) ([]byte, erro
 		return data, nil
 	}
 
+	// Try to decompress; if it fails, assume data wasn't compressed
 	reader, err := zlib.NewReader(bytes.NewReader(data))
 	if err != nil {
-		span.RecordError(err)
-		return nil, fmt.Errorf("failed to create decompressor: %w", err)
+		// Data might not be compressed (could be small data or no compression benefit)
+		span.SetAttributes(
+			attribute.String("compression.status", "not_compressed"),
+			attribute.String("decompression.note", "data_appears_uncompressed"),
+		)
+
+		return data, nil
 	}
-	defer reader.Close()
+	// defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			span.RecordError(closeErr)
+			v.logger.Debug("Failed to close decompressor", "error", closeErr)
+		}
+	}()
 
 	decompressed, err := io.ReadAll(reader)
 	if err != nil {
-		span.RecordError(err)
-		return nil, fmt.Errorf("failed to decompress data: %w", err)
+		// If decompression fails, return original data (might not have been compressed)
+		span.SetAttributes(
+			attribute.String("compression.status", "decompression_failed"),
+			attribute.String("decompression.note", "returning_original_data"),
+		)
+		v.logger.Debug("Failed to decompress data, returning original", "error", err)
+
+		return data, nil
 	}
 
 	span.SetAttributes(
@@ -197,7 +255,12 @@ func (v *ValkeyStore) decompress(ctx context.Context, data []byte) ([]byte, erro
 }
 
 // Set stores a value with the given key and expiration.
-func (v *ValkeyStore) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (v *ValkeyStore) Set(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) error {
 	ctx, span := v.tracer.Start(ctx, "valkey.set",
 		trace.WithAttributes(
 			attribute.String("valkey.key", key),
@@ -223,6 +286,7 @@ func (v *ValkeyStore) Set(ctx context.Context, key string, value interface{}, ex
 	}
 
 	cmd := v.client.B().Set().Key(key).Value(string(compressedData))
+
 	var cmdResult error
 	if expiration > 0 {
 		cmdResult = v.client.Do(ctx, cmd.Ex(expiration).Build()).Error()
@@ -236,6 +300,7 @@ func (v *ValkeyStore) Set(ctx context.Context, key string, value interface{}, ex
 	}
 
 	span.SetAttributes(attribute.String("valkey.result", "success"))
+
 	return nil
 }
 
@@ -302,6 +367,7 @@ func (v *ValkeyStore) Delete(ctx context.Context, key string) error {
 	}
 
 	span.SetAttributes(attribute.String("valkey.result", "success"))
+
 	return nil
 }
 
@@ -320,6 +386,7 @@ func (v *ValkeyStore) Exists(ctx context.Context, key string) (bool, error) {
 		if handled, err := v.handleValkeyNilError(result.Error(), span, "key_not_found"); handled {
 			return false, err
 		}
+
 		return false, result.Error()
 	}
 
@@ -378,5 +445,176 @@ func (v *ValkeyStore) Close() error {
 
 	v.client.Close()
 	span.SetAttributes(attribute.String("valkey.result", "success"))
+
 	return nil
+}
+
+// StoreCachedPolicyResults caches policy evaluation results with size validation
+func (v *ValkeyStore) StoreCachedPolicyResults(
+	ctx context.Context,
+	key string,
+	result interface{},
+	ttl time.Duration,
+	maxSize int64,
+) error {
+	ctx, span := v.tracer.Start(ctx, "valkey.store_policy_cache",
+		trace.WithAttributes(
+			attribute.String("valkey.operation", "store_policy_cache"),
+			attribute.String("cache.key", key),
+			attribute.String("cache.ttl", ttl.String()),
+			attribute.Int64("cache.max_size_bytes", maxSize),
+		),
+	)
+	defer span.End()
+
+	now := time.Now()
+	entry := &PolicyCacheEntry{
+		Result:    result,
+		CachedAt:  now,
+		ExpiresAt: now.Add(ttl),
+		Size:      0, // Will be set after serialization
+	}
+
+	// Serialize the cache entry
+	data, err := json.Marshal(entry)
+	if err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("failed to marshal cache entry: %w", err)
+	}
+
+	dataSize := int64(len(data))
+	entry.Size = dataSize
+
+	span.SetAttributes(
+		attribute.Int64("cache.size_bytes", dataSize),
+		attribute.Bool("valkey.compression_enabled", v.enableCompression),
+	)
+
+	// Check size limit before processing
+	if maxSize > 0 && dataSize > maxSize {
+		span.SetAttributes(attribute.Bool("cache.size_exceeded", true))
+		return ErrEntrySizeExceeded
+	}
+
+	// Apply compression if enabled
+	if v.enableCompression {
+		compressedData, err := v.compress(ctx, data)
+		if err != nil {
+			span.RecordError(err)
+			return fmt.Errorf("failed to compress cache entry: %w", err)
+		}
+
+		data = compressedData
+		span.SetAttributes(
+			attribute.Int64("valkey.compressed_size", int64(len(data))),
+			attribute.Float64("valkey.compression_ratio", float64(len(data))/float64(dataSize)),
+		)
+	}
+
+	// Store in Valkey with TTL
+	setResult := v.client.Do(
+		ctx,
+		v.client.B().Set().Key(key).Value(valkey.BinaryString(data)).Ex(ttl).Build(),
+	)
+	if setResult.Error() != nil {
+		span.RecordError(setResult.Error())
+		return fmt.Errorf("failed to store cache entry: %w", setResult.Error())
+	}
+
+	span.SetAttributes(
+		attribute.Bool("cache.stored", true),
+		attribute.String("valkey.result", "success"),
+	)
+
+	return nil
+}
+
+// GetCachedPolicyResults retrieves cached policy evaluation results
+func (v *ValkeyStore) GetCachedPolicyResults(
+	ctx context.Context,
+	key string,
+) (*PolicyCacheEntry, error) {
+	ctx, span := v.tracer.Start(ctx, "valkey.get_policy_cache",
+		trace.WithAttributes(
+			attribute.String("valkey.operation", "get_policy_cache"),
+			attribute.String("cache.key", key),
+		),
+	)
+	defer span.End()
+
+	// Get from Valkey
+	result := v.client.Do(ctx, v.client.B().Get().Key(key).Build())
+	if result.Error() != nil {
+		if valkey.IsValkeyNil(result.Error()) {
+			span.SetAttributes(
+				attribute.Bool("cache.hit", false),
+				attribute.String("cache.miss_reason", "not_found"),
+			)
+
+			return nil, ErrKeyNotFound
+		}
+
+		span.RecordError(result.Error())
+
+		return nil, fmt.Errorf("failed to get cache entry: %w", result.Error())
+	}
+
+	data, err := result.AsBytes()
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("failed to read cache entry: %w", err)
+	}
+
+	originalSize := int64(len(data))
+	span.SetAttributes(
+		attribute.Int64("valkey.data_size", originalSize),
+		attribute.Bool("valkey.compression_enabled", v.enableCompression),
+	)
+
+	// Decompress if compression is enabled
+	if v.enableCompression {
+		decompressedData, err := v.decompress(ctx, data)
+		if err != nil {
+			span.RecordError(err)
+			return nil, fmt.Errorf("failed to decompress cache entry: %w", err)
+		}
+
+		data = decompressedData
+		span.SetAttributes(
+			attribute.Int64("valkey.decompressed_size", int64(len(data))),
+			attribute.Float64("valkey.compression_ratio", float64(originalSize)/float64(len(data))),
+		)
+	}
+
+	// Deserialize the cache entry
+	var entry PolicyCacheEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("failed to unmarshal cache entry: %w", err)
+	}
+
+	// Check if entry has expired (additional safety check)
+	if time.Now().After(entry.ExpiresAt) {
+		span.SetAttributes(
+			attribute.Bool("cache.hit", false),
+			attribute.String("cache.miss_reason", "expired"),
+		)
+		// Clean up expired entry
+		go func() {
+			deleteCtx := context.Background()
+			v.client.Do(deleteCtx, v.client.B().Del().Key(key).Build())
+		}()
+
+		return nil, ErrKeyNotFound
+	}
+
+	span.SetAttributes(
+		attribute.Bool("cache.hit", true),
+		attribute.Int64("cache.size_bytes", entry.Size),
+		attribute.String("cache.cached_at", entry.CachedAt.Format(time.RFC3339)),
+		attribute.String("cache.expires_at", entry.ExpiresAt.Format(time.RFC3339)),
+		attribute.String("valkey.result", "success"),
+	)
+
+	return &entry, nil
 }

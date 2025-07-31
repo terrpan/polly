@@ -13,7 +13,7 @@ import (
 func processVulnerabilityChecks(
 	ctx context.Context,
 	logger *slog.Logger,
-	policyService *services.PolicyService,
+	policyCacheService *services.PolicyCacheService,
 	commentService *services.CommentService,
 	checkService *services.CheckService,
 	payloads []*services.VulnerabilityPayload,
@@ -21,7 +21,7 @@ func processVulnerabilityChecks(
 	prNumber int64,
 	checkRunID int64,
 ) error {
-	result := processVulnerabilityPolicies(ctx, logger, policyService, payloads, owner, repo, sha)
+	result := processVulnerabilityPolicies(ctx, logger, policyCacheService, payloads, owner, repo, sha)
 
 	if err := postVulnerabilityComments(ctx, logger, commentService, result.NonCompliantVulns, owner, repo, prNumber); err != nil {
 		logger.ErrorContext(ctx, "Failed to post vulnerability comment", "error", err)
@@ -43,7 +43,7 @@ func processVulnerabilityChecks(
 func processLicenseChecks(
 	ctx context.Context,
 	logger *slog.Logger,
-	policyService *services.PolicyService,
+	policyCacheService *services.PolicyCacheService,
 	commentService *services.CommentService,
 	checkService *services.CheckService,
 	payloads []*services.SBOMPayload,
@@ -51,7 +51,7 @@ func processLicenseChecks(
 	prNumber int64,
 	checkRunID int64,
 ) error {
-	result := processLicensePolicies(ctx, logger, policyService, payloads, owner, repo, sha)
+	result := processLicensePolicies(ctx, logger, policyCacheService, payloads, owner, repo, sha)
 
 	if err := postLicenseComments(ctx, logger, commentService, result.NonCompliantComponents, result.ConditionalComponents, owner, repo, prNumber); err != nil {
 		logger.ErrorContext(ctx, "Failed to post license comment", "error", err)

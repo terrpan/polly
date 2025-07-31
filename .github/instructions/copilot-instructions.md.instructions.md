@@ -71,6 +71,13 @@ golangci-lint run
 - **Interface**: All storage operations through `storage.Store` interface
 - **State Management**: Use `StateService` for check run ID storage and retrieval
 
+### Type Safety Philosophy
+- **Prioritize Type Safety**: Always prefer compile-time type safety over runtime flexibility
+- **Pragmatic Generics**: Use Go generics (type parameters) where they provide clear value without adding complexity
+- **Avoid `interface{}`**: Minimize `interface{}` usage - only use at parsing boundaries, not in business logic
+- **Type Assertions**: Eliminate runtime type assertions where types are known at compile time
+- **Ease of Use**: Choose the simplest solution that provides type safety - don't force generics where concrete types work better
+
 ### Go File Layout (Enforced)
 1. package declaration
 2. imports
@@ -82,6 +89,19 @@ golangci-lint run
 8. package‑level functions
 9. init() (if needed; at bottom)
 10. main() (in package main; last)
+
+## Testing Best Practices
+
+### Testcontainers Usage
+- **Container Image Constants**: Always define container images as constants at the top of test files, never hardcode them in test functions
+- **Example Pattern**:
+  ```go
+  const (
+      valkeyTestImage = "valkey/valkey:8-alpine"
+      opaTestImage    = "openpolicyagent/opa:latest"
+  )
+  ```
+- **Benefits**: Easy version management, consistency across tests, clear visibility of dependencies
 
 ## Documentation Requirements
 - **ADRs**: Create architectural decision records in `docs/` for significant changes

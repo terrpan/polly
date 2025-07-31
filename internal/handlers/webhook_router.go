@@ -31,6 +31,7 @@ func NewWebhookRouter(logger *slog.Logger,
 	commentService *services.CommentService,
 	checkService *services.CheckService,
 	policyService *services.PolicyService,
+	policyCacheService *services.PolicyCacheService,
 	securityService *services.SecurityService,
 	stateService *services.StateService) (*WebhookRouter, error) {
 	// TODO: Add support for secret verification
@@ -45,6 +46,7 @@ func NewWebhookRouter(logger *slog.Logger,
 		commentService,
 		checkService,
 		policyService,
+		policyCacheService,
 		securityService,
 		stateService,
 	)

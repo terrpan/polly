@@ -5,8 +5,48 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"github.com/terrpan/polly/internal/config"
 )
+
+func TestTracingHelper(t *testing.T) {
+	// Setup in-memory tracer for testing
+	spanRecorder := tracetest.NewSpanRecorder()
+	tracerProvider := trace.NewTracerProvider(trace.WithSpanProcessor(spanRecorder))
+	otel.SetTracerProvider(tracerProvider)
+
+	// Test creating tracing helpers for different components
+	servicesHelper := NewTracingHelper("polly/services")
+	handlersHelper := NewTracingHelper("polly/handlers")
+
+	assert.NotNil(t, servicesHelper)
+	assert.NotNil(t, handlersHelper)
+
+	// Test span creation
+	ctx := context.Background()
+	
+	_, span1 := servicesHelper.StartSpan(ctx, "test.service.operation")
+	assert.NotNil(t, span1)
+	span1.End()
+
+	_, span2 := handlersHelper.StartSpan(ctx, "test.handler.operation")
+	assert.NotNil(t, span2)
+	span2.End()
+
+	// Verify spans were recorded
+	spans := spanRecorder.Ended()
+	assert.Len(t, spans, 2)
+	
+	// Verify span names
+	spanNames := make([]string, len(spans))
+	for i, span := range spans {
+		spanNames[i] = span.Name()
+	}
+	assert.Contains(t, spanNames, "test.service.operation")
+	assert.Contains(t, spanNames, "test.handler.operation")
+}
 
 func TestSetupOTelSDK_Structure(t *testing.T) {
 	t.Skip("Integration test requires OTLP endpoint configuration")

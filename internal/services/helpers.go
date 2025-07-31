@@ -10,7 +10,18 @@ import (
 	"github.com/owenrumney/go-sarif/sarif"
 	spdxjson "github.com/spdx/tools-golang/json"
 	"github.com/spdx/tools-golang/spdx/v2/v2_3"
+
+	"github.com/terrpan/polly/internal/otel"
 )
+
+// ServiceTracingHelper provides a shared tracing helper for all services
+var ServiceTracingHelper = otel.NewTracingHelper("polly/services")
+
+// NewServiceTracingHelper creates a new tracing helper for services
+// This function exists for consistency with handlers, but services can also use the global ServiceTracingHelper
+func NewServiceTracingHelper() *otel.TracingHelper {
+	return ServiceTracingHelper
+}
 
 // normalizeTrivyVulnerability normalizes a Trivy vulnerability into a common format.
 func normalizeTrivyVulnerability(vuln types.DetectedVulnerability, target string) Vulnerability {
@@ -39,12 +50,14 @@ func normalizeTrivyVulnerability(vuln types.DetectedVulnerability, target string
 // extractLicenseFromPackage extracts the best available license from an SPDX package
 func extractLicenseFromPackage(pkg *v2_3.Package) string {
 	// First try LicenseConcluded
-	if pkg.PackageLicenseConcluded != "" && pkg.PackageLicenseConcluded != "NOASSERTION" && pkg.PackageLicenseConcluded != "NONE" {
+	if pkg.PackageLicenseConcluded != "" && pkg.PackageLicenseConcluded != "NOASSERTION" &&
+		pkg.PackageLicenseConcluded != "NONE" {
 		return pkg.PackageLicenseConcluded
 	}
 
 	// Then try LicenseDeclared
-	if pkg.PackageLicenseDeclared != "" && pkg.PackageLicenseDeclared != "NOASSERTION" && pkg.PackageLicenseDeclared != "NONE" {
+	if pkg.PackageLicenseDeclared != "" && pkg.PackageLicenseDeclared != "NOASSERTION" &&
+		pkg.PackageLicenseDeclared != "NONE" {
 		return pkg.PackageLicenseDeclared
 	}
 
@@ -75,6 +88,7 @@ func extractCVSSScore(vuln types.DetectedVulnerability) float64 {
 			max = s
 		}
 	}
+
 	return max
 }
 
@@ -83,12 +97,15 @@ func bestScore(c dbtypes.CVSS) float64 {
 	if c.V40Score > 0 {
 		return c.V40Score
 	}
+
 	if c.V3Score > 0 {
 		return c.V3Score
 	}
+
 	if c.V2Score > 0 {
 		return c.V2Score
 	}
+
 	return 0
 }
 
@@ -118,7 +135,6 @@ func detectEcosystem(target string) string {
 
 	// Default to "unknown" if no match found
 	return "unknown"
-
 }
 
 // isSarifContent checks if the content is a valid SARIF document
@@ -128,6 +144,7 @@ func isSarifContent(content []byte) bool {
 	if err != nil {
 		return false
 	}
+
 	if doc == nil {
 		return false
 	}
@@ -173,9 +190,11 @@ func isSPDXContent(content []byte) bool {
 	if doc.DocumentName == "" {
 		return false
 	}
+
 	if doc.DocumentNamespace == "" {
 		return false
 	}
+
 	if doc.CreationInfo == nil {
 		return false
 	}
@@ -183,6 +202,7 @@ func isSPDXContent(content []byte) bool {
 	if !strings.HasPrefix(doc.SPDXVersion, "SPDX-") {
 		return false
 	}
+
 	if doc.DataLicense != "CC0-1.0" {
 		return false
 	}
@@ -214,7 +234,11 @@ func isTrivyJSONContent(content []byte) bool {
 }
 
 // buildPayloadMetadata builds the metadata for a security payload
-func buildPayloadMetadata(SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string, PRNumber int, ScanTime string) PayloadMetadata {
+func buildPayloadMetadata(
+	SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string,
+	PRNumber int,
+	ScanTime string,
+) PayloadMetadata {
 	return PayloadMetadata{
 		SourceFormat:  SourceFormat,
 		ToolName:      ToolName,
@@ -225,4 +249,38 @@ func buildPayloadMetadata(SourceFormat, ToolName, Repository, CommitSHA, ScanTar
 		ScanTarget:    ScanTarget,
 		SchemaVersion: SchemaVersion,
 	}
+}
+
+// convertMapToVulnerabilityPolicyResult converts a map[string]interface{} to VulnerabilityPolicyResult
+func convertMapToVulnerabilityPolicyResult(
+	data map[string]interface{},
+) (VulnerabilityPolicyResult, error) {
+	// Use JSON marshaling/unmarshaling for reliable conversion
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return VulnerabilityPolicyResult{}, err
+	}
+
+	var result VulnerabilityPolicyResult
+	if err := json.Unmarshal(jsonData, &result); err != nil {
+		return VulnerabilityPolicyResult{}, err
+	}
+
+	return result, nil
+}
+
+// convertMapToSBOMPolicyResult converts a map[string]interface{} to SBOMPolicyResult
+func convertMapToSBOMPolicyResult(data map[string]interface{}) (SBOMPolicyResult, error) {
+	// Use JSON marshaling/unmarshaling for reliable conversion
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return SBOMPolicyResult{}, err
+	}
+
+	var result SBOMPolicyResult
+	if err := json.Unmarshal(jsonData, &result); err != nil {
+		return SBOMPolicyResult{}, err
+	}
+
+	return result, nil
 }

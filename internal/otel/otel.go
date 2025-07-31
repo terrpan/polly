@@ -11,8 +11,27 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
+
+// TracingHelper provides a consistent way to create tracing spans across the application
+type TracingHelper struct {
+	tracer oteltrace.Tracer
+}
+
+// NewTracingHelper creates a new tracing helper for the specified component
+// componentName should be in the format "polly/handlers", "polly/services", etc.
+func NewTracingHelper(componentName string) *TracingHelper {
+	return &TracingHelper{
+		tracer: otel.Tracer(componentName),
+	}
+}
+
+// StartSpan creates a new tracing span with the given name
+func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Context, oteltrace.Span) {
+	return t.tracer.Start(ctx, name)
+}
 
 func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error

@@ -9,9 +9,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/terrpan/polly/internal/config"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
+
+	"github.com/terrpan/polly/internal/config"
+)
+
+const (
+	valkeyTestImage = "valkey/valkey:8-alpine"
 )
 
 func TestNewStore_Memory(t *testing.T) {
@@ -149,7 +154,7 @@ func TestNewStore_IntegrationValkey(t *testing.T) {
 	ctx := context.Background()
 
 	// Start Valkey container
-	redisContainer, err := redis.Run(ctx, "valkey/valkey:8-alpine")
+	redisContainer, err := redis.Run(ctx, valkeyTestImage)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

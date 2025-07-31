@@ -246,7 +246,6 @@ func (s *SecurityService) BuildVulnerabilityPayload(ctx context.Context, artifac
     if err != nil || contentType != "vulnerability" {
         return nil, fmt.Errorf("not a vulnerability report: %s", artifact.FileName)
     }
-
     return s.BuildVulnerabilityPayloadFromTrivy(ctx, artifact, owner, repo, sha, prNumber, workflowID)
 }
 
@@ -256,7 +255,6 @@ func (s *SecurityService) BuildSBOMPayload(ctx context.Context, artifact *Securi
     if err != nil || contentType != "sbom" {
         return nil, fmt.Errorf("not an SBOM report: %s", artifact.FileName)
     }
-
     return s.BuildSBOMPayloadFromSPDX(ctx, artifact, owner, repo, sha, prNumber, workflowID)
 }
 ```
@@ -560,7 +558,6 @@ func (p *VulnerabilityPolicyProcessor) ProcessVulnerabilities(
 ) PolicyProcessingResult {
     // ✅ Direct usage - no type assertions
     result := PolicyProcessingResult{AllPassed: true}
-
     for _, payload := range payloads {
         policyResult, err := policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, payload, owner, repo, sha)
         // ... rest of logic
@@ -604,12 +601,10 @@ func (h *SecurityWebhookHandler) ProcessSecurityWorkflow(...) {
     if err != nil {
         // Handle parsing errors
     }
-
     sbomPayloads, err := h.parseSBOMArtifacts(artifacts)
     if err != nil {
         // Handle parsing errors
     }
-
     // 2. Process with type-safe strategies (no type assertions needed)
     vulnResult := processVulnerabilityPolicies(ctx, logger, policyCacheService, vulnPayloads, owner, repo, sha)
     sbomResult := processLicensePolicies(ctx, logger, policyCacheService, sbomPayloads, owner, repo, sha)
