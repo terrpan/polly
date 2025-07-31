@@ -10,7 +10,18 @@ import (
 	"github.com/owenrumney/go-sarif/sarif"
 	spdxjson "github.com/spdx/tools-golang/json"
 	"github.com/spdx/tools-golang/spdx/v2/v2_3"
+
+	"github.com/terrpan/polly/internal/otel"
 )
+
+// ServiceTracingHelper provides a shared tracing helper for all services
+var ServiceTracingHelper = otel.NewTracingHelper("polly/services")
+
+// NewServiceTracingHelper creates a new tracing helper for services
+// This function exists for consistency with handlers, but services can also use the global ServiceTracingHelper
+func NewServiceTracingHelper() *otel.TracingHelper {
+	return ServiceTracingHelper
+}
 
 // normalizeTrivyVulnerability normalizes a Trivy vulnerability into a common format.
 func normalizeTrivyVulnerability(vuln types.DetectedVulnerability, target string) Vulnerability {

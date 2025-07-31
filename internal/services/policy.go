@@ -79,9 +79,7 @@ func evaluatePolicy[T any, R any](
 	policyPath string,
 	input T,
 ) (R, error) {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "policy.evaluate")
+	ctx, span := ServiceTracingHelper.StartSpan(ctx, "policy.evaluate")
 	defer span.End()
 
 	span.SetAttributes(
