@@ -7,7 +7,28 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
+
+// ConfigTestSuite provides a test suite for configuration testing with setup/teardown
+type ConfigTestSuite struct {
+	suite.Suite
+	originalAppConfig *Config
+}
+
+func (suite *ConfigTestSuite) SetupTest() {
+	// Save original AppConfig to restore after each test
+	suite.originalAppConfig = AppConfig
+}
+
+func (suite *ConfigTestSuite) TearDownTest() {
+	// Restore original AppConfig after each test
+	AppConfig = suite.originalAppConfig
+}
+
+func TestConfigSuite(t *testing.T) {
+	suite.Run(t, new(ConfigTestSuite))
+}
 
 func TestConfig_Structure(t *testing.T) {
 	cfg := &Config{
@@ -112,13 +133,7 @@ func TestStorageConfig_Structure(t *testing.T) {
 	assert.Equal(t, "24h", storageConfig.DefaultKeyExpiration)
 }
 
-func TestIsGitHubAppConfigured(t *testing.T) {
-	// Save original AppConfig to restore later
-	originalAppConfig := AppConfig
-	defer func() {
-		AppConfig = originalAppConfig
-	}()
-
+func (suite *ConfigTestSuite) TestIsGitHubAppConfigured() {
 	tests := []struct {
 		name     string
 		setup    func()
@@ -153,10 +168,10 @@ func TestIsGitHubAppConfigured(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		suite.Run(tt.name, func() {
 			tt.setup()
 			result := IsGitHubAppConfigured()
-			assert.Equal(t, tt.expected, result)
+			suite.Equal(tt.expected, result)
 		})
 	}
 }
@@ -189,13 +204,7 @@ func TestConfig_FieldValidation(t *testing.T) {
 	assert.NotEmpty(t, cfg.Version)
 }
 
-func TestLoadGitHubAppConfig_PrivateKeyHandling(t *testing.T) {
-	// Save original AppConfig to restore later
-	originalAppConfig := AppConfig
-	defer func() {
-		AppConfig = originalAppConfig
-	}()
-
+func (suite *ConfigTestSuite) TestLoadGitHubAppConfig_PrivateKeyHandling() {
 	// Test with missing AppID
 	AppConfig = &Config{
 		GitHubApp: GitHubAppConfig{
@@ -204,8 +213,8 @@ func TestLoadGitHubAppConfig_PrivateKeyHandling(t *testing.T) {
 	}
 
 	_, err := LoadGitHubAppConfig()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "GITHUB_APP_ID is required")
+	suite.Error(err)
+	suite.Contains(err.Error(), "GITHUB_APP_ID is required")
 }
 
 // Integration test examples - these would require environment setup
@@ -283,13 +292,7 @@ func TestConfig_EnvironmentBinding(t *testing.T) {
 	})
 }
 
-func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
-	// Save original
-	originalAppConfig := AppConfig
-	defer func() {
-		AppConfig = originalAppConfig
-	}()
-
+func (suite *ConfigTestSuite) TestLoadGitHubAppConfig_AllCases() {
 	// Test missing installation ID
 	AppConfig = &Config{
 		GitHubApp: GitHubAppConfig{
@@ -299,8 +302,8 @@ func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
 	}
 
 	_, err := LoadGitHubAppConfig()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "GITHUB_INSTALLATION_ID is required")
+	suite.Error(err)
+	suite.Contains(err.Error(), "GITHUB_INSTALLATION_ID is required")
 
 	// Test missing private key
 	AppConfig = &Config{
@@ -313,17 +316,11 @@ func TestLoadGitHubAppConfig_AllCases(t *testing.T) {
 	}
 
 	_, err = LoadGitHubAppConfig()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required")
+	suite.Error(err)
+	suite.Contains(err.Error(), "either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required")
 }
 
-func TestGetDefaultExpiration(t *testing.T) {
-	// Save original AppConfig to restore later
-	originalAppConfig := AppConfig
-	defer func() {
-		AppConfig = originalAppConfig
-	}()
-
+func (suite *ConfigTestSuite) TestGetDefaultExpiration() {
 	tests := []struct {
 		name             string
 		configExpiration string
@@ -357,7 +354,7 @@ func TestGetDefaultExpiration(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		suite.Run(tt.name, func() {
 			// Set up test config
 			AppConfig = &Config{
 				Storage: StorageConfig{
@@ -367,8 +364,55 @@ func TestGetDefaultExpiration(t *testing.T) {
 
 			// Test the function
 			result := GetDefaultExpiration()
-			assert.Equal(t, tt.expectedDuration, result)
-			assert.Positive(t, result, "Duration should be positive")
+			suite.Equal(tt.expectedDuration, result)
+			suite.Positive(result, "Duration should be positive")
 		})
 	}
+}
+
+// PolicyCacheConfig tests - merged from policy_cache_test.go
+
+func (suite *ConfigTestSuite) TestGetPolicyCacheConfig() {
+	suite.Run("returns default config when AppConfig is nil", func() {
+		AppConfig = nil
+
+		config := GetPolicyCacheConfig()
+
+		// Should return the default configuration
+		suite.True(config.Enabled, "Policy caching should be enabled by default")
+		suite.Equal("30m", config.TTL, "Default TTL should be 30 minutes")
+		suite.Equal(int64(10*1024*1024), config.MaxSize, "Default max size should be 10MB")
+	})
+
+	suite.Run("returns actual config when AppConfig is initialized", func() {
+		AppConfig = &Config{
+			Storage: StorageConfig{
+				PolicyCache: PolicyCacheConfig{
+					Enabled: false,           // Different from default
+					TTL:     "1h",            // Different from default
+					MaxSize: 5 * 1024 * 1024, // Different from default
+				},
+			},
+		}
+
+		config := GetPolicyCacheConfig()
+
+		// Should return the actual configuration
+		suite.False(config.Enabled, "Should return actual enabled setting")
+		suite.Equal("1h", config.TTL, "Should return actual TTL setting")
+		suite.Equal(int64(5*1024*1024), config.MaxSize, "Should return actual max size setting")
+	})
+
+	suite.Run("works with partial config initialization", func() {
+		// Initialize config via the normal process
+		err := InitConfig()
+		suite.NoError(err, "Config initialization should succeed")
+
+		config := GetPolicyCacheConfig()
+
+		// Should return initialized config values (which should match defaults)
+		suite.True(config.Enabled, "Policy caching should be enabled")
+		suite.Equal("30m", config.TTL, "TTL should be 30 minutes")
+		suite.Equal(int64(10*1024*1024), config.MaxSize, "Max size should be 10MB")
+	})
 }

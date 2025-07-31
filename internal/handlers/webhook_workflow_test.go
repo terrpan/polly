@@ -44,6 +44,7 @@ func (suite *WorkflowHandlerTestSuite) SetupTest() {
 	policyService := services.NewPolicyService(opaClient, suite.logger)
 	securityService := services.NewSecurityService(githubClient, suite.logger)
 	suite.stateService = services.NewStateService(store, suite.logger)
+	policyCacheService := services.NewPolicyCacheService(policyService, suite.stateService, suite.logger)
 
 	// Create base handler and workflow handler
 	suite.baseHandler = NewBaseWebhookHandler(
@@ -51,6 +52,7 @@ func (suite *WorkflowHandlerTestSuite) SetupTest() {
 		commentService,
 		checkService,
 		policyService,
+		policyCacheService,
 		securityService,
 		suite.stateService,
 	)
@@ -167,14 +169,18 @@ func TestNewWorkflowHandler_Unit(t *testing.T) {
 		store := storage.NewMemoryStore()
 		githubClient := clients.NewGitHubClient(context.Background())
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+		stateService := services.NewStateService(store, logger)
+		policyService := services.NewPolicyService(opaClient, logger)
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
 
 		baseHandler := NewBaseWebhookHandler(
 			logger,
 			services.NewCommentService(githubClient, logger),
 			services.NewCheckService(githubClient, logger),
-			services.NewPolicyService(opaClient, logger),
+			policyService,
+			policyCacheService,
 			services.NewSecurityService(githubClient, logger),
-			services.NewStateService(store, logger),
+			stateService,
 		)
 
 		handler := NewWorkflowHandler(baseHandler)

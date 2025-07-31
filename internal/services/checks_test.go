@@ -8,6 +8,7 @@ import (
 
 	gogithub "github.com/google/go-github/v72/github"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/terrpan/polly/internal/clients"
 )
 
@@ -196,7 +197,15 @@ func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 
 	// Test with invalid parameters
 	assert.NotPanics(t, func() {
-		err := service.CompleteCheckRun(ctx, "", "", 0, CheckRunTypeVulnerability, ConclusionSuccess, CheckRunResult{})
+		err := service.CompleteCheckRun(
+			ctx,
+			"",
+			"",
+			0,
+			CheckRunTypeVulnerability,
+			ConclusionSuccess,
+			CheckRunResult{},
+		)
 		assert.Error(t, err, "Should return error for invalid parameters")
 	})
 }

@@ -5,16 +5,13 @@ import (
 	"log/slog"
 
 	"github.com/go-playground/webhooks/v6/github"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
 
+	"github.com/terrpan/polly/internal/otel"
 	"github.com/terrpan/polly/internal/services"
 )
 
 // TracingHelper provides a consistent way to create tracing spans across webhook handlers
-type TracingHelper struct {
-	tracer trace.Tracer
-}
+type TracingHelper = otel.TracingHelper
 
 // SecurityCheckManager handles the creation and management of security check runs
 type SecurityCheckManager struct {
@@ -26,13 +23,14 @@ type SecurityCheckManager struct {
 
 // BaseWebhookHandler contains the common dependencies for all webhook handlers
 type BaseWebhookHandler struct {
-	logger          *slog.Logger
-	commentService  *services.CommentService
-	checkService    *services.CheckService
-	policyService   *services.PolicyService
-	securityService *services.SecurityService
-	stateService    *services.StateService
-	tracingHelper   *TracingHelper
+	logger             *slog.Logger
+	commentService     *services.CommentService
+	checkService       *services.CheckService
+	policyService      *services.PolicyService
+	policyCacheService *services.PolicyCacheService
+	securityService    *services.SecurityService
+	stateService       *services.StateService
+	tracingHelper      *TracingHelper
 }
 
 // SecurityWebhookHandler extends BaseWebhookHandler with security check management capabilities
@@ -53,10 +51,8 @@ type WebhookProcessingConfig struct {
 }
 
 // NewTracingHelper creates a new tracing helper for webhook handlers
-func NewTracingHelper() *TracingHelper {
-	return &TracingHelper{
-		tracer: otel.Tracer("polly/handlers"),
-	}
+func NewTracingHelper() *otel.TracingHelper {
+	return otel.NewTracingHelper("polly/handlers")
 }
 
 // NewSecurityCheckManager creates a new security check manager
@@ -79,17 +75,19 @@ func NewBaseWebhookHandler(
 	commentService *services.CommentService,
 	checkService *services.CheckService,
 	policyService *services.PolicyService,
+	policyCacheService *services.PolicyCacheService,
 	securityService *services.SecurityService,
 	stateService *services.StateService,
 ) *BaseWebhookHandler {
 	return &BaseWebhookHandler{
-		logger:          logger,
-		commentService:  commentService,
-		checkService:    checkService,
-		policyService:   policyService,
-		securityService: securityService,
-		stateService:    stateService,
-		tracingHelper:   NewTracingHelper(),
+		logger:             logger,
+		commentService:     commentService,
+		checkService:       checkService,
+		policyService:      policyService,
+		policyCacheService: policyCacheService,
+		securityService:    securityService,
+		stateService:       stateService,
+		tracingHelper:      NewTracingHelper(),
 	}
 }
 
@@ -109,11 +107,6 @@ func NewSecurityWebhookHandler(base *BaseWebhookHandler) *SecurityWebhookHandler
 	}
 
 	return securityHandler
-}
-
-// StartSpan creates a new tracing span with the given name
-func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Context, trace.Span) {
-	return t.tracer.Start(ctx, name)
 }
 
 // storeCheckRunIDWithError is a helper method that handles storing check run IDs with consistent error logging and returns the error

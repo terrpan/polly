@@ -346,7 +346,7 @@ func (h *CheckRunHandler) restartVulnerabilityCheckInternal(
 	return processVulnerabilityChecks(
 		ctx,
 		h.logger,
-		h.policyService,
+		h.policyCacheService,
 		h.commentService,
 		h.checkService,
 		vulnPayloads,
@@ -374,7 +374,7 @@ func (h *CheckRunHandler) restartLicenseCheckInternal(
 	return processLicenseChecks(
 		ctx,
 		h.logger,
-		h.policyService,
+		h.policyCacheService,
 		h.commentService,
 		h.checkService,
 		sbomPayloads,

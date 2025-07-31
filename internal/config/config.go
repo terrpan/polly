@@ -81,8 +81,20 @@ type StorageConfig struct {
 	// Type of storage (e.g., "memory", "valkey")
 	Type string `mapstructure:"type"`
 	// Valkey-specific configuration
-	Valkey               ValkeyConfig `mapstructure:"valkey"`
-	DefaultKeyExpiration string       `mapstructure:"default_key_expiration"` // Expiration for keys
+	Valkey               ValkeyConfig      `mapstructure:"valkey"`
+	DefaultKeyExpiration string            `mapstructure:"default_key_expiration"` // Expiration for keys
+	PolicyCache          PolicyCacheConfig `mapstructure:"policy_cache"`
+}
+
+// PolicyCacheConfig holds configuration for caching policy evaluation results
+type PolicyCacheConfig struct {
+	// Enabled determines if policy result caching is active
+	Enabled bool `mapstructure:"enabled"`
+	// TTL defines how long policy results are cached (e.g., "30m", "1h")
+	TTL string `mapstructure:"ttl"`
+	// MaxSize defines the maximum size of individual cache entries in bytes
+	// Use this to prevent caching of extremely large SBOM files
+	MaxSize int64 `mapstructure:"max_size"`
 }
 
 // ValkeyConfig holds the configuration for connecting to Valkey
@@ -144,6 +156,11 @@ var (
 				SentinelPassword:  "",
 				EnableCompression: true,
 				EnableOTel:        true,
+			},
+			PolicyCache: PolicyCacheConfig{
+				Enabled: true,
+				TTL:     "30m",
+				MaxSize: 10 * 1024 * 1024, // 10MB default max size for cache entries
 			},
 		},
 	}
@@ -324,5 +341,13 @@ func GetDefaultExpiration() time.Duration {
 		return 24 * time.Hour // Fallback to 24 hours on error
 	}
 	return duration
+}
 
+// GetPolicyCacheConfig returns the policy cache configuration with sensible defaults
+func GetPolicyCacheConfig() PolicyCacheConfig {
+	if AppConfig == nil {
+		// Return default configuration when AppConfig is not initialized (e.g., in tests)
+		return defaultConfig.Storage.PolicyCache
+	}
+	return AppConfig.Storage.PolicyCache
 }

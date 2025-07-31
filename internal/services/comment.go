@@ -4,9 +4,10 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/terrpan/polly/internal/clients"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/terrpan/polly/internal/clients"
 )
 
 type CommentService struct {
@@ -23,8 +24,14 @@ func NewCommentService(githubClient *clients.GitHubClient, logger *slog.Logger) 
 }
 
 // WriteComment writes a comment on a pull request using the GitHub client.
-func (s *CommentService) WriteComment(ctx context.Context, owner, repo string, number int, comment string) error {
+func (s *CommentService) WriteComment(
+	ctx context.Context,
+	owner, repo string,
+	number int,
+	comment string,
+) error {
 	tracer := otel.Tracer("polly/services")
+
 	ctx, span := tracer.Start(ctx, "comment.write")
 	defer span.End()
 
@@ -41,9 +48,11 @@ func (s *CommentService) WriteComment(ctx context.Context, owner, repo string, n
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		s.logger.Error("Failed to write comment", "error", err)
+
 		return err
 	}
 
 	s.logger.Info("Comment written successfully", "owner", owner, "repo", repo, "pr_number", number)
+
 	return nil
 }

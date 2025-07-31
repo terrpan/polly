@@ -25,11 +25,12 @@ type Container struct {
 	OpaClient    *clients.OPAClient
 
 	// Services
-	CommentService  *services.CommentService
-	HealthService   *services.HealthService
-	CheckService    *services.CheckService
-	PolicyService   *services.PolicyService
-	SecurityService *services.SecurityService
+	CommentService     *services.CommentService
+	HealthService      *services.HealthService
+	CheckService       *services.CheckService
+	PolicyService      *services.PolicyService
+	PolicyCacheService *services.PolicyCacheService
+	SecurityService    *services.SecurityService
 
 	// Handlers
 	WebhookRouter *handlers.WebhookRouter
@@ -88,11 +89,13 @@ func NewContainer(ctx context.Context) (*Container, error) {
 	c.PolicyService = services.NewPolicyService(c.OpaClient, c.Logger)
 	c.SecurityService = services.NewSecurityService(c.GitHubClient, c.Logger)
 	c.StateService = services.NewStateService(c.Store, c.Logger)
+	c.PolicyCacheService = services.NewPolicyCacheService(c.PolicyService, c.StateService, c.Logger)
 	c.Logger.Info("Services initialized",
 		"comment_service", c.CommentService,
 		"health_service", c.HealthService,
 		"check_service", c.CheckService,
 		"policy_service", c.PolicyService,
+		"policy_cache_service", c.PolicyCacheService,
 		"security_service", c.SecurityService,
 	)
 
@@ -102,6 +105,7 @@ func NewContainer(ctx context.Context) (*Container, error) {
 		c.CommentService,
 		c.CheckService,
 		c.PolicyService,
+		c.PolicyCacheService,
 		c.SecurityService,
 		c.StateService,
 	)
