@@ -21,6 +21,11 @@ import (
 	"github.com/terrpan/polly/internal/storage"
 )
 
+const (
+	valkeyTestImage = "valkey/valkey:8-alpine"
+	opaTestImage    = "openpolicyagent/opa:latest"
+)
+
 // PolicyCacheIntegrationTestSuite tests policy cache functionality with real storage and OPA
 type PolicyCacheIntegrationTestSuite struct {
 	suite.Suite
@@ -63,7 +68,7 @@ func (suite *PolicyCacheIntegrationTestSuite) SetupSuite() {
 	ctx := context.Background()
 
 	// Start Valkey container
-	valkeyContainer, err := redis.Run(ctx, "valkey/valkey:8-alpine")
+	valkeyContainer, err := redis.Run(ctx, valkeyTestImage)
 	require.NoError(suite.T(), err)
 	suite.valkeyContainer = valkeyContainer
 
@@ -95,7 +100,7 @@ func (suite *PolicyCacheIntegrationTestSuite) createOPAContainer(
 
 	// Create OPA container with policy bundle mounted
 	req := testcontainers.ContainerRequest{
-		Image:        "openpolicyagent/opa:latest",
+		Image:        opaTestImage,
 		ExposedPorts: []string{"8181/tcp"},
 		Files: []testcontainers.ContainerFile{
 			{

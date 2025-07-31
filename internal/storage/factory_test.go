@@ -15,6 +15,10 @@ import (
 	"github.com/terrpan/polly/internal/config"
 )
 
+const (
+	valkeyTestImage = "valkey/valkey:8-alpine"
+)
+
 func TestNewStore_Memory(t *testing.T) {
 	cfg := config.StorageConfig{
 		Type: "memory",
@@ -150,7 +154,7 @@ func TestNewStore_IntegrationValkey(t *testing.T) {
 	ctx := context.Background()
 
 	// Start Valkey container
-	redisContainer, err := redis.Run(ctx, "valkey/valkey:8-alpine")
+	redisContainer, err := redis.Run(ctx, valkeyTestImage)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

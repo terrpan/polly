@@ -83,6 +83,19 @@ golangci-lint run
 9. init() (if needed; at bottom)
 10. main() (in package main; last)
 
+## Testing Best Practices
+
+### Testcontainers Usage
+- **Container Image Constants**: Always define container images as constants at the top of test files, never hardcode them in test functions
+- **Example Pattern**:
+  ```go
+  const (
+      valkeyTestImage = "valkey/valkey:8-alpine"
+      opaTestImage    = "openpolicyagent/opa:latest"
+  )
+  ```
+- **Benefits**: Easy version management, consistency across tests, clear visibility of dependencies
+
 ## Documentation Requirements
 - **ADRs**: Create architectural decision records in `docs/` for significant changes
 - **Pattern Documentation**: Update development guides when introducing new patterns
