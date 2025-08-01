@@ -43,14 +43,21 @@ func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Con
     return t.tracer.Start(ctx, name)
 }
 
-// In internal/services/helpers.go - Services-specific helper
-var ServiceTracingHelper = otel.NewTracingHelper("polly/services")
+// In internal/services/ - Constructor injection pattern
+func NewPolicyService(opaClient *clients.OPAClient, logger *slog.Logger, tracer *otel.TracingHelper) *PolicyService {
+    return &PolicyService{
+        opaClient: opaClient,
+        logger:    logger,
+        tracer:    tracer,
+    }
+}
 
-// In internal/handlers/helpers.go - Handlers use the same pattern
-type TracingHelper = otel.TracingHelper
-
-func NewTracingHelper() *otel.TracingHelper {
-    return otel.NewTracingHelper("polly/handlers")
+// In internal/handlers/ - Constructor injection pattern
+func NewSecurityWebhookHandler(deps *Dependencies, tracer *otel.TracingHelper) *SecurityWebhookHandler {
+    return &SecurityWebhookHandler{
+        BaseWebhookHandler: NewBaseWebhookHandler(deps, tracer),
+        // ... other fields
+    }
 }
 ```
 
@@ -64,9 +71,9 @@ func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, payload *V
     // ... rest of method
 }
 
-// After: Clean, consistent tracing
+// After: Clean, constructor-injected tracing
 func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, payload *VulnerabilityPayload) (VulnerabilityPolicyResult, error) {
-    ctx, span := ServiceTracingHelper.StartSpan(ctx, "policy.vulnerability.check")  // ✅ Centralized
+    ctx, span := s.tracer.StartSpan(ctx, "policy.vulnerability.check")  // ✅ Injected dependency
     defer span.End()
     // ... rest of method
 }
@@ -74,19 +81,21 @@ func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, payload *V
 
 **Benefits:**
 - **Eliminates Boilerplate**: No more `tracer := otel.Tracer("...")` in every method
-- **Consistent Naming**: All service traces use "polly/services", all handler traces use "polly/handlers"
+- **Constructor Injection**: Clean dependency injection pattern for testing and configuration
 - **Easier Maintenance**: Changes to tracing logic only need to happen in one place
 - **Cross-Package Reuse**: Same helper works for handlers, services, and future packages
+- **Testable**: Easy to inject no-op tracers in tests
 
 **Implementation Steps:**
 1. ✅ Create centralized `TracingHelper` in `internal/otel/otel.go`
-2. ✅ Add `ServiceTracingHelper` in `internal/services/helpers.go`
-3. ✅ Update `internal/handlers/helpers.go` to use centralized helper
+2. Update service constructors to accept `*otel.TracingHelper` parameter
+3. Update handler constructors to accept tracer via dependency injection
 4. ✅ Add tests for the tracing helper
-5. Update all service methods to use `ServiceTracingHelper.StartSpan()`
-6. Update all handler methods to use the centralized pattern
+5. Update all service methods to use injected tracer
+6. Update all handler methods to use injected tracer
+7. Update `internal/app/container.go` to wire tracer dependencies
 
-**Current Status:** Infrastructure complete, ready for method-by-method migration
+**Current Status:** Infrastructure complete, ready for constructor injection migration
 
 ### 1. Policy Evaluation Organization (HIGH PRIORITY) - **Factory Pattern**
 
@@ -95,95 +104,141 @@ func (s *PolicyService) CheckVulnerabilityPolicy(ctx context.Context, payload *V
 - Difficult to add new policy types without modifying `PolicyService`
 - Tight coupling between policy types and evaluation logic
 
-**Pattern Applied:** **Factory/Registry Pattern** (not Strategy - no algorithm differences)
+**Pattern Applied:** **Factory/Registry Pattern** with **Constructor Injection**
 
 **Proposed Solution:**
 ```go
-// Simple policy evaluation strategy interface - no over-engineering
-type PolicyEvaluator interface {
-    GetPolicyType() string
-    GetPolicyPath() string
+// Minimal interface following Go naming conventions
+type Evaluator interface {
+    PolicyType() string
+    PolicyPath() string
 }
 
-// Concrete implementations - simple and clear
-type VulnerabilityPolicyEvaluator struct {
+// Custom error types for better error handling
+var (
+    ErrUnknownPolicyType = errors.New("unknown policy type")
+    ErrPolicyEvaluation  = errors.New("policy evaluation failed")
+)
+
+// Concrete implementations with package-relative naming
+type VulnerabilityEvaluator struct {
     service *PolicyService
 }
 
-func (v *VulnerabilityPolicyEvaluator) GetPolicyType() string {
+func (v *VulnerabilityEvaluator) PolicyType() string {
     return "vulnerability"
 }
 
-func (v *VulnerabilityPolicyEvaluator) GetPolicyPath() string {
+func (v *VulnerabilityEvaluator) PolicyPath() string {
     return "vulnerability/main"
 }
 
-func (v *VulnerabilityPolicyEvaluator) Evaluate(ctx context.Context, payload *VulnerabilityPayload) (VulnerabilityPolicyResult, error) {
-    // Direct, simple implementation
+func (v *VulnerabilityEvaluator) Evaluate(ctx context.Context, payload *VulnerabilityPayload) (VulnerabilityPolicyResult, error) {
     return v.service.CheckVulnerabilityPolicy(ctx, payload)
 }
 
-type SBOMPolicyEvaluator struct {
+type SBOMEvaluator struct {
     service *PolicyService
 }
 
-func (s *SBOMPolicyEvaluator) GetPolicyType() string {
+func (s *SBOMEvaluator) PolicyType() string {
     return "sbom"
 }
 
-func (s *SBOMPolicyEvaluator) GetPolicyPath() string {
+func (s *SBOMEvaluator) PolicyPath() string {
     return "license/main"
 }
 
-func (s *SBOMPolicyEvaluator) Evaluate(ctx context.Context, payload *SBOMPayload) (SBOMPolicyResult, error) {
-    // Direct, simple implementation
+func (s *SBOMEvaluator) Evaluate(ctx context.Context, payload *SBOMPayload) (SBOMPolicyResult, error) {
     return s.service.CheckSBOMPolicy(ctx, payload)
 }
 
-// Enhanced PolicyService with simple strategy registry
+// Enhanced PolicyService with constructor injection
 type PolicyService struct {
-    opaClient    *clients.OPAClient
-    logger       *slog.Logger
-    vulnEvaluator *VulnerabilityPolicyEvaluator
-    sbomEvaluator *SBOMPolicyEvaluator
+    opaClient   *clients.OPAClient
+    logger      *slog.Logger
+    tracer      *otel.TracingHelper
+    evaluators  map[string]Evaluator
 }
 
-func NewPolicyService(opaClient *clients.OPAClient, logger *slog.Logger) *PolicyService {
+// Constructor injection - evaluators provided by caller
+func NewPolicyService(
+    opaClient *clients.OPAClient, 
+    logger *slog.Logger,
+    tracer *otel.TracingHelper,
+    evaluators []Evaluator,
+) *PolicyService {
     service := &PolicyService{
-        opaClient: opaClient,
-        logger:    logger,
+        opaClient:  opaClient,
+        logger:     logger,
+        tracer:     tracer,
+        evaluators: make(map[string]Evaluator),
     }
 
-    // Simple initialization - no complex generics
-    service.vulnEvaluator = &VulnerabilityPolicyEvaluator{service: service}
-    service.sbomEvaluator = &SBOMPolicyEvaluator{service: service}
+    // Register evaluators
+    for _, evaluator := range evaluators {
+        service.evaluators[evaluator.PolicyType()] = evaluator
+    }
 
     return service
 }
 
-// Simple, direct methods - no over-engineering
+// Factory function for standard evaluators
+func NewStandardEvaluators(service *PolicyService) []Evaluator {
+    return []Evaluator{
+        &VulnerabilityEvaluator{service: service},
+        &SBOMEvaluator{service: service},
+    }
+}
+
+// Type-safe evaluation with clear error handling
 func (s *PolicyService) EvaluateVulnerabilityPolicy(ctx context.Context, payload *VulnerabilityPayload) (VulnerabilityPolicyResult, error) {
-    return s.vulnEvaluator.Evaluate(ctx, payload)
+    evaluator, exists := s.evaluators["vulnerability"]
+    if !exists {
+        return VulnerabilityPolicyResult{}, fmt.Errorf("%w: vulnerability", ErrUnknownPolicyType)
+    }
+    
+    vulnEvaluator, ok := evaluator.(*VulnerabilityEvaluator)
+    if !ok {
+        return VulnerabilityPolicyResult{}, fmt.Errorf("%w: invalid evaluator type", ErrPolicyEvaluation)
+    }
+    
+    return vulnEvaluator.Evaluate(ctx, payload)
 }
 
 func (s *PolicyService) EvaluateSBOMPolicy(ctx context.Context, payload *SBOMPayload) (SBOMPolicyResult, error) {
-    return s.sbomEvaluator.Evaluate(ctx, payload)
+    evaluator, exists := s.evaluators["sbom"]
+    if !exists {
+        return SBOMPolicyResult{}, fmt.Errorf("%w: sbom", ErrUnknownPolicyType)
+    }
+    
+    sbomEvaluator, ok := evaluator.(*SBOMEvaluator)
+    if !ok {
+        return SBOMPolicyResult{}, fmt.Errorf("%w: invalid evaluator type", ErrPolicyEvaluation)
+    }
+    
+    return sbomEvaluator.Evaluate(ctx, payload)
 }
 ```
 
 **Benefits:**
-- Easy addition of new policy types (compliance, security, custom policies)
-- Better testability (can test each evaluator independently)
-- Follows single responsibility principle
-- Consistent with existing webhook handler strategy pattern
+- **Constructor Injection**: Evaluators provided by caller, not created internally
+- **Minimal Interfaces**: Single responsibility interfaces with clear contracts
+- **Type Safety**: Clear error types that can be checked with `errors.Is()`
+- **No Package Stuttering**: `policy.Evaluator` not `policy.PolicyEvaluator`
+- **Explicit Wiring**: No magic registration, all dependencies visible
+- **Easy Testing**: Mock evaluators can be injected during construction
+- **Clear Error Handling**: Typed errors for better error flow control
 
 **Implementation Steps:**
-1. Create `PolicyEvaluator` interface
-2. Implement strategy classes for existing policy types
-3. Update `PolicyService` to use strategy registry
-4. Add factory method for strategy registration
-5. Update `PolicyCacheService` to work with new interface
-6. Create comprehensive tests for each strategy
+1. Create minimal `Evaluator` interface with focused methods
+2. Implement evaluator types with clear naming (no package stuttering)
+3. Update `PolicyService` constructor to accept evaluator slice
+4. Add factory function for standard evaluators
+5. Define custom error types for better error handling
+6. Update `PolicyCacheService` to work with new interface
+7. Update `internal/app/container.go` to wire evaluator dependencies
+8. Create comprehensive tests for each evaluator
 
 ### 2. Security Content Detection (MEDIUM PRIORITY) - **Strategy Pattern**
 
@@ -192,15 +247,21 @@ func (s *PolicyService) EvaluateSBOMPolicy(ctx context.Context, payload *SBOMPay
 - Hardcoded content type checks
 - Difficult to add new security report formats
 
-**Pattern Applied:** **Strategy Pattern** (different algorithms for detecting content types)
+**Pattern Applied:** **Strategy Pattern** with **Constructor Injection**
 
 **Proposed Solution:**
 ```go
-// Simple content detection interface - no unnecessary complexity
-type ContentDetector interface {
+// Minimal interface with Go naming conventions
+type Detector interface {
     CanHandle(filename string) bool
-    GetContentType() string
+    ContentType() string
 }
+
+// Custom error types
+var (
+    ErrUnsupportedFileType = errors.New("unsupported file type")
+    ErrContentDetection    = errors.New("content detection failed")
+)
 
 // Simple, focused implementations
 type TrivyJSONDetector struct{}
@@ -209,7 +270,7 @@ func (t *TrivyJSONDetector) CanHandle(filename string) bool {
     return strings.Contains(filename, "trivy") && strings.HasSuffix(filename, ".json")
 }
 
-func (t *TrivyJSONDetector) GetContentType() string {
+func (t *TrivyJSONDetector) ContentType() string {
     return "vulnerability"
 }
 
@@ -219,59 +280,91 @@ func (s *SPDXDetector) CanHandle(filename string) bool {
     return strings.Contains(filename, "spdx") || strings.Contains(filename, "sbom")
 }
 
-func (s *SPDXDetector) GetContentType() string {
+func (s *SPDXDetector) ContentType() string {
     return "sbom"
 }
 
-// Enhanced SecurityService - simple and clear
+// Enhanced SecurityService with constructor injection
 type SecurityService struct {
     githubClient *clients.GitHubClient
     logger       *slog.Logger
-    detectors    []ContentDetector
+    tracer       *otel.TracingHelper
+    detectors    []Detector
+}
+
+// Constructor injection - detectors provided by caller
+func NewSecurityService(
+    githubClient *clients.GitHubClient,
+    logger *slog.Logger,
+    tracer *otel.TracingHelper,
+    detectors []Detector,
+) *SecurityService {
+    return &SecurityService{
+        githubClient: githubClient,
+        logger:       logger,
+        tracer:       tracer,
+        detectors:    detectors,
+    }
+}
+
+// Factory function for standard detectors
+func NewStandardDetectors() []Detector {
+    return []Detector{
+        &TrivyJSONDetector{},
+        &SPDXDetector{},
+    }
 }
 
 func (s *SecurityService) DetectContentType(filename string) (string, error) {
     for _, detector := range s.detectors {
         if detector.CanHandle(filename) {
-            return detector.GetContentType(), nil
+            return detector.ContentType(), nil
         }
     }
-    return "", fmt.Errorf("unsupported file type: %s", filename)
+    return "", fmt.Errorf("%w: %s", ErrUnsupportedFileType, filename)
 }
 
-// Keep existing methods simple - no over-engineering
+// Keep existing methods simple with clear error handling
 func (s *SecurityService) BuildVulnerabilityPayload(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*VulnerabilityPayload, error) {
-    // Existing logic - just check content type first
     contentType, err := s.DetectContentType(artifact.FileName)
-    if err != nil || contentType != "vulnerability" {
-        return nil, fmt.Errorf("not a vulnerability report: %s", artifact.FileName)
+    if err != nil {
+        return nil, fmt.Errorf("%w: %s", ErrContentDetection, err)
+    }
+    if contentType != "vulnerability" {
+        return nil, fmt.Errorf("%w: expected vulnerability, got %s", ErrUnsupportedFileType, contentType)
     }
     return s.BuildVulnerabilityPayloadFromTrivy(ctx, artifact, owner, repo, sha, prNumber, workflowID)
 }
 
 func (s *SecurityService) BuildSBOMPayload(ctx context.Context, artifact *SecurityArtifact, owner, repo, sha string, prNumber int, workflowID int64) (*SBOMPayload, error) {
-    // Existing logic - just check content type first
     contentType, err := s.DetectContentType(artifact.FileName)
-    if err != nil || contentType != "sbom" {
-        return nil, fmt.Errorf("not an SBOM report: %s", artifact.FileName)
+    if err != nil {
+        return nil, fmt.Errorf("%w: %s", ErrContentDetection, err)
+    }
+    if contentType != "sbom" {
+        return nil, fmt.Errorf("%w: expected sbom, got %s", ErrUnsupportedFileType, contentType)
     }
     return s.BuildSBOMPayloadFromSPDX(ctx, artifact, owner, repo, sha, prNumber, workflowID)
 }
 ```
 
 **Benefits:**
-- Easy addition of new security report formats
-- Priority-based detection order
-- Better separation of format-specific logic
-- Improved testability
+- **Constructor Injection**: Detectors provided by caller for maximum testability
+- **Minimal Interface**: Only methods clients actually need
+- **Typed Errors**: Clear error types that can be checked with `errors.Is()`
+- **No Package Stuttering**: `security.Detector` not `security.ContentDetector`
+- **Priority Ordering**: Detector order matters, easy to customize
+- **Clear Separation**: Detection logic separate from payload building
 
 **Implementation Steps:**
-1. Create `ContentDetector` interface
-2. Implement detectors for existing formats (Trivy, SPDX, SARIF)
-3. Add priority-based detection ordering
-4. Update `SecurityService` to use detector registry
-5. Add support for new formats (CycloneDX, custom formats)
-6. Create comprehensive tests for each detector
+1. Create minimal `Detector` interface with focused methods
+2. Implement detector types for existing formats (Trivy, SPDX, SARIF)
+3. Update `SecurityService` constructor to accept detector slice
+4. Add factory function for standard detectors
+5. Define custom error types for better error handling
+6. Add support for new formats (CycloneDX, custom formats)
+7. Update `internal/app/container.go` to wire detector dependencies
+8. Create comprehensive tests for each detector
 
 ### 3. Check Run Configuration (MEDIUM PRIORITY) - **Configuration Pattern**
 
@@ -280,85 +373,105 @@ func (s *SecurityService) BuildSBOMPayload(ctx context.Context, artifact *Securi
 - Hardcoded check run types and behaviors
 - Difficult to customize check run behavior per type
 
-**Pattern Applied:** **Configuration Pattern** (not Strategy - just different settings)
+**Pattern Applied:** **Configuration Pattern** with **Constructor Injection**
 
 **Proposed Solution:**
 ```go
-// Simple check run strategy - no unnecessary complexity
-type CheckRunStrategy interface {
-    GetCheckName() string
-    GetTimeout() time.Duration
+// Minimal configuration interface
+type CheckConfig interface {
+    Name() string
+    Timeout() time.Duration
 }
 
-// Simple strategy implementations
-type VulnerabilityCheckStrategy struct{}
+// Custom error types
+var (
+    ErrUnknownCheckType = errors.New("unknown check type")
+)
 
-func (v *VulnerabilityCheckStrategy) GetCheckName() string {
+// Simple configuration implementations
+type VulnerabilityCheckConfig struct{}
+
+func (v *VulnerabilityCheckConfig) Name() string {
     return "Vulnerability Scan Check"
 }
 
-func (v *VulnerabilityCheckStrategy) GetTimeout() time.Duration {
+func (v *VulnerabilityCheckConfig) Timeout() time.Duration {
     return 10 * time.Minute
 }
 
-type LicenseCheckStrategy struct{}
+type LicenseCheckConfig struct{}
 
-func (l *LicenseCheckStrategy) GetCheckName() string {
+func (l *LicenseCheckConfig) Name() string {
     return "License Check"
 }
 
-func (l *LicenseCheckStrategy) GetTimeout() time.Duration {
+func (l *LicenseCheckConfig) Timeout() time.Duration {
     return 5 * time.Minute
 }
 
-// Enhanced CheckService - keep it simple
+// Enhanced CheckService with constructor injection
 type CheckService struct {
     githubClient *clients.GitHubClient
     logger       *slog.Logger
-    strategies   map[CheckRunType]CheckRunStrategy
+    tracer       *otel.TracingHelper
+    configs      map[CheckRunType]CheckConfig
 }
 
-func NewCheckService(githubClient *clients.GitHubClient, logger *slog.Logger) *CheckService {
-    service := &CheckService{
+// Constructor injection - configs provided by caller
+func NewCheckService(
+    githubClient *clients.GitHubClient,
+    logger *slog.Logger,
+    tracer *otel.TracingHelper,
+    configs map[CheckRunType]CheckConfig,
+) *CheckService {
+    return &CheckService{
         githubClient: githubClient,
         logger:       logger,
-        strategies:   make(map[CheckRunType]CheckRunStrategy),
+        tracer:       tracer,
+        configs:      configs,
     }
-
-    // Simple registration
-    service.strategies[CheckRunTypeVulnerability] = &VulnerabilityCheckStrategy{}
-    service.strategies[CheckRunTypeLicense] = &LicenseCheckStrategy{}
-
-    return service
 }
 
-func (s *CheckService) GetCheckName(checkType CheckRunType) string {
-    if strategy, exists := s.strategies[checkType]; exists {
-        return strategy.GetCheckName()
+// Factory function for standard configurations
+func NewStandardCheckConfigs() map[CheckRunType]CheckConfig {
+    return map[CheckRunType]CheckConfig{
+        CheckRunTypeVulnerability: &VulnerabilityCheckConfig{},
+        CheckRunTypeLicense:       &LicenseCheckConfig{},
     }
-    return "Unknown Check"
 }
 
-func (s *CheckService) GetTimeout(checkType CheckRunType) time.Duration {
-    if strategy, exists := s.strategies[checkType]; exists {
-        return strategy.GetTimeout()
+func (s *CheckService) GetCheckName(checkType CheckRunType) (string, error) {
+    if config, exists := s.configs[checkType]; exists {
+        return config.Name(), nil
     }
-    return 5 * time.Minute // default
+    return "", fmt.Errorf("%w: %v", ErrUnknownCheckType, checkType)
+}
+
+func (s *CheckService) GetTimeout(checkType CheckRunType) (time.Duration, error) {
+    if config, exists := s.configs[checkType]; exists {
+        return config.Timeout(), nil
+    }
+    return 0, fmt.Errorf("%w: %v", ErrUnknownCheckType, checkType)
 }
 ```
 
 **Benefits:**
-- Type-specific check run customization
-- Better organization of check run logic
-- Easy addition of new check types
-- Consistent behavior patterns
+- **Constructor Injection**: Configurations provided by caller, no hidden dependencies
+- **Minimal Interface**: Only configuration methods clients need
+- **Typed Errors**: Clear error handling with `errors.Is()` support
+- **No Package Stuttering**: `checks.CheckConfig` not `checks.CheckRunConfig`
+- **Type-specific Customization**: Easy to customize per check type
+- **Clear Error Flow**: No silent defaults, explicit error handling
 
 **Implementation Steps:**
-1. Create `CheckRunStrategy` interface
-2. Implement strategies for existing check types
-3. Update `CheckService` to use strategy registry
-4. Add configuration for check run timeouts and behavior
-5. Create tests for each strategy
+1. Create minimal `CheckConfig` interface
+2. Implement configuration types for existing check types
+3. Update `CheckService` constructor to accept config map
+4. Add factory function for standard configurations
+5. Define custom error types for missing configurations
+6. Update error handling to return errors instead of defaults
+7. Update `internal/app/container.go` to wire configuration dependencies
+8. Create tests for each configuration type
 
 ### 4. State Storage Organization (LOW PRIORITY) - **Strategy Pattern**
 
@@ -367,44 +480,96 @@ func (s *CheckService) GetTimeout(checkType CheckRunType) time.Duration {
 - Different data types handled inconsistently
 - Cache and state operations coupled
 
-**Pattern Applied:** **Strategy Pattern** (different storage/serialization algorithms per data type)
+**Pattern Applied:** **Strategy Pattern** with **Constructor Injection**
 
 **Proposed Solution:**
 ```go
-// State storage strategy interface
-type StateStorageStrategy interface {
-    StoreData(ctx context.Context, key string, value interface{}, ttl time.Duration) error
-    GetData(ctx context.Context, key string) (interface{}, bool, error)
-    DeleteData(ctx context.Context, key string) error
-    GetDataType() string
+// Minimal storage strategy interface
+type StorageStrategy interface {
+    Store(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+    Get(ctx context.Context, key string) (interface{}, bool, error)
+    Delete(ctx context.Context, key string) error
+    DataType() string
 }
 
-// Strategy implementations
-type PolicyCacheStorageStrategy struct {
+// Custom error types
+var (
+    ErrInvalidDataType    = errors.New("invalid data type for storage strategy")
+    ErrStorageOperation   = errors.New("storage operation failed")
+)
+
+// Strategy implementations with clear responsibilities
+type PolicyCacheStorage struct {
     store storage.Store
 }
 
-type CheckRunStorageStrategy struct {
+func (p *PolicyCacheStorage) DataType() string {
+    return "policy_cache"
+}
+
+func (p *PolicyCacheStorage) Store(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+    // Type-specific serialization logic
+    return p.store.Set(ctx, key, value, ttl)
+}
+
+type CheckRunStorage struct {
     store storage.Store
 }
 
-type PRContextStorageStrategy struct {
-    store storage.Store
+func (c *CheckRunStorage) DataType() string {
+    return "check_run"
 }
 
-// Enhanced StateService
+func (c *CheckRunStorage) Store(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+    // Type-specific serialization logic  
+    return c.store.Set(ctx, key, value, ttl)
+}
+
+// Enhanced StateService with constructor injection
 type StateService struct {
     store      storage.Store
     logger     *slog.Logger
-    strategies map[string]StateStorageStrategy
+    tracer     *otel.TracingHelper
+    strategies map[string]StorageStrategy
+}
+
+// Constructor injection - strategies provided by caller
+func NewStateService(
+    store storage.Store,
+    logger *slog.Logger,
+    tracer *otel.TracingHelper,
+    strategies []StorageStrategy,
+) *StateService {
+    service := &StateService{
+        store:      store,
+        logger:     logger,
+        tracer:     tracer,
+        strategies: make(map[string]StorageStrategy),
+    }
+
+    for _, strategy := range strategies {
+        service.strategies[strategy.DataType()] = strategy
+    }
+
+    return service
+}
+
+// Factory function for standard storage strategies
+func NewStandardStorageStrategies(store storage.Store) []StorageStrategy {
+    return []StorageStrategy{
+        &PolicyCacheStorage{store: store},
+        &CheckRunStorage{store: store},
+    }
 }
 ```
 
 **Benefits:**
-- Clear separation of data type responsibilities
-- Consistent data handling patterns
-- Better cache management
-- Type-specific serialization/deserialization
+- **Constructor Injection**: Storage strategies provided explicitly, no hidden state
+- **Minimal Interface**: Only methods actually needed for storage operations
+- **Clear Separation**: Different serialization strategies per data type
+- **Type Safety**: Better cache management with typed operations
+- **No Package Stuttering**: `state.StorageStrategy` not `state.StateStorageStrategy`
+- **Explicit Dependencies**: All strategy dependencies visible at construction time
 
 ## Pattern Analysis
 
@@ -422,52 +587,58 @@ type StateService struct {
 
 ### Not Strategy Patterns (Just Organization):
 
-#### ❌ **Policy Evaluation** → **Factory Pattern**
+#### ❌ **Policy Evaluation** → **Factory Pattern with Constructor Injection**
 - **Why NOT Strategy**: No algorithm differences - just delegation to existing methods
-- **What it IS**: Factory pattern for creating policy evaluators
-- **Benefit**: Better organization, easier registration
+- **What it IS**: Factory pattern with explicit dependency injection
+- **Benefit**: Better organization, easier testing, no hidden dependencies
 
-#### ❌ **Check Run Configuration** → **Configuration Pattern**
+#### ❌ **Check Run Configuration** → **Configuration Pattern with Constructor Injection**
 - **Why NOT Strategy**: No algorithm differences - just different settings
-- **What it IS**: Configuration holder pattern
-- **Benefit**: Centralized configuration, easier customization
+- **What it IS**: Configuration holder pattern with explicit injection
+- **Benefit**: Centralized configuration, easier customization, clear dependencies
 
 ## Type Safety Considerations
 
 ### Pragmatic Approach to Type Safety
 
-The enhancement patterns are designed to **improve organization and extensibility** without over-engineering:
+The enhancement patterns are designed to **improve organization and extensibility** with **explicit dependency management**:
 
-#### 1. **Policy Evaluation Factory - Simple and Type-Safe**
+#### 1. **Policy Evaluation Factory - Simple, Injected, and Type-Safe**
 - ✅ **Concrete Types**: Each evaluator works with specific, known types
-- ✅ **No Generic Complexity**: Direct methods like `EvaluateVulnerabilityPolicy(payload *VulnerabilityPayload)`
-- ✅ **Clear Contracts**: Simple interfaces with obvious purposes
-- ✅ **Easy Testing**: Straightforward mocking and testing
+- ✅ **Constructor Injection**: Dependencies provided by caller, not created internally
+- ✅ **Clear Contracts**: Minimal interfaces with obvious purposes
+- ✅ **Easy Testing**: Straightforward mocking and dependency injection
+- ✅ **Typed Errors**: `ErrUnknownPolicyType` can be checked with `errors.Is()`
 
-**Type Safety Level: EXCELLENT** - Simple, direct, and safe
+**Type Safety Level: EXCELLENT** - Simple, explicit, and safe
 
-#### 2. **Security Content Detection Strategy - Minimal Complexity**
+#### 2. **Security Content Detection Strategy - Minimal Complexity, Maximum Clarity**
 - ✅ **Filename-Based Detection**: Simple pattern matching, no content parsing complexity
-- ✅ **Clear Responsibilities**: Each detector knows what files it handles
+- ✅ **Constructor Injection**: Detectors provided by caller for easy testing
 - ✅ **No Type Erasure**: Existing payload building methods unchanged
-- ✅ **Easy Extension**: Adding new detectors is trivial
+- ✅ **Easy Extension**: Adding new detectors is trivial and explicit
+- ✅ **Clear Error Types**: Specific errors for different failure modes
 
-**Type Safety Level: EXCELLENT** - No type safety compromises
+**Type Safety Level: EXCELLENT** - No type safety compromises, clear dependencies
 
-#### 3. **Check Run Strategy - Configuration Pattern**
-- ✅ **Simple Configuration**: Just names and timeouts, no complex behavior
-- ✅ **No Over-Abstraction**: Existing check creation methods unchanged
-- ✅ **Clear Value**: Easy to add new check types with different configurations
+#### 3. **Check Run Configuration - Configuration Pattern with Injection**
+- ✅ **Constructor Injection**: Configurations provided explicitly, no surprises
 - ✅ **Minimal Interface**: Only what's actually needed
+- ✅ **Clear Value**: Easy to add new check types with different configurations
+- ✅ **Typed Errors**: No silent defaults, explicit error handling
+- ✅ **No Hidden State**: All dependencies visible at construction time
 
-**Type Safety Level: EXCELLENT** - No complexity, all benefits
+**Type Safety Level: EXCELLENT** - No complexity, all benefits, explicit dependencies
 
 ### Why This Approach Works Better
 
 1. **Solve Actual Problems**: Focus on real extensibility needs, not theoretical flexibility
-2. **Keep It Simple**: Use the simplest solution that provides the benefits
-3. **Avoid Over-Engineering**: No generics where concrete types work fine
-4. **Pragmatic Benefits**: Better organization without complexity costs
+2. **Constructor Injection**: Explicit dependencies make testing and configuration easier
+3. **Avoid Over-Engineering**: Use the simplest solution that provides the benefits
+4. **Minimal Interfaces**: Small, focused interfaces with only needed methods
+5. **Typed Errors**: Clear error types that can be checked with `errors.Is()`
+6. **No Package Stuttering**: Follow Go naming conventions (`policy.Evaluator`, not `policy.PolicyEvaluator`)
+7. **Explicit Wiring**: No magic registration or hidden side effects
 
 ## Handler Strategy Pattern Compliance
 
@@ -520,32 +691,33 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(..., payloads interface{}
 **Simple Fix - Use Concrete Types:**
 
 ```go
-// Simple interface with concrete methods
-type PolicyProcessor interface {
-    GetPolicyType() string
-}
-
-// Separate interfaces for each type - simple and clear
+// Minimal interfaces with concrete methods - no generics needed
 type VulnerabilityProcessor interface {
-    PolicyProcessor
     ProcessVulnerabilities(ctx context.Context, logger *slog.Logger,
                           policyCacheService PolicyCacheServiceInterface,
                           payloads []*services.VulnerabilityPayload,
                           owner, repo, sha string) PolicyProcessingResult
+    PolicyType() string
 }
 
 type LicenseProcessor interface {
-    PolicyProcessor
     ProcessSBOM(ctx context.Context, logger *slog.Logger,
                policyCacheService PolicyCacheServiceInterface,
                payloads []*services.SBOMPayload,
                owner, repo, sha string) PolicyProcessingResult
+    PolicyType() string
 }
 
-// Simple implementations - no generics needed
-type VulnerabilityPolicyProcessor struct{}
+// Simple implementations with constructor injection
+type VulnerabilityPolicyProcessor struct {
+    tracer *otel.TracingHelper
+}
 
-func (p *VulnerabilityPolicyProcessor) GetPolicyType() string {
+func NewVulnerabilityPolicyProcessor(tracer *otel.TracingHelper) *VulnerabilityPolicyProcessor {
+    return &VulnerabilityPolicyProcessor{tracer: tracer}
+}
+
+func (p *VulnerabilityPolicyProcessor) PolicyType() string {
     return "vulnerability"
 }
 
@@ -556,10 +728,19 @@ func (p *VulnerabilityPolicyProcessor) ProcessVulnerabilities(
     payloads []*services.VulnerabilityPayload, // ✅ Concrete type - no casting needed
     owner, repo, sha string,
 ) PolicyProcessingResult {
+    ctx, span := p.tracer.StartSpan(ctx, "process.vulnerabilities")
+    defer span.End()
+    
     // ✅ Direct usage - no type assertions
     result := PolicyProcessingResult{AllPassed: true}
     for _, payload := range payloads {
         policyResult, err := policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, payload, owner, repo, sha)
+        if err != nil {
+            logger.ErrorContext(ctx, "Policy evaluation failed", "error", err)
+            result.AllPassed = false
+            result.FailureDetails = append(result.FailureDetails, err.Error())
+            continue
+        }
         // ... rest of logic
     }
     return result
@@ -568,10 +749,11 @@ func (p *VulnerabilityPolicyProcessor) ProcessVulnerabilities(
 
 **Why This is Better:**
 1. **No Runtime Type Assertions**: Concrete types eliminate the need
-2. **Clear Interfaces**: Each processor has methods for its specific types
-3. **Simple to Understand**: No complex generics or registries
-4. **Easy to Test**: Mock with concrete types
+2. **Constructor Injection**: Clean dependency injection for tracers and other dependencies
+3. **Minimal Interfaces**: Each processor has methods for its specific types only
+4. **Easy to Test**: Mock with concrete types and injected dependencies
 5. **Type Safe**: Compiler catches type mismatches
+6. **Clear Dependencies**: All dependencies explicit in constructor
 ```
 
 ### Why This is Better - Consistent Type Safety
@@ -611,38 +793,42 @@ func (h *SecurityWebhookHandler) ProcessSecurityWorkflow(...) {
 }
 ```
 
-### Migration Strategy
+### Implementation Steps - Updated for Go Best Practices
 
 1. **Maintain Current Interface**: Keep existing `interface{}` methods for backward compatibility
-2. **Add Generic Methods**: Introduce new generic strategy interfaces alongside existing ones
-3. **Gradual Migration**: Convert callers to use generic versions
-4. **Deprecate Old Interface**: Remove `interface{}` versions in future release
+2. **Add Concrete Interfaces**: Introduce new concrete processor interfaces alongside existing ones
+3. **Constructor Injection**: Update all constructors to accept dependencies explicitly
+4. **Minimal Package State**: Eliminate package-level variables where possible
+5. **Typed Errors**: Define custom error types that can be checked with `errors.Is()`
+6. **Gradual Migration**: Convert callers to use concrete versions
+7. **Update Container**: Modify `internal/app/container.go` for explicit dependency wiring
+8. **Deprecate Old Interface**: Remove `interface{}` versions in future release
 
-### Compliance Alignment - Improved Approach
+### Compliance Alignment - Go Best Practices Approach
 
-The **revised** strategy patterns provide **consistent type safety** across both handlers and services:
+The **revised** patterns provide **consistent type safety and explicit dependencies** across both handlers and services:
 
-#### ✅ **1. Consistent Type Safety**
-- **Handler Pattern**: Generic `PolicyProcessor[TPayload]` eliminates runtime type assertions
-- **Services Pattern**: Generic `PolicyEvaluator[TInput, TResult]` provides compile-time safety
-- **Alignment**: Consistent generic approach across all layers
+#### ✅ **1. Consistent Type Safety with Constructor Injection**
+- **Handler Pattern**: Concrete processor interfaces eliminate runtime type assertions
+- **Services Pattern**: Explicit evaluator/detector injection provides compile-time safety
+- **Alignment**: Consistent explicit dependency approach across all layers
 
-#### ✅ **2. Clear Responsibility Separation**
+#### ✅ **2. Clear Responsibility Separation with Minimal Interfaces**
 - **Parsing Layer**: Handles external input validation and type conversion (JSON → Go structs)
-- **Strategy Layer**: Operates on validated, typed data structures
-- **Business Logic**: Type-safe operations without defensive programming
+- **Strategy Layer**: Operates on validated, typed data structures with minimal interfaces
+- **Business Logic**: Type-safe operations with explicit dependencies
 
-#### ✅ **3. Performance Benefits**
+#### ✅ **3. Performance Benefits with Zero Magic**
 - **Handler Pattern**: No runtime type assertions in hot paths
 - **Services Pattern**: No type checking overhead in business logic
-- **Alignment**: Optimal performance across the stack
+- **Alignment**: Optimal performance with explicit wiring, no reflection or hidden registration
 
-#### ✅ **4. Error Handling Improvement**
+#### ✅ **4. Error Handling Improvement with Typed Errors**
 - **Compile-Time Errors**: Type mismatches caught during development
-- **Runtime Errors**: Only for actual business logic failures, not type issues
-- **Alignment**: Better error semantics throughout
+- **Runtime Errors**: Custom error types that can be checked with `errors.Is()`
+- **Alignment**: Better error semantics with clear error classification throughout
 
-### Why Generics Make Sense Everywhere
+### Why Constructor Injection Makes Sense Everywhere
 
 **Original Concern**: "Handlers deal with external data, need flexibility"
 
@@ -657,37 +843,39 @@ if !ok {
 
 **The handlers already know their types!** Using `interface{}` just delays the inevitable type checking and makes it a runtime failure instead of compile-time safety.
 
-**Better Architecture**:
+**Better Architecture with Constructor Injection**:
 1. **Webhook Parsing Layer** → Converts JSON to typed structs
-2. **Strategy Selection Layer** → Routes to appropriate generic strategy
-3. **Strategy Execution Layer** → Type-safe processing
+2. **Strategy Selection Layer** → Routes to appropriate concrete processor (injected at construction)
+3. **Strategy Execution Layer** → Type-safe processing with explicit dependencies
 
-## Architectural Recommendation: Full Type Safety
+## Architectural Recommendation: Full Type Safety with Explicit Dependencies
 
-**Your insight is spot-on**: Using generics in services but `interface{}` in handlers creates an inconsistent architecture where type safety is artificially delayed.
+**Your insight is spot-on**: Using concrete types in services but `interface{}` in handlers creates an inconsistent architecture where type safety is artificially delayed and dependencies are hidden.
 
 ### The Better Path Forward
 
-**Phase 1**: Implement type-safe handlers alongside enhanced services
-**Phase 2**: Migrate existing webhook handlers to use generic strategy pattern
-**Phase 3**: Remove legacy `interface{}` patterns
+**Phase 1**: Implement type-safe services with constructor injection alongside enhanced handlers
+**Phase 2**: Migrate existing webhook handlers to use concrete processor interfaces
+**Phase 3**: Update container to wire all dependencies explicitly
+**Phase 4**: Remove legacy `interface{}` patterns and package-level state
 
-### Benefits of Consistent Generics
+### Benefits of Consistent Constructor Injection
 
 1. **Type Safety Throughout**: Compile-time guarantees from parsing to persistence
 2. **Performance**: No runtime type assertions in hot paths
-3. **Developer Experience**: Better IDE support, refactoring safety
-4. **Architecture Clarity**: Consistent patterns across all layers
+3. **Testability**: Easy dependency injection for testing
+4. **Architecture Clarity**: Consistent patterns with explicit dependencies across all layers
+5. **No Hidden Magic**: All dependencies visible and controllable
 
 ### Implementation Strategy
 
 Start with the services enhancements (they're isolated), then demonstrate the improved handler pattern as a proof-of-concept for broader adoption.
 
-**Result**: A fully type-safe policy processing pipeline where types are validated once at the boundary and flow safely through the entire system.
+**Result**: A fully type-safe policy processing pipeline with explicit dependencies where types are validated once at the boundary and flow safely through the entire system.
 
 ---
 
-**Remember**: External data flexibility is achieved at the **parsing boundary**, not by sacrificing type safety in business logic. The webhook handlers already know their exact types - we should embrace that knowledge, not fight it!
+**Remember**: External data flexibility is achieved at the **parsing boundary**, not by sacrificing type safety in business logic. Dependencies should be **explicit and injected**, not hidden in package-level variables or magic registration systems!
 
 ### Integration Strategy
 
@@ -695,102 +883,109 @@ The services strategy patterns integrate seamlessly with existing handlers:
 
 ```go
 // Existing handler usage (unchanged)
-processor := &VulnerabilityPolicyProcessor{}
-result := processor.ProcessPayloads(ctx, logger, policyCacheService, payloads, owner, repo, sha)
+processor := NewVulnerabilityPolicyProcessor(tracer)
+result := processor.ProcessVulnerabilities(ctx, logger, policyCacheService, payloads, owner, repo, sha)
 
-// Enhanced services usage (new capability)
-result, err := EvaluatePolicy[*VulnerabilityPayload, VulnerabilityPolicyResult](
-    ctx, policyService, "vulnerability", payload,
-)
+// Enhanced services usage with explicit dependencies
+evaluators := policy.NewStandardEvaluators(policyService)
+policyService := policy.NewPolicyService(opaClient, logger, tracer, evaluators)
+result, err := policyService.EvaluateVulnerabilityPolicy(ctx, payload)
 
-// Backward-compatible services usage
-result, err := policyService.ProcessPolicy(ctx, "vulnerability", payload)
+// All dependencies explicit and injected at construction time
 ```
 
 ### Migration Path
 
-1. **Phase 1**: Implement services strategy patterns with backward compatibility
-2. **Phase 2**: Enhance handlers to optionally use new type-safe APIs
-3. **Phase 3**: Gradually migrate handler internals to use services strategies
-4. **Phase 4**: Deprecate duplicate logic while maintaining handler interface contracts
+1. **Phase 1**: Implement services patterns with constructor injection and backward compatibility
+2. **Phase 2**: Enhance handlers to use concrete interfaces with injected dependencies
+3. **Phase 3**: Update `internal/app/container.go` to wire all dependencies explicitly
+4. **Phase 4**: Gradually migrate handler internals to use services patterns
+5. **Phase 5**: Deprecate duplicate logic while maintaining handler interface contracts
 
 ### Benefits of Alignment
 
-1. **Consistent Patterns**: Same strategy concepts across handlers and services
+1. **Consistent Patterns**: Same explicit dependency concepts across handlers and services
 2. **Gradual Migration**: No breaking changes to existing handler APIs
-3. **Enhanced Type Safety**: Improved safety without losing flexibility
-4. **Code Reuse**: Services strategies can be used by both handlers and direct callers
-5. **Testing**: Consistent testing patterns across all strategy implementations
+3. **Enhanced Type Safety**: Improved safety with explicit dependencies
+4. **Code Reuse**: Services patterns can be used by both handlers and direct callers
+5. **Testing**: Consistent testing patterns with easy dependency injection across all implementations
+6. **No Hidden State**: All dependencies visible and controllable at construction time
 
 ## Implementation Plan
 
 ### Phase 0: Centralized Tracing Helper ✅ COMPLETED
-**Timeline:** Completed
 **Files modified:**
 - ✅ `internal/otel/otel.go` - Added centralized `TracingHelper`
 - ✅ `internal/otel/otel_test.go` - Added tests for tracing helper
-- ✅ `internal/services/helpers.go` - Added `ServiceTracingHelper`
-- ✅ `internal/handlers/helpers.go` - Updated to use centralized helper
 
 **Deliverables:**
 - ✅ Centralized `TracingHelper` with consistent API
-- ✅ Service-specific helper (`ServiceTracingHelper`)
-- ✅ Handler integration with centralized pattern
 - ✅ Test coverage for tracing functionality
 
 **Migration Remaining:**
-- Update ~25 service methods to use `ServiceTracingHelper.StartSpan()`
-- Update handler methods to use centralized pattern
+- Update service constructors to accept `*otel.TracingHelper` parameter
+- Update handler constructors to accept tracer via dependency injection
+- Update `internal/app/container.go` to wire tracer dependencies
+- Remove package-level tracer variables
 
-### Phase 1: Policy Evaluation Factory
-**Timeline:** 1-2 weeks
+### Phase 1: Policy Evaluation Factory with Constructor Injection
 **Files to modify:**
 - `internal/services/policy.go`
 - `internal/services/policy_cache.go`
 - `internal/services/policy_test.go`
 - `internal/services/policy_cache_test.go`
+- `internal/app/container.go`
 
 **Deliverables:**
-- `PolicyEvaluator` interface
+- Minimal `Evaluator` interface (no package stuttering)
 - Factory implementations for vulnerability and SBOM policies
-- Updated `PolicyService` with evaluator registry
-- Comprehensive tests
+- Updated `PolicyService` with constructor injection for evaluators and tracer
+- Custom error types (`ErrUnknownPolicyType`, `ErrPolicyEvaluation`)
+- Updated container to wire policy service dependencies
+- Comprehensive tests with dependency injection
 
-### Phase 2: Security Content Detection Strategy
-**Timeline:** 1 week
+### Phase 2: Security Content Detection Strategy with Constructor Injection
 **Files to modify:**
 - `internal/services/security.go`
 - `internal/services/security_test.go`
+- `internal/app/container.go`
 
 **Deliverables:**
-- `ContentDetector` interface
-- Detector implementations for existing formats
-- Priority-based detection system
-- Tests for each detector
+- Minimal `Detector` interface (no package stuttering)
+- Detector implementations for existing formats with constructor injection
+- Custom error types (`ErrUnsupportedFileType`, `ErrContentDetection`)
+- Priority-based detection system with explicit ordering
+- Updated container to wire security service dependencies
+- Tests for each detector with dependency injection
 
-### Phase 3: Check Run Configuration
+### Phase 3: Check Run Configuration with Constructor Injection
 **Timeline:** 1 week
 **Files to modify:**
 - `internal/services/checks.go`
 - `internal/services/checks_test.go`
+- `internal/app/container.go`
 
 **Deliverables:**
-- `CheckRunConfiguration` interface
+- Minimal `CheckConfig` interface (no package stuttering)
 - Configuration implementations for existing check types
-- Enhanced `CheckService` with configuration registry
-- Type-specific behavior customization
+- Enhanced `CheckService` with constructor injection for configurations and tracer
+- Custom error types (`ErrUnknownCheckType`)
+- Type-specific behavior customization with explicit error handling
+- Updated container to wire check service dependencies
 
-### Phase 4: State Storage Strategy
-**Timeline:** 1 week
+### Phase 4: State Storage Strategy with Constructor Injection
 **Files to modify:**
 - `internal/services/state.go`
 - `internal/services/state_test.go`
+- `internal/app/container.go`
 
 **Deliverables:**
-- `StateStorageStrategy` interface
-- Strategy implementations for different data types
-- Enhanced state management
-- Improved caching patterns
+- Minimal `StorageStrategy` interface (no package stuttering)
+- Strategy implementations for different data types with constructor injection
+- Enhanced state management with explicit dependencies
+- Custom error types for storage operations
+- Improved caching patterns with type-specific strategies
+- Updated container to wire state service dependencies
 
 ## Testing Strategy
 
@@ -813,20 +1008,23 @@ result, err := policyService.ProcessPolicy(ctx, "vulnerability", payload)
 
 ## Benefits Summary
 
-1. **Extensibility:** Easy addition of new policy types, content formats, and check types
-2. **Maintainability:** Clear separation of concerns and single responsibility
-3. **Testability:** Isolated testing of individual strategies
-4. **Consistency:** Uniform patterns across the services package
-5. **Performance:** Strategy caching and optimized selection
-6. **Configuration:** Runtime strategy selection and configuration
+1. **Extensibility:** Easy addition of new policy types, content formats, and check types through explicit injection
+2. **Maintainability:** Clear separation of concerns and single responsibility with minimal interfaces
+3. **Testability:** Isolated testing of individual strategies with easy dependency injection
+4. **Consistency:** Uniform patterns with constructor injection across the services package
+5. **Performance:** Strategy caching and optimized selection with no runtime type assertions
+6. **Configuration:** Explicit dependency injection and configuration without hidden state
+7. **Type Safety:** Custom error types that can be checked with `errors.Is()`
+8. **Go Idioms:** Follows Go best practices for interfaces, naming, and dependency management
 
 ## Migration Considerations
 
-1. **Backward Compatibility:** Maintain existing API while adding strategy support
-2. **Gradual Migration:** Implement strategies incrementally without breaking changes
-3. **Configuration:** Add strategy configuration to existing config system
-4. **Documentation:** Update ADRs and development guides
-5. **Performance:** Ensure strategy overhead is minimal
+1. **Backward Compatibility:** Maintain existing API while adding constructor injection support
+2. **Gradual Migration:** Implement patterns incrementally without breaking changes
+3. **Explicit Dependencies:** Update container to wire all dependencies explicitly, eliminating package-level state
+4. **Documentation:** Update ADRs and development guides with Go best practices
+5. **Performance:** Ensure dependency injection overhead is minimal
+6. **Error Handling:** Migrate to typed errors that can be checked with `errors.Is()`
 
 ## Related Documents
 
@@ -845,4 +1043,4 @@ result, err := policyService.ProcessPolicy(ctx, "vulnerability", payload)
 
 ---
 
-**Note:** This enhancement uses appropriate design patterns for each use case and aligns with existing project patterns in the webhook handlers (`internal/handlers/`). The implementation should follow established coding guidelines and maintain consistency with the existing codebase architecture.
+**Note:** This enhancement uses appropriate design patterns for each use case and aligns with Go best practices for dependency injection, minimal interfaces, and explicit error handling. The implementation follows established coding guidelines and maintains consistency with the existing codebase architecture while eliminating package-level state and magic registration patterns.
