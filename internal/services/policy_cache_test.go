@@ -812,7 +812,7 @@ func (suite *PolicyCacheIntegrationTestSuite) TestSystemUnavailableNotCached() {
 	config.AppConfig.Storage.PolicyCache.MaxSize = 10 * 1024 * 1024
 
 	ctx := context.Background()
-	
+
 	// Test the generic cache function directly to verify ErrSystemUnavailable behavior
 	result, err := checkPolicyWithCache(
 		ctx,
@@ -826,24 +826,24 @@ func (suite *PolicyCacheIntegrationTestSuite) TestSystemUnavailableNotCached() {
 		},
 		convertMapToVulnerabilityPolicyResult,
 	)
-	
+
 	// Should return the error and not cache it
 	assert.Error(suite.T(), err)
 	assert.ErrorIs(suite.T(), err, ErrSystemUnavailable, "Should get ErrSystemUnavailable")
 	assert.Equal(suite.T(), VulnerabilityPolicyResult{}, result)
-	
+
 	// Check that nothing was cached
 	cached, found, cacheErr := suite.stateService.GetCachedPolicyResults(ctx, "owner", "repo", "sha1", "vulnerability")
 	assert.NoError(suite.T(), cacheErr)
 	assert.False(suite.T(), found, "System unavailable error should not be cached")
 	assert.Nil(suite.T(), cached)
-	
+
 	// Test again - should still call the evaluator (not use cache)
 	callCount := 0
 	result2, err2 := checkPolicyWithCache(
 		ctx,
 		suite.policyCacheService,
-		"vulnerability", 
+		"vulnerability",
 		"test.check_vulnerability_retry",
 		"owner", "repo", "sha1",
 		func(ctx context.Context) (VulnerabilityPolicyResult, error) {
@@ -853,30 +853,30 @@ func (suite *PolicyCacheIntegrationTestSuite) TestSystemUnavailableNotCached() {
 		},
 		convertMapToVulnerabilityPolicyResult,
 	)
-	
+
 	assert.Error(suite.T(), err2)
 	assert.ErrorIs(suite.T(), err2, ErrSystemUnavailable, "Should still get ErrSystemUnavailable on retry")
 	assert.Equal(suite.T(), VulnerabilityPolicyResult{}, result2)
 	assert.Equal(suite.T(), 1, callCount, "Evaluator should be called again (not cached)")
-	
+
 	// Verify normal errors would be cached (for comparison)
 	normalErr := fmt.Errorf("normal policy error")
 	result3, err3 := checkPolicyWithCache(
 		ctx,
 		suite.policyCacheService,
 		"vulnerability",
-		"test.check_vulnerability_normal_error", 
+		"test.check_vulnerability_normal_error",
 		"owner", "repo", "sha2", // Different SHA
 		func(ctx context.Context) (VulnerabilityPolicyResult, error) {
 			return VulnerabilityPolicyResult{}, normalErr
 		},
 		convertMapToVulnerabilityPolicyResult,
 	)
-	
+
 	assert.Error(suite.T(), err3)
 	assert.Equal(suite.T(), normalErr, err3, "Normal errors should be returned as-is")
 	assert.Equal(suite.T(), VulnerabilityPolicyResult{}, result3)
-	
+
 	suite.T().Log("System unavailable caching test completed successfully")
 }
 

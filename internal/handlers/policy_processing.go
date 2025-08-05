@@ -92,13 +92,13 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 
 			// Check if this is a system error (OPA down, network issues)
 			if errors.Is(err, services.ErrSystemUnavailable) {
-				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check", 
+				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check",
 					"owner", owner, "repo", repo, "sha", sha)
 				// Return early - don't process check run when system is down
 				return PolicyProcessingResult{
-					AllPassed: false, 
+					AllPassed:         false,
 					SystemUnavailable: true,
-					FailureDetails: []string{"Policy evaluation system temporarily unavailable"},
+					FailureDetails:    []string{"Policy evaluation system temporarily unavailable"},
 				}
 			}
 
@@ -170,13 +170,13 @@ func (p *LicensePolicyProcessor) ProcessPayloads(
 
 			// Check if this is a system error (OPA down, network issues)
 			if errors.Is(err, services.ErrSystemUnavailable) {
-				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check", 
+				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check",
 					"owner", owner, "repo", repo, "sha", sha)
 				// Return early - don't process check run when system is down
 				return PolicyProcessingResult{
-					AllPassed: false, 
+					AllPassed:         false,
 					SystemUnavailable: true,
-					FailureDetails: []string{"Policy evaluation system temporarily unavailable"},
+					FailureDetails:    []string{"Policy evaluation system temporarily unavailable"},
 				}
 			}
 
