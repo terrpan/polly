@@ -10,15 +10,17 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 func TestNewCheckService(t *testing.T) {
 	logger := slog.Default()
+	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	// Create a real GitHub client for testing the constructor
 	realClient := clients.NewGitHubClient(context.Background())
 
-	service := NewCheckService(realClient, logger)
+	service := NewCheckService(realClient, logger, telemetryHelper)
 
 	assert.NotNil(t, service)
 	assert.Equal(t, realClient, service.githubClient)
@@ -153,6 +155,9 @@ func TestCheckService_CheckRunResult(t *testing.T) {
 		assert.True(t, result.Success)
 		assert.NotNil(t, result.Annotations)
 		assert.Len(t, result.Annotations, 0)
+		assert.Equal(t, "Test Title", result.Title)
+		assert.Equal(t, "Test Summary", result.Summary)
+		assert.Equal(t, "Test Text", result.Text)
 	})
 }
 
@@ -177,7 +182,8 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewCheckService(githubClient, logger)
+	telemetryHelper := telemetry.NewTelemetryHelper("test")
+	service := NewCheckService(githubClient, logger, telemetryHelper)
 
 	ctx := context.Background()
 
@@ -191,7 +197,8 @@ func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewCheckService(githubClient, logger)
+	telemetryHelper := telemetry.NewTelemetryHelper("test")
+	service := NewCheckService(githubClient, logger, telemetryHelper)
 
 	ctx := context.Background()
 
@@ -213,7 +220,8 @@ func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 func TestCheckService_ContextHandling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewCheckService(githubClient, logger)
+	telemetryHelper := telemetry.NewTelemetryHelper("test")
+	service := NewCheckService(githubClient, logger, telemetryHelper)
 
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())

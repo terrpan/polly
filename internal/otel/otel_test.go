@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/terrpan/polly/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-	"github.com/terrpan/polly/internal/config"
 )
 
 func TestTracingHelper(t *testing.T) {
@@ -26,7 +26,7 @@ func TestTracingHelper(t *testing.T) {
 
 	// Test span creation
 	ctx := context.Background()
-	
+
 	_, span1 := servicesHelper.StartSpan(ctx, "test.service.operation")
 	assert.NotNil(t, span1)
 	span1.End()
@@ -38,7 +38,7 @@ func TestTracingHelper(t *testing.T) {
 	// Verify spans were recorded
 	spans := spanRecorder.Ended()
 	assert.Len(t, spans, 2)
-	
+
 	// Verify span names
 	spanNames := make([]string, len(spans))
 	for i, span := range spans {

@@ -43,16 +43,27 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - Function length compliance with all handlers under 80 lines
 
 #### 3. Policy Service (`internal/services/policy.go`)
-- **Purpose**: OPA policy evaluation with type safety
+- **Purpose**: OPA policy evaluation with extensible strategy pattern
+- **Architecture**: Factory registry pattern with policy evaluators for type safety and extensibility
+- **Components**:
+  - **PolicyEvaluator Interface**: Contract for policy evaluation strategies
+  - **VulnerabilityEvaluator**: Handles vulnerability policy evaluation
+  - **SBOMEvaluator**: Handles SBOM/license policy evaluation
+  - **Policy Registry**: Factory pattern for policy type dispatch
 - **Responsibilities**:
   - Execute policy evaluations against OPA server
   - Provide type-safe policy evaluation using generics
   - Handle OPA request/response formatting
   - Support flexible policy bundle integration
+  - Manage evaluator lifecycle and registration
 - **Key Features**:
-  - Generic `evaluatePolicy[T, R]()` helper function
-  - Automatic payload wrapping in `{"input": {...}}` format
-  - Extensible for multiple policy types without code changes
+  - **Strategy Pattern**: Easy addition of new policy types without code changes
+  - **Factory Registry**: Type-safe policy dispatch using evaluator registry
+  - **Generic Evaluation**: `evaluatePolicy[T, R]()` helper function for consistent OPA interaction
+  - **Telemetry Integration**: Consistent tracing and metrics across all policy types
+  - **Extensible Architecture**: New policies require only implementing `PolicyEvaluator` interface
+
+> **📖 For implementing new policies**, see the [Policy Implementation Guide](./POLICY_IMPLEMENTATION_GUIDE.md)
 
 #### 4. Check Service (`internal/services/checks.go`)
 - **Purpose**: GitHub check run lifecycle management
@@ -67,16 +78,26 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - Support for concurrent check run processing
 
 #### 5. Security Service (`internal/services/security.go`)
-- **Purpose**: Security artifact processing and normalization
+- **Purpose**: Security artifact processing and normalization with helper function architecture
+- **Architecture**: Refactored to use helper functions for improved maintainability and reduced file length
+- **Components**:
+  - **Core Service**: Orchestrates workflow artifact processing and policy payload building
+  - **Helper Functions** (`helpers.go`): Data transformation utilities extracted for reusability
+  - **Content Detectors** (`security_detectors.go`): Strategy pattern for artifact type detection
+  - **Type Definitions** (`security_types.go`): Comprehensive type safety for all security operations
 - **Responsibilities**:
   - Download and analyze GitHub workflow artifacts
   - Parse Trivy vulnerability reports and SPDX SBOM files
-  - Convert security data into normalized payloads
-  - Detect and classify security content types
+  - Convert security data into normalized payloads for policy evaluation
+  - Detect and classify security content types using detector strategies
 - **Key Features**:
-  - Multi-format artifact support (Trivy JSON, SPDX)
-  - Concurrent artifact processing
-  - Ecosystem detection for vulnerability context
+  - **Helper Function Architecture**: Large functions extracted to `helpers.go` for maintainability
+  - **Multi-format Artifact Support**: Trivy JSON, SPDX, SARIF with extensible detection
+  - **Strategy Pattern for Detection**: `ContentDetector` interface for type identification
+  - **Concurrent Processing**: Parallel artifact download and processing
+  - **Ecosystem Detection**: Automatic language/package manager identification
+  - **Type Safety**: Comprehensive type definitions for all security operations
+  - **Reduced Complexity**: Main service file reduced from 528 to 245 lines (54% reduction)
 
 #### 6. State Service (`internal/services/state.go`)
 - **Purpose**: Multi-repository PR context and check run state management
@@ -127,6 +148,37 @@ Polly implements a **dual-track security validation system** where vulnerability
 - **Event-Driven**: Triggered by GitHub PR and workflow events
 - **Concurrent Processing**: Parallel evaluation and completion of security checks
 - **Policy-Based**: Uses OPA for configurable security policy enforcement
+
+### Design Patterns Used
+
+The current architecture leverages several design patterns for maintainability and extensibility:
+
+#### 1. **Strategy Pattern**
+- **Policy Evaluators**: `VulnerabilityEvaluator`, `SBOMEvaluator` implement `PolicyEvaluator` interface
+- **Content Detectors**: `SPDXDetector`, `TrivyJSONDetector`, `SARIFDetector` implement `ContentDetector` interface
+- **Policy Processors**: `VulnerabilityPolicyProcessor`, `LicensePolicyProcessor` for webhook-level processing
+- **Benefits**: Easy addition of new policy types, content formats, and processing strategies
+
+#### 2. **Factory/Registry Pattern**
+- **Policy Service**: Maintains registry of evaluators by policy type for type-safe dispatch
+- **Security Service**: Uses detector registry with priority-based selection
+- **Benefits**: Loose coupling, extensible without code changes, clear separation of concerns
+
+#### 3. **Dependency Injection**
+- **Service Layer**: All services injected via `internal/app/container.go` with clear dependency graph
+- **Testing**: Interface segregation enables easy mocking (e.g., `PolicyServiceInterface`)
+- **Benefits**: Testable components, configurable implementations, clear dependencies
+
+#### 4. **Helper Function Architecture**
+- **Large Functions Extracted**: Complex data transformation moved to `helpers.go` for reusability
+- **Single Responsibility**: Each helper focuses on specific data transformation tasks
+- **Benefits**: Improved maintainability, reduced code duplication, easier testing
+
+#### 5. **Type Safety Throughout**
+- **Strongly Typed Payloads**: All policy inputs/outputs use concrete types
+- **Generic Functions**: `evaluatePolicy[T, R]()` provides type-safe OPA interaction
+- **Interface Definitions**: Clear contracts between components
+- **Benefits**: Compile-time safety, better IDE support, reduced runtime errors
 
 ## Data Flow Patterns
 
@@ -208,7 +260,7 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 
 ### 4. Shared Processing Functions
 - **Pattern**: Common business logic extracted into reusable functions with standardized types
-- **Implementation**: 
+- **Implementation**:
   - **Types**: `PolicyProcessingResult` for policy evaluation results, `WebhookProcessingConfig` for common parameters
   - **Functions**: `processVulnerabilityPolicies()`, `processLicensePolicies()`, `postVulnerabilityComments()`, `postLicenseComments()`
   - **Builders**: `buildVulnerabilityCheckResult()`, `buildLicenseCheckResult()` for standardized check run results
@@ -217,7 +269,7 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 
 ### 5. Policy Processing Standardization
 - **Pattern**: Unified approach to policy evaluation across vulnerability and license checks
-- **Implementation**: 
+- **Implementation**:
   ```go
   type PolicyProcessingResult struct {
       AllPassed           bool
@@ -226,7 +278,7 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
       Summary             string
       Details             string
   }
-  
+
   func processVulnerabilityPolicies(ctx context.Context, ...) (*PolicyProcessingResult, error)
   func processLicensePolicies(ctx context.Context, ...) (*PolicyProcessingResult, error)
   ```

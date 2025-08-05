@@ -12,6 +12,7 @@ import (
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/config"
 	"github.com/terrpan/polly/internal/storage"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 func TestNewHealthService(t *testing.T) {
@@ -19,7 +20,7 @@ func TestNewHealthService(t *testing.T) {
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	store := storage.NewMemoryStore()
 
-	service := NewHealthService(logger, opaClient, store)
+	service := NewHealthService(logger, opaClient, store, telemetry.NewTelemetryHelper("test"))
 
 	assert.NotNil(t, service)
 	assert.Equal(t, opaClient, service.opaClient)
@@ -31,7 +32,7 @@ func TestHealthService_Structure(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	store := storage.NewMemoryStore()
-	service := NewHealthService(logger, opaClient, store)
+	service := NewHealthService(logger, opaClient, store, telemetry.NewTelemetryHelper("test"))
 
 	// Test that service has the expected structure
 	assert.NotNil(t, service.opaClient)
@@ -48,7 +49,7 @@ func TestHealthService_CheckHealth_Execution(t *testing.T) {
 	require.NoError(t, err)
 	store := storage.NewMemoryStore()
 
-	service := NewHealthService(logger, opaClient, store)
+	service := NewHealthService(logger, opaClient, store, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test that CheckHealth can be called and returns a response
@@ -75,7 +76,7 @@ func TestHealthService_ContextHandling(t *testing.T) {
 	require.NoError(t, err)
 	store := storage.NewMemoryStore()
 
-	service := NewHealthService(logger, opaClient, store)
+	service := NewHealthService(logger, opaClient, store, telemetry.NewTelemetryHelper("test"))
 
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -94,7 +95,7 @@ func TestHealthService_OPAClientIntegration(t *testing.T) {
 	require.NoError(t, err)
 	store := storage.NewMemoryStore()
 
-	service := NewHealthService(logger, opaClient, store)
+	service := NewHealthService(logger, opaClient, store, telemetry.NewTelemetryHelper("test"))
 
 	// Test that service has proper OPA client and store
 	assert.Equal(t, opaClient, service.opaClient)
@@ -120,7 +121,12 @@ func TestHealthService_StorageHealthCheck_Memory(t *testing.T) {
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	memoryStore := storage.NewMemoryStore()
 
-	service := NewHealthService(logger, opaClient, memoryStore)
+	service := NewHealthService(
+		logger,
+		opaClient,
+		memoryStore,
+		telemetry.NewTelemetryHelper("test"),
+	)
 	ctx := context.Background()
 
 	// Test storage health check specifically
@@ -147,7 +153,12 @@ func TestHealthService_StorageHealthCheck_Valkey_Success(t *testing.T) {
 	}
 	defer valkeyStore.Close()
 
-	service := NewHealthService(logger, opaClient, valkeyStore)
+	service := NewHealthService(
+		logger,
+		opaClient,
+		valkeyStore,
+		telemetry.NewTelemetryHelper("test"),
+	)
 	ctx := context.Background()
 
 	// Test storage health check specifically
@@ -175,7 +186,12 @@ func TestHealthService_FullHealthCheck_WithStorage(t *testing.T) {
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	memoryStore := storage.NewMemoryStore()
 
-	service := NewHealthService(logger, opaClient, memoryStore)
+	service := NewHealthService(
+		logger,
+		opaClient,
+		memoryStore,
+		telemetry.NewTelemetryHelper("test"),
+	)
 	ctx := context.Background()
 
 	// Test full health check

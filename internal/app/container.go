@@ -10,6 +10,7 @@ import (
 	"github.com/terrpan/polly/internal/handlers"
 	"github.com/terrpan/polly/internal/services"
 	"github.com/terrpan/polly/internal/storage"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 // Container holds all application dependencies
@@ -81,15 +82,36 @@ func NewContainer(ctx context.Context) (*Container, error) {
 		return nil, fmt.Errorf("failed to create OPA client: %w", err)
 	}
 	c.Logger.Info("OPA client initialized")
+	commentTelemetry := telemetry.NewTelemetryHelper("polly/comment")
+	healthTelemetry := telemetry.NewTelemetryHelper("polly/health")
+	checksTelemetry := telemetry.NewTelemetryHelper("polly/checks")
+	policyTelemetry := telemetry.NewTelemetryHelper("polly/policy")
+	securityTelemetry := telemetry.NewTelemetryHelper("polly/security")
+	stateTelemetry := telemetry.NewTelemetryHelper("polly/state")
+	cacheTelemetry := telemetry.NewTelemetryHelper("polly/cache")
+
+	// Create telemetry helpers for each service
+	c.Logger.Info("Initializing telemetry helpers")
 
 	// Initialize services
-	c.CommentService = services.NewCommentService(c.GitHubClient, c.Logger)
-	c.HealthService = services.NewHealthService(c.Logger, c.OpaClient, c.Store)
-	c.CheckService = services.NewCheckService(c.GitHubClient, c.Logger)
-	c.PolicyService = services.NewPolicyService(c.OpaClient, c.Logger)
-	c.SecurityService = services.NewSecurityService(c.GitHubClient, c.Logger)
-	c.StateService = services.NewStateService(c.Store, c.Logger)
-	c.PolicyCacheService = services.NewPolicyCacheService(c.PolicyService, c.StateService, c.Logger)
+	c.CommentService = services.NewCommentService(c.GitHubClient, c.Logger, commentTelemetry)
+	c.HealthService = services.NewHealthService(c.Logger, c.OpaClient, c.Store, healthTelemetry)
+	c.CheckService = services.NewCheckService(c.GitHubClient, c.Logger, checksTelemetry)
+
+	// Create PolicyService with factory pattern
+	c.PolicyService = services.NewPolicyService(c.OpaClient, c.Logger, policyTelemetry, nil)
+	evaluators := services.NewStandardEvaluators(c.PolicyService)
+	c.PolicyService = services.NewPolicyService(c.OpaClient, c.Logger, policyTelemetry, evaluators)
+
+	// Create SecurityService with explicit detector configuration
+	securityDetectors := []services.ContentDetector{
+		&services.SPDXDetector{},
+		&services.TrivyJSONDetector{},
+		&services.SARIFDetector{},
+	}
+	c.SecurityService = services.NewSecurityService(c.GitHubClient, c.Logger, securityTelemetry, securityDetectors...)
+	c.StateService = services.NewStateService(c.Store, c.Logger, stateTelemetry)
+	c.PolicyCacheService = services.NewPolicyCacheService(c.PolicyService, c.StateService, c.Logger, cacheTelemetry)
 	c.Logger.Info("Services initialized",
 		"comment_service", c.CommentService,
 		"health_service", c.HealthService,

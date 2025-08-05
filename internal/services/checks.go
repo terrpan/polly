@@ -5,28 +5,34 @@ import (
 	"log/slog"
 
 	gogithub "github.com/google/go-github/v72/github"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
+// CheckService provides methods to manage GitHub check runs
 type CheckService struct {
 	githubClient *clients.GitHubClient
 	logger       *slog.Logger
+	telemetry    *telemetry.TelemetryHelper
 }
 
+// CheckRunStatus represents the status of a check run
 type CheckRunStatus string
+
+// CheckRunConclusion represents the conclusion of a check run
 type CheckRunConclusion string
+
+// CheckRunType represents the type of a check run
 type CheckRunType string
 
+// CheckRunType constants
 const (
-	// Check Run Statuses
 	StatusQueued     CheckRunStatus = "queued"
 	StatusInProgress CheckRunStatus = "in_progress"
 	StatusCompleted  CheckRunStatus = "completed"
 
-	// Check Run Conclusions
 	ConclusionSuccess   CheckRunConclusion = "success"
 	ConclusionFailure   CheckRunConclusion = "failure"
 	ConclusionNeutral   CheckRunConclusion = "neutral"
@@ -34,11 +40,11 @@ const (
 	ConclusionSkipped   CheckRunConclusion = "skipped"
 	ConclusionTimedOut  CheckRunConclusion = "timed_out"
 
-	// Check Run Types
 	CheckRunTypeVulnerability CheckRunType = "Vulnerability Scan Check"
 	CheckRunTypeLicense       CheckRunType = "License Check"
 )
 
+// CheckRunResult represents the result of a check run
 type CheckRunResult struct {
 	Title       string
 	Summary     string
@@ -48,34 +54,33 @@ type CheckRunResult struct {
 }
 
 // NewCheckService initializes a new CheckService with the provided GitHub client and logger.
-func NewCheckService(githubClient *clients.GitHubClient, logger *slog.Logger) *CheckService {
+func NewCheckService(
+	githubClient *clients.GitHubClient,
+	logger *slog.Logger,
+	telemetry *telemetry.TelemetryHelper,
+) *CheckService {
 	return &CheckService{
 		githubClient: githubClient,
 		logger:       logger,
+		telemetry:    telemetry,
 	}
 }
 
-// Generic method to create any type of check run
+// CreateCheckRun creates a new check run for the specified type.
 func (s *CheckService) CreateCheckRun(
 	ctx context.Context,
 	owner, repo, sha string,
 	checkType CheckRunType,
 ) (*gogithub.CheckRun, error) {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "checks.create_check_run")
+	ctx, span := s.telemetry.StartSpan(ctx, "checks.create_check_run")
 	defer span.End()
 
-	span.SetAttributes(
-		attribute.String("github.owner", owner),
-		attribute.String("github.repo", repo),
-		attribute.String("github.sha", sha),
-		attribute.String("check.type", string(checkType)),
-	)
+	s.telemetry.SetRepositoryAttributes(span, owner, repo, sha)
+	span.SetAttributes(attribute.String("check.type", string(checkType)))
 
 	checkRun, err := s.githubClient.CreateCheckRun(ctx, owner, repo, sha, string(checkType))
 	if err != nil {
-		span.SetAttributes(attribute.String("error", err.Error()))
+		s.telemetry.SetErrorAttribute(span, err)
 		s.logger.ErrorContext(ctx, "Failed to create check run",
 			"error", err,
 			"owner", owner,
@@ -99,24 +104,17 @@ func (s *CheckService) CreateCheckRun(
 	return checkRun, nil
 }
 
-// Generic method to start any type of check run
+// StartCheckRun starts a check run with the given ID and type.
 func (s *CheckService) StartCheckRun(
 	ctx context.Context,
 	owner, repo string,
 	checkRunID int64,
 	checkType CheckRunType,
 ) error {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "checks.start_check_run")
+	ctx, span := s.telemetry.StartSpan(ctx, "checks.start_check_run")
 	defer span.End()
 
-	span.SetAttributes(
-		attribute.String("github.owner", owner),
-		attribute.String("github.repo", repo),
-		attribute.Int64("github.check_run_id", checkRunID),
-		attribute.String("check.type", string(checkType)),
-	)
+	s.telemetry.SetCheckRunAttributes(span, owner, repo, checkRunID, string(checkType))
 
 	// Customize output based on check type
 	var title, summary, text string
@@ -149,7 +147,8 @@ func (s *CheckService) StartCheckRun(
 		output,
 	)
 	if err != nil {
-		span.SetAttributes(attribute.String("error", err.Error()))
+		s.telemetry.SetErrorAttribute(span, err)
+		span.RecordError(err)
 		s.logger.ErrorContext(ctx, "Failed to start check run",
 			"error", err,
 			"owner", owner,
@@ -171,7 +170,7 @@ func (s *CheckService) StartCheckRun(
 	return nil
 }
 
-// Generic method to complete any type of check run
+// CompleteCheckRun completes a check run with the provided conclusion and result.
 func (s *CheckService) CompleteCheckRun(
 	ctx context.Context,
 	owner, repo string,
@@ -180,9 +179,7 @@ func (s *CheckService) CompleteCheckRun(
 	conclusion CheckRunConclusion,
 	result CheckRunResult,
 ) error {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "checks.complete_check_run")
+	ctx, span := s.telemetry.StartSpan(ctx, "checks.complete_check_run")
 	defer span.End()
 
 	span.SetAttributes(
@@ -216,7 +213,7 @@ func (s *CheckService) CompleteCheckRun(
 		output,
 	)
 	if err != nil {
-		span.SetAttributes(attribute.String("error", err.Error()))
+		s.telemetry.SetErrorAttribute(span, err)
 		s.logger.ErrorContext(ctx, "Failed to complete check run",
 			"error", err,
 			"owner", owner,
@@ -240,8 +237,7 @@ func (s *CheckService) CompleteCheckRun(
 	return nil
 }
 
-// Convenience methods for backward compatibility
-
+// CreateVulnerabilityCheck creates a new vulnerability check run.
 func (s *CheckService) CreateVulnerabilityCheck(
 	ctx context.Context,
 	owner, repo, sha string,
@@ -249,6 +245,7 @@ func (s *CheckService) CreateVulnerabilityCheck(
 	return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypeVulnerability)
 }
 
+// StartVulnerabilityCheck starts a vulnerability check run.
 func (s *CheckService) StartVulnerabilityCheck(
 	ctx context.Context,
 	owner, repo string,
@@ -257,6 +254,7 @@ func (s *CheckService) StartVulnerabilityCheck(
 	return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeVulnerability)
 }
 
+// CompleteVulnerabilityCheck completes a vulnerability check run with the provided conclusion and result.
 func (s *CheckService) CompleteVulnerabilityCheck(
 	ctx context.Context,
 	owner, repo string,
@@ -275,6 +273,7 @@ func (s *CheckService) CompleteVulnerabilityCheck(
 	)
 }
 
+// CompleteVulnerabilityCheckWithNoArtifacts completes a vulnerability check run with no artifacts found.
 func (s *CheckService) CompleteVulnerabilityCheckWithNoArtifacts(
 	ctx context.Context,
 	owner, repo string,
@@ -297,6 +296,7 @@ func (s *CheckService) CompleteVulnerabilityCheckWithNoArtifacts(
 	)
 }
 
+// CreateLicenseCheck creates a new license check run.
 func (s *CheckService) CreateLicenseCheck(
 	ctx context.Context,
 	owner, repo, sha string,
@@ -304,6 +304,7 @@ func (s *CheckService) CreateLicenseCheck(
 	return s.CreateCheckRun(ctx, owner, repo, sha, CheckRunTypeLicense)
 }
 
+// StartLicenseCheck starts a license check run.
 func (s *CheckService) StartLicenseCheck(
 	ctx context.Context,
 	owner, repo string,
@@ -312,6 +313,7 @@ func (s *CheckService) StartLicenseCheck(
 	return s.StartCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense)
 }
 
+// CompleteLicenseCheck completes a license check run with the provided conclusion and result.
 func (s *CheckService) CompleteLicenseCheck(
 	ctx context.Context,
 	owner, repo string,
@@ -322,6 +324,7 @@ func (s *CheckService) CompleteLicenseCheck(
 	return s.CompleteCheckRun(ctx, owner, repo, checkRunID, CheckRunTypeLicense, conclusion, result)
 }
 
+// CompleteLicenseCheckWithNoArtifacts completes a license check run with no artifacts found.
 func (s *CheckService) CompleteLicenseCheckWithNoArtifacts(
 	ctx context.Context,
 	owner, repo string,

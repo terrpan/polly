@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/terrpan/polly/internal/telemetry"
 	"log/slog"
 	"os"
 	"testing"
@@ -24,12 +25,12 @@ func TestNewWebhookRouter_Unit(t *testing.T) {
 		githubClient := clients.NewGitHubClient(context.Background())
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 
-		commentService := services.NewCommentService(githubClient, logger)
-		checkService := services.NewCheckService(githubClient, logger)
-		policyService := services.NewPolicyService(opaClient, logger)
-		securityService := services.NewSecurityService(githubClient, logger)
-		stateService := services.NewStateService(store, logger)
-		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
+		commentService := services.NewCommentService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
+		checkService := services.NewCheckService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
+		policyService := services.NewPolicyService(opaClient, logger, telemetry.NewTelemetryHelper("test"), services.NewStandardEvaluators(nil))
+		securityService := services.NewSecurityService(githubClient, logger, telemetry.NewTelemetryHelper("test"), services.DefaultSecurityDetectors()...)
+		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger, telemetry.NewTelemetryHelper("test"))
 
 		router, err := NewWebhookRouter(
 			logger,
@@ -59,12 +60,12 @@ func TestNewWebhookRouter_Unit(t *testing.T) {
 		githubClient := clients.NewGitHubClient(context.Background())
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 
-		commentService := services.NewCommentService(githubClient, logger)
-		checkService := services.NewCheckService(githubClient, logger)
-		policyService := services.NewPolicyService(opaClient, logger)
-		securityService := services.NewSecurityService(githubClient, logger)
-		stateService := services.NewStateService(store, logger)
-		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
+		commentService := services.NewCommentService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
+		checkService := services.NewCheckService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
+		policyService := services.NewPolicyService(opaClient, logger, telemetry.NewTelemetryHelper("test"), services.NewStandardEvaluators(nil))
+		securityService := services.NewSecurityService(githubClient, logger, telemetry.NewTelemetryHelper("test"), services.DefaultSecurityDetectors()...)
+		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger, telemetry.NewTelemetryHelper("test"))
 
 		router, err := NewWebhookRouter(
 			logger,

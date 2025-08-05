@@ -55,6 +55,7 @@ linters:
           - lll
           - wsl_v5
           - errcheck
+          - gocognit
 
       # skip generated protobufs
       - path: '.*\.pb\.go'

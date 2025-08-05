@@ -11,23 +11,43 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 func createTestPolicyService() (*PolicyService, *slog.Logger) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-	return NewPolicyService(opaClient, logger), logger
+	telHelper := telemetry.NewTelemetryHelper("test/policy")
+
+	// Create with nil evaluators first, then add standard evaluators
+	service := NewPolicyService(opaClient, logger, telHelper, nil)
+	evaluators := NewStandardEvaluators(service)
+	return NewPolicyService(opaClient, logger, telHelper, evaluators), logger
 }
 
 func TestNewPolicyService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+	telHelper := telemetry.NewTelemetryHelper("test/policy")
 
-	policyService := NewPolicyService(opaClient, logger)
+	// Test creating with no evaluators
+	policyService := NewPolicyService(opaClient, logger, telHelper, nil)
 
 	assert.NotNil(t, policyService)
 	assert.Equal(t, opaClient, policyService.opaClient)
 	assert.Equal(t, logger, policyService.logger)
+	assert.Equal(t, telHelper, policyService.telemetry)
+	assert.Empty(t, policyService.evaluators)
+
+	// Test creating with standard evaluators
+	service := NewPolicyService(opaClient, logger, telHelper, nil)
+	evaluators := NewStandardEvaluators(service)
+	serviceWithEvaluators := NewPolicyService(opaClient, logger, telHelper, evaluators)
+
+	assert.NotNil(t, serviceWithEvaluators)
+	assert.Len(t, serviceWithEvaluators.evaluators, 2)
+	assert.Contains(t, serviceWithEvaluators.evaluators, "vulnerability")
+	assert.Contains(t, serviceWithEvaluators.evaluators, "sbom")
 }
 
 func TestPolicyService_VulnerabilityPolicyResult_Structure(t *testing.T) {
@@ -55,13 +75,27 @@ func TestPolicyService_VulnerabilityPolicyResult_Structure(t *testing.T) {
 
 func TestPolicyService_SBOMPolicyResult_Structure(t *testing.T) {
 	result := SBOMPolicyResult{
-		Compliant:              true,
-		TotalComponents:        10,
-		CompliantComponents:    8,
-		NonCompliantLicenses:   []string{"GPL-2.0-only"},
-		NonCompliantComponents: []SBOMPolicyComponent{},
-		ConditionalComponents:  []SBOMPolicyComponent{},
-		AllowedLicenses:        []string{"MIT", "Apache-2.0"},
+		Compliant:            true,
+		TotalComponents:      10,
+		CompliantComponents:  8,
+		NonCompliantLicenses: []string{"GPL-2.0-only"},
+		NonCompliantComponents: []SBOMPolicyComponent{
+			{
+				Name:             "test-component",
+				SPDXID:           "SPDXRef-test-component",
+				VersionInfo:      "1.0.0",
+				LicenseConcluded: "GPL-2.0-only",
+			},
+		},
+		ConditionalComponents: []SBOMPolicyComponent{
+			{
+				Name:             "conditional-component",
+				SPDXID:           "SPDXRef-conditional-component",
+				VersionInfo:      "1.0.0",
+				LicenseConcluded: "MIT",
+			},
+		},
+		AllowedLicenses: []string{"MIT", "Apache-2.0"},
 	}
 
 	assert.True(t, result.Compliant)
@@ -70,6 +104,12 @@ func TestPolicyService_SBOMPolicyResult_Structure(t *testing.T) {
 	assert.Len(t, result.NonCompliantLicenses, 1)
 	assert.Equal(t, "GPL-2.0-only", result.NonCompliantLicenses[0])
 	assert.Len(t, result.AllowedLicenses, 2)
+	assert.Contains(t, result.AllowedLicenses, "MIT")
+	assert.Contains(t, result.AllowedLicenses, "Apache-2.0")
+	assert.Len(t, result.NonCompliantComponents, 1)
+	assert.Equal(t, "test-component", result.NonCompliantComponents[0].Name)
+	assert.Len(t, result.ConditionalComponents, 1)
+	assert.Equal(t, "conditional-component", result.ConditionalComponents[0].Name)
 }
 
 // TestPolicyService_CheckVulnerabilityPolicy_EdgeCases tests edge cases for vulnerability policy
@@ -275,6 +315,110 @@ func TestPolicyService_EvaluatePolicy_EmptyInput(t *testing.T) {
 	assert.Error(t, err) // Will fail due to no OPA connection
 	assert.False(t, sbomResult.Compliant)
 	assert.Zero(t, sbomResult.TotalComponents)
+}
+
+// TestPolicyService_FactoryPattern tests the new factory pattern functionality
+func TestPolicyService_FactoryPattern(t *testing.T) {
+	service, _ := createTestPolicyService()
+	ctx := context.Background()
+
+	t.Run("Evaluate_UnknownPolicyType", func(t *testing.T) {
+		result, err := service.Evaluate(ctx, "unknown", nil)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrUnknownPolicyType)
+		assert.Nil(t, result)
+	})
+
+	t.Run("Evaluate_VulnerabilityPolicy", func(t *testing.T) {
+		// This will fail due to no OPA connection, but tests the registry
+		input := &VulnerabilityPayload{
+			Summary:         VulnerabilitySummary{},
+			Vulnerabilities: []Vulnerability{},
+		}
+		result, err := service.Evaluate(ctx, "vulnerability", input)
+		assert.Error(t, err) // Will fail due to no OPA connection
+		assert.Equal(t, VulnerabilityPolicyResult{}, result)
+	})
+
+	t.Run("Evaluate_SBOMPolicy", func(t *testing.T) {
+		// This will fail due to no OPA connection, but tests the registry
+		input := &SBOMPayload{
+			Summary:  SBOMSummary{},
+			Packages: []SBOMPackage{},
+		}
+		result, err := service.Evaluate(ctx, "sbom", input)
+		assert.Error(t, err) // Will fail due to no OPA connection
+		assert.Equal(t, SBOMPolicyResult{}, result)
+	})
+}
+
+// TestPolicyEvaluators tests the individual evaluator implementations through the public interface
+func TestPolicyEvaluators(t *testing.T) {
+	service, _ := createTestPolicyService()
+	evaluators := NewStandardEvaluators(service)
+
+	var vulnEvaluator, sbomEvaluator PolicyEvaluator
+	for _, evaluator := range evaluators {
+		switch evaluator.PolicyType() {
+		case "vulnerability":
+			vulnEvaluator = evaluator
+		case "sbom":
+			sbomEvaluator = evaluator
+		}
+	}
+
+	t.Run("VulnerabilityEvaluator", func(t *testing.T) {
+		assert.NotNil(t, vulnEvaluator)
+		assert.Equal(t, "vulnerability", vulnEvaluator.PolicyType())
+		assert.Equal(t, vulnerabilityPolicyPath, vulnEvaluator.PolicyPath())
+
+		// Test wrong payload type
+		result, err := vulnEvaluator.Evaluate(context.Background(), "wrong type")
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrPolicyEvaluation)
+		assert.Nil(t, result)
+	})
+
+	t.Run("SBOMEvaluator", func(t *testing.T) {
+		assert.NotNil(t, sbomEvaluator)
+		assert.Equal(t, "sbom", sbomEvaluator.PolicyType())
+		assert.Equal(t, licensePolicyPath, sbomEvaluator.PolicyPath())
+
+		// Test wrong payload type
+		result, err := sbomEvaluator.Evaluate(context.Background(), "wrong type")
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrPolicyEvaluation)
+		assert.Nil(t, result)
+	})
+}
+
+// TestNewStandardEvaluators tests the factory function
+func TestNewStandardEvaluators(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+	telHelper := telemetry.NewTelemetryHelper("test/policy")
+	service := NewPolicyService(opaClient, logger, telHelper, nil)
+
+	evaluators := NewStandardEvaluators(service)
+	assert.Len(t, evaluators, 2)
+
+	// Check evaluator types by their behavior
+	var vulnEvaluator, sbomEvaluator PolicyEvaluator
+	for _, evaluator := range evaluators {
+		switch evaluator.PolicyType() {
+		case "vulnerability":
+			vulnEvaluator = evaluator
+		case "sbom":
+			sbomEvaluator = evaluator
+		}
+	}
+
+	assert.NotNil(t, vulnEvaluator)
+	assert.NotNil(t, sbomEvaluator)
+
+	// Test their behavior instead of their concrete types
+	assert.Equal(t, "vulnerability", vulnEvaluator.PolicyType())
+	assert.Equal(t, "sbom", sbomEvaluator.PolicyType())
 }
 
 // TestPolicyService_PolicyResult_DefaultValues tests default values for policy results

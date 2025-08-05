@@ -7,91 +7,87 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/services"
 	"github.com/terrpan/polly/internal/storage"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
-func TestNewHealthHandler(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+type HealthHandlerTestSuite struct {
+	suite.Suite
+	logger          *slog.Logger
+	opaClient       *clients.OPAClient
+	store           storage.Store
+	telemetryHelper *telemetry.TelemetryHelper
+	healthService   *services.HealthService
+	handler         *HealthHandler
+}
+
+func (suite *HealthHandlerTestSuite) SetupTest() {
+	suite.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	// Create test OPA client
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
-	require.NoError(t, err)
+	suite.Require().NoError(err)
+	suite.opaClient = opaClient
 
-	store := storage.NewMemoryStore()
-
-	healthService := services.NewHealthService(logger, opaClient, store)
-
-	handler := NewHealthHandler(logger, healthService)
-
-	assert.NotNil(t, handler)
-	assert.Equal(t, logger, handler.logger)
-	assert.Equal(t, healthService, handler.healthService)
+	suite.store = storage.NewMemoryStore()
+	suite.telemetryHelper = telemetry.NewTelemetryHelper("test")
+	suite.healthService = services.NewHealthService(suite.logger, suite.opaClient, suite.store, suite.telemetryHelper)
+	suite.handler = NewHealthHandler(suite.logger, suite.healthService)
 }
 
-func TestHealthHandler_HandleHealthCheck(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+func (suite *HealthHandlerTestSuite) TestNewHealthHandler() {
+	suite.NotNil(suite.handler)
+	suite.Equal(suite.logger, suite.handler.logger)
+	suite.Equal(suite.healthService, suite.handler.healthService)
+}
 
-	// Create test OPA client (won't make real calls)
-	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
-	require.NoError(t, err)
-
-	store := storage.NewMemoryStore()
-
-	healthService := services.NewHealthService(logger, opaClient, store)
-	handler := NewHealthHandler(logger, healthService)
-
+func (suite *HealthHandlerTestSuite) TestHandleHealthCheck() {
 	// Create test request
 	req := httptest.NewRequest("GET", "/health", nil)
 	w := httptest.NewRecorder()
 
 	// Call the handler
-	handler.HandleHealthCheck(w, req)
+	suite.handler.HandleHealthCheck(w, req)
 
 	// Health check should return some response (might be error due to no real OPA)
-	assert.True(t, w.Code > 0, "Should return a status code")
+	suite.True(w.Code > 0, "Should return a status code")
 
 	// Test that the method doesn't panic
-	assert.NotPanics(t, func() {
+	suite.NotPanics(func() {
 		req2 := httptest.NewRequest("GET", "/health", nil)
 		w2 := httptest.NewRecorder()
-		handler.HandleHealthCheck(w2, req2)
+		suite.handler.HandleHealthCheck(w2, req2)
 	})
 }
 
-func TestHealthHandler_ContextHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-
-	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
-	require.NoError(t, err)
-
-	store := storage.NewMemoryStore()
-
-	healthService := services.NewHealthService(logger, opaClient, store)
-	handler := NewHealthHandler(logger, healthService)
-
+func (suite *HealthHandlerTestSuite) TestContextHandling() {
 	// Test with context
 	ctx := context.Background()
 	req := httptest.NewRequest("GET", "/health", nil).WithContext(ctx)
 	w := httptest.NewRecorder()
 
 	// Should handle context properly
-	assert.NotPanics(t, func() {
-		handler.HandleHealthCheck(w, req)
+	suite.NotPanics(func() {
+		suite.handler.HandleHealthCheck(w, req)
 	})
 
-	assert.NotNil(t, req.Context())
+	suite.NotNil(req.Context())
 }
 
-func TestHealthHandler_Structure(t *testing.T) {
+func (suite *HealthHandlerTestSuite) TestHandlerStructure() {
 	// Test handler structure and fields
 	handler := &HealthHandler{}
 
 	// Test that handler has expected field types
-	assert.IsType(t, (*slog.Logger)(nil), handler.logger)
-	assert.IsType(t, (*services.HealthService)(nil), handler.healthService)
+	suite.IsType((*slog.Logger)(nil), handler.logger)
+	suite.IsType((*services.HealthService)(nil), handler.healthService)
+}
+
+// Run the test suite
+func TestHealthHandlerSuite(t *testing.T) {
+	suite.Run(t, new(HealthHandlerTestSuite))
 }

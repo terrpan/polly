@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/terrpan/polly/internal/telemetry"
 	"log/slog"
 	"os"
 	"testing"
@@ -39,12 +40,12 @@ func (suite *CheckRunHandlerTestSuite) SetupTest() {
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	store := storage.NewMemoryStore()
 
-	commentService := services.NewCommentService(githubClient, suite.logger)
-	checkService := services.NewCheckService(githubClient, suite.logger)
-	policyService := services.NewPolicyService(opaClient, suite.logger)
-	policyCacheService := services.NewPolicyCacheService(policyService, suite.stateService, suite.logger)
-	securityService := services.NewSecurityService(githubClient, suite.logger)
-	suite.stateService = services.NewStateService(store, suite.logger)
+	commentService := services.NewCommentService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"))
+	checkService := services.NewCheckService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"))
+	policyService := services.NewPolicyService(opaClient, suite.logger, telemetry.NewTelemetryHelper("test"), services.NewStandardEvaluators(nil))
+	policyCacheService := services.NewPolicyCacheService(policyService, suite.stateService, suite.logger, telemetry.NewTelemetryHelper("test"))
+	securityService := services.NewSecurityService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"), services.DefaultSecurityDetectors()...)
+	suite.stateService = services.NewStateService(store, suite.logger, telemetry.NewTelemetryHelper("test"))
 
 	// Create base handler and check run handler
 	suite.baseHandler = NewBaseWebhookHandler(
@@ -160,17 +161,17 @@ func TestNewCheckRunHandler_Unit(t *testing.T) {
 		store := storage.NewMemoryStore()
 		githubClient := clients.NewGitHubClient(context.Background())
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-		stateService := services.NewStateService(store, logger)
-		policyService := services.NewPolicyService(opaClient, logger)
-		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger)
+		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
+		policyService := services.NewPolicyService(opaClient, logger, telemetry.NewTelemetryHelper("test"), services.NewStandardEvaluators(nil))
+		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger, telemetry.NewTelemetryHelper("test"))
 
 		baseHandler := NewBaseWebhookHandler(
 			logger,
-			services.NewCommentService(githubClient, logger),
-			services.NewCheckService(githubClient, logger),
+			services.NewCommentService(githubClient, logger, telemetry.NewTelemetryHelper("test")),
+			services.NewCheckService(githubClient, logger, telemetry.NewTelemetryHelper("test")),
 			policyService,
 			policyCacheService,
-			services.NewSecurityService(githubClient, logger),
+			services.NewSecurityService(githubClient, logger, telemetry.NewTelemetryHelper("test"), services.DefaultSecurityDetectors()...),
 			stateService,
 		)
 

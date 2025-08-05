@@ -8,20 +8,23 @@ import (
 	"runtime"
 	"time"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/config"
 	"github.com/terrpan/polly/internal/storage"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
+// HealthService provides methods to check the health of the application and its dependencies.
 type HealthService struct {
 	logger    *slog.Logger
 	opaClient *clients.OPAClient
 	store     storage.Store
+	telemetry *telemetry.TelemetryHelper
 }
 
+// HealthServiceResponse represents the response structure for health checks.
 type HealthServiceResponse struct {
 	Timestamp    time.Time                  `json:"timestamp"`
 	Dependencies map[string]DependencyCheck `json:"dependencies,omitempty"`
@@ -35,6 +38,7 @@ type HealthServiceResponse struct {
 	GoVersion    string                     `json:"go_version"`
 }
 
+// DependencyCheck represents the health check result for a dependency.
 type DependencyCheck struct {
 	Timestamp time.Time `json:"timestamp"`
 	Status    string    `json:"status"`
@@ -47,19 +51,19 @@ func NewHealthService(
 	logger *slog.Logger,
 	opaClient *clients.OPAClient,
 	store storage.Store,
+	telemetry *telemetry.TelemetryHelper,
 ) *HealthService {
 	return &HealthService{
 		logger:    logger,
 		opaClient: opaClient,
 		store:     store,
+		telemetry: telemetry,
 	}
 }
 
 // CheckHealth performs a health check and returns a status message.
 func (s *HealthService) CheckHealth(ctx context.Context) *HealthServiceResponse {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "health.check")
+	ctx, span := s.telemetry.StartSpan(ctx, "health.check")
 	defer span.End()
 
 	s.logger.DebugContext(ctx, "Performing health check")
@@ -90,15 +94,14 @@ func (s *HealthService) CheckHealth(ctx context.Context) *HealthServiceResponse 
 
 // checkStorageHealth checks the health of the storage service.
 func (s *HealthService) checkStorageHealth(ctx context.Context) DependencyCheck {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "health.check_storage")
+	ctx, span := s.telemetry.StartSpan(ctx, "health.check_storage")
 	defer span.End()
 
 	start := time.Now()
 
 	if s.store == nil {
 		span.SetAttributes(attribute.String("error", "Storage not initialized"))
+		span.RecordError(fmt.Errorf("storage not initialized"))
 		s.logger.WarnContext(ctx, "Storage is not initialized")
 
 		return DependencyCheck{
@@ -130,10 +133,7 @@ func (s *HealthService) checkStorageHealth(ctx context.Context) DependencyCheck 
 		}
 	}
 
-	span.SetAttributes(
-		attribute.String("storage.status", "healthy"),
-		attribute.String("storage.response", response),
-	)
+	s.telemetry.SetHealthAttributes(span, "storage", "healthy")
 	s.logger.DebugContext(ctx, "Storage health check passed", "response", response)
 
 	return DependencyCheck{
@@ -146,15 +146,14 @@ func (s *HealthService) checkStorageHealth(ctx context.Context) DependencyCheck 
 
 // checkOpaHealth checks the health of the OPA service.
 func (s *HealthService) checkOPAHealth(ctx context.Context) DependencyCheck {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "health.check_opa")
+	ctx, span := s.telemetry.StartSpan(ctx, "health.check_opa")
 	defer span.End()
 
 	start := time.Now()
 
 	if s.opaClient == nil {
 		span.SetAttributes(attribute.String("error", "OPA client not initialized"))
+		span.RecordError(fmt.Errorf("opa client not initialized"))
 		s.logger.WarnContext(ctx, "OPA client is not initialized")
 
 		return DependencyCheck{
@@ -186,7 +185,11 @@ func (s *HealthService) checkOPAHealth(ctx context.Context) DependencyCheck {
 		}
 	}
 
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			s.logger.WarnContext(ctx, "Failed to close response body", "error", closeErr)
+		}
+	}()
 
 	if resp.StatusCode == http.StatusOK {
 		span.SetAttributes(
@@ -206,6 +209,7 @@ func (s *HealthService) checkOPAHealth(ctx context.Context) DependencyCheck {
 			attribute.String("opa.status", "degraded"),
 			attribute.Int("opa.response_code", resp.StatusCode),
 		)
+		span.RecordError(fmt.Errorf("opa returned status code: %d", resp.StatusCode))
 		s.logger.WarnContext(ctx, "OPA health check returned non-200 status",
 			"status_code", resp.StatusCode)
 

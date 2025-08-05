@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/terrpan/polly/internal/telemetry"
+
 	"log/slog"
 	"os"
 
@@ -17,7 +19,7 @@ import (
 func TestStateService_BasicOperations(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -89,7 +91,7 @@ func TestStateService_BasicOperations(t *testing.T) {
 func TestStateService_KeyFormatting(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -168,7 +170,7 @@ func TestStateService_KeyFormatting(t *testing.T) {
 func TestStateService_TypeHandling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -238,7 +240,7 @@ func TestStateService_TypeHandling(t *testing.T) {
 func TestStateService_DeleteAllStates(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -311,7 +313,7 @@ func TestStateService_DeleteAllStates(t *testing.T) {
 func TestStateService_Close(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -335,7 +337,7 @@ func TestStateService_Close(t *testing.T) {
 func TestStateService_Expiration(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -367,7 +369,7 @@ func TestStateService_Expiration(t *testing.T) {
 func TestStateService_ConcurrentAccess(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -427,7 +429,7 @@ func TestStateService_ConcurrentAccess(t *testing.T) {
 func TestStateService_EdgeCases(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	// Test repository context
@@ -520,7 +522,7 @@ func TestStateService_CachedPolicyResults(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	owner := "testowner"
@@ -627,7 +629,7 @@ func TestStateService_TracingSpans(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	store := storage.NewMemoryStore()
-	service := NewStateService(store, logger)
+	service := NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	ctx := context.Background()
 
 	owner := "testowner"

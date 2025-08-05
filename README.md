@@ -197,3 +197,6 @@ For detailed information, see the [Refactoring Summary](REFACTORING_SUMMARY.md).
 - [ ] Add support for validating workflow settings and inputs
   - [ ] Validate required inputs are provided
   - [ ] Validate input formats and types
+- [ ] Mangement API for managing the app
+  - [ ] Add endpoints for listing policies
+  - [ ] Endpoint for manging cache/state

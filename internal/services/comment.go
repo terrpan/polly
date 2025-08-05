@@ -4,22 +4,27 @@ import (
 	"context"
 	"log/slog"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
+// CommentService provides methods to interact with comments on GitHub
 type CommentService struct {
 	githubClient *clients.GitHubClient
 	logger       *slog.Logger
+	telemetry    *telemetry.TelemetryHelper
 }
 
 // NewCommentService initializes a new CommentService with the provided GitHub client and logger.
-func NewCommentService(githubClient *clients.GitHubClient, logger *slog.Logger) *CommentService {
+func NewCommentService(
+	githubClient *clients.GitHubClient,
+	logger *slog.Logger,
+	telemetry *telemetry.TelemetryHelper,
+) *CommentService {
 	return &CommentService{
 		githubClient: githubClient,
 		logger:       logger,
+		telemetry:    telemetry,
 	}
 }
 
@@ -30,23 +35,16 @@ func (s *CommentService) WriteComment(
 	number int,
 	comment string,
 ) error {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "comment.write")
+	ctx, span := s.telemetry.StartSpan(ctx, "comment.write")
 	defer span.End()
 
-	span.SetAttributes(
-		attribute.String("github.owner", owner),
-		attribute.String("github.repo", repo),
-		attribute.Int("pr.number", number),
-		attribute.Int("comment.length", len(comment)),
-	)
+	s.telemetry.SetCommentAttributes(span, owner, repo, number, len(comment))
 
 	s.logger.Info("Writing comment", "owner", owner, "repo", repo, "pr_number", number)
 
 	err := s.githubClient.WriteComment(ctx, owner, repo, number, comment)
 	if err != nil {
-		span.SetAttributes(attribute.String("error", err.Error()))
+		s.telemetry.SetErrorAttribute(span, err)
 		s.logger.Error("Failed to write comment", "error", err)
 
 		return err

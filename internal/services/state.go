@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/terrpan/polly/internal/config"
 	"github.com/terrpan/polly/internal/storage"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 // StateKeyType represents the type of state keys.
@@ -30,7 +30,8 @@ type RepoContext struct {
 type StateService struct {
 	store      storage.Store
 	logger     *slog.Logger
-	expiration time.Duration // Default expiration duration for keys
+	telemetry  *telemetry.TelemetryHelper
+	expiration time.Duration
 }
 
 // StateMap represents a map of state data for a repository context.
@@ -57,11 +58,16 @@ const (
 )
 
 // NewStateService creates a new StateService.
-func NewStateService(store storage.Store, logger *slog.Logger) *StateService {
+func NewStateService(
+	store storage.Store,
+	logger *slog.Logger,
+	telemetry *telemetry.TelemetryHelper,
+) *StateService {
 	return &StateService{
 		store:      store,
 		logger:     logger,
 		expiration: config.GetDefaultExpiration(), // Use the helper function to get the default expiration TODO: rename to parse from config
+		telemetry:  telemetry,
 	}
 }
 
@@ -73,9 +79,7 @@ func (s *StateService) storeInt64(
 	repoCtx RepoContext,
 	value int64,
 ) error {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, fmt.Sprintf("state.store_%s", keyType))
+	ctx, span := s.telemetry.StartSpan(ctx, fmt.Sprintf("state.store_%s", keyType))
 	defer span.End()
 
 	span.SetAttributes(
@@ -99,9 +103,7 @@ func (s *StateService) getInt64(
 	keyType StateKeyType,
 	repoCtx RepoContext,
 ) (int64, bool, error) {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, fmt.Sprintf("state.get_%s", keyType))
+	ctx, span := s.telemetry.StartSpan(ctx, fmt.Sprintf("state.get_%s", keyType))
 	defer span.End()
 
 	span.SetAttributes(
@@ -117,20 +119,22 @@ func (s *StateService) getInt64(
 	value, err := s.store.Get(ctx, key)
 	if err != nil {
 		if err == storage.ErrKeyNotFound {
+			s.telemetry.SetCacheAttributes(span, false)
+			s.telemetry.SetErrorAttribute(span, fmt.Errorf("key not found: %s", key))
 			span.SetAttributes(
-				attribute.Bool("cache.hit", false),
 				attribute.String("cache.miss_reason", "not_found"),
 			)
 
 			return 0, false, nil
 		}
 
-		span.SetAttributes(attribute.Bool("cache.hit", false))
+		s.telemetry.SetCacheAttributes(span, false)
+		s.telemetry.SetErrorAttribute(span, err)
 
 		return 0, false, err
 	}
 
-	span.SetAttributes(attribute.Bool("cache.hit", true))
+	s.telemetry.SetCacheAttributes(span, true)
 
 	// Handle JSON unmarshalling variations
 	switch v := value.(type) {
@@ -244,9 +248,7 @@ func (s *StateService) GetCachedPolicyResults(
 	owner, repo, sha string,
 	checkType string,
 ) (interface{}, bool, error) {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "state.get_cached_policy_results")
+	ctx, span := s.telemetry.StartSpan(ctx, "state.get_cached_policy_results")
 	defer span.End()
 
 	span.SetAttributes(
@@ -266,21 +268,20 @@ func (s *StateService) GetCachedPolicyResults(
 	}
 
 	key := fmt.Sprintf("policy_results:%s:%s:%s:%s", checkType, owner, repo, sha)
-	span.SetAttributes(attribute.String("storage.key", key))
+	s.telemetry.SetStorageAttributes(span, "get_cached_policy_results", key)
 
 	entry, err := s.store.GetCachedPolicyResults(ctx, key)
 	if err != nil {
 		if err == storage.ErrKeyNotFound {
-			span.SetAttributes(
-				attribute.Bool("cache.hit", false),
-				attribute.String("cache.miss_reason", "not_found"),
-			)
+			s.telemetry.SetCacheAttributes(span, false)
+			s.telemetry.SetErrorAttribute(span, fmt.Errorf("key not found: %s", key))
 			s.logger.DebugContext(ctx, "Cached policy results not found in storage", "key", key)
 
 			return nil, false, nil
 		}
 
-		span.SetAttributes(attribute.Bool("cache.hit", false))
+		s.telemetry.SetCacheAttributes(span, false)
+		s.telemetry.SetErrorAttribute(span, err)
 		s.logger.ErrorContext(ctx, "Failed to get cached policy results from storage",
 			"error", err,
 			"key", key,
@@ -289,8 +290,8 @@ func (s *StateService) GetCachedPolicyResults(
 		return nil, false, fmt.Errorf("failed to get cached policy results: %w", err)
 	}
 
+	s.telemetry.SetCacheAttributes(span, true)
 	span.SetAttributes(
-		attribute.Bool("cache.hit", true),
 		attribute.Int64("cache.size_bytes", entry.Size),
 		attribute.String("cache.cached_at", entry.CachedAt.Format("2006-01-02T15:04:05Z07:00")),
 		attribute.String("cache.expires_at", entry.ExpiresAt.Format("2006-01-02T15:04:05Z07:00")),
@@ -311,9 +312,7 @@ func (s *StateService) StoreCachedPolicyResults(
 	checkType string,
 	results interface{},
 ) error {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "state.store_cached_policy_results")
+	ctx, span := s.telemetry.StartSpan(ctx, "state.store_cached_policy_results")
 	defer span.End()
 
 	span.SetAttributes(
@@ -326,14 +325,14 @@ func (s *StateService) StoreCachedPolicyResults(
 	// Check if policy caching is enabled in configuration
 	policyCacheConfig := config.GetPolicyCacheConfig()
 	if !policyCacheConfig.Enabled {
-		span.SetAttributes(attribute.Bool("cache.enabled", false))
+		s.telemetry.SetCacheAttributes(span, false)
 		s.logger.DebugContext(ctx, "Policy caching is disabled, skipping cache storage")
 
 		return nil
 	}
 
 	key := fmt.Sprintf("policy_results:%s:%s:%s:%s", checkType, owner, repo, sha)
-	span.SetAttributes(attribute.String("storage.key", key))
+	s.telemetry.SetStorageAttributes(span, "store_cached_policy_results", key)
 
 	// Parse TTL from configuration, with fallback for invalid values
 	ttl, err := time.ParseDuration(policyCacheConfig.TTL)
@@ -407,9 +406,7 @@ func (s *StateService) GetAllState(
 	ctx context.Context,
 	owner, repo, sha string,
 ) (*StateMap, error) {
-	tracer := otel.Tracer("polly/services")
-
-	ctx, span := tracer.Start(ctx, "state.get_all_state")
+	ctx, span := s.telemetry.StartSpan(ctx, "state.get_all_state")
 	defer span.End()
 
 	span.SetAttributes(
@@ -422,6 +419,7 @@ func (s *StateService) GetAllState(
 
 	// Get PR Number
 	if prNumber, exists, err := s.GetPRNumber(ctx, owner, repo, sha); err != nil {
+		s.telemetry.SetErrorAttribute(span, err)
 		return nil, fmt.Errorf("failed to get PR number: %w", err)
 	} else if exists {
 		stateMap.PRNumber = prNumber
@@ -430,6 +428,7 @@ func (s *StateService) GetAllState(
 
 	// Get Vulnerability Check ID
 	if vulnCheckID, exists, err := s.GetVulnerabilityCheckRunID(ctx, owner, repo, sha); err != nil {
+		s.telemetry.SetErrorAttribute(span, err)
 		return nil, fmt.Errorf("failed to get vulnerability check ID: %w", err)
 	} else if exists {
 		stateMap.VulnerabilityCheckID = vulnCheckID
@@ -438,6 +437,7 @@ func (s *StateService) GetAllState(
 
 	// Get License Check ID
 	if licenseCheckID, exists, err := s.GetLicenseCheckRunID(ctx, owner, repo, sha); err != nil {
+		s.telemetry.SetErrorAttribute(span, err)
 		return nil, fmt.Errorf("failed to get license check ID: %w", err)
 	} else if exists {
 		stateMap.LicenseCheckID = licenseCheckID
@@ -446,6 +446,7 @@ func (s *StateService) GetAllState(
 
 	// Get Workflow Run ID
 	if workflowRunID, exists, err := s.GetWorkflowRunID(ctx, owner, repo, sha); err != nil {
+		s.telemetry.SetErrorAttribute(span, err)
 		return nil, fmt.Errorf("failed to get workflow run ID: %w", err)
 	} else if exists {
 		stateMap.WorkflowRunID = workflowRunID
