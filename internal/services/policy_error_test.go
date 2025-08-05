@@ -8,8 +8,8 @@ import (
 
 func TestIsNetworkError(t *testing.T) {
 	tests := []struct {
-		name     string
 		err      error
+		name     string
 		expected bool
 	}{
 		{

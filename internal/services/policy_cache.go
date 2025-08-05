@@ -118,9 +118,15 @@ func checkPolicyWithCache[T any](
 	if err != nil {
 		// Don't cache system unavailable errors - allow retry when system is back up
 		if errors.Is(err, ErrSystemUnavailable) {
-			s.logger.DebugContext(ctx, "System unavailable - not caching error result to allow retry", "error", err)
+			s.logger.DebugContext(
+				ctx,
+				"System unavailable - not caching error result to allow retry",
+				"error",
+				err,
+			)
 			return zero, err
 		}
+
 		return zero, err
 	}
 

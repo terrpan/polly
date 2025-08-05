@@ -55,7 +55,7 @@ func isNetworkError(err error) bool {
 	// Check for net.Error interface
 	var netErr net.Error
 	if errors.As(err, &netErr) {
-		return netErr.Timeout() || netErr.Temporary()
+		return netErr.Timeout()
 	}
 
 	return false
@@ -322,6 +322,7 @@ func evaluatePolicy[T any, R any](
 		if isNetworkError(err) {
 			return zero, fmt.Errorf("%w: %v", ErrSystemUnavailable, err)
 		}
+
 		return zero, err
 	}
 
