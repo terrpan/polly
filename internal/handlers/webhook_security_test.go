@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/terrpan/polly/internal/telemetry"
 	"log/slog"
 	"os"
 	"testing"
@@ -34,8 +35,8 @@ func (suite *SecurityCheckManagerTestSuite) SetupTest() {
 	githubClient := clients.NewGitHubClient(suite.ctx)
 	store := storage.NewMemoryStore()
 
-	checkService := services.NewCheckService(githubClient, suite.logger)
-	suite.stateService = services.NewStateService(store, suite.logger)
+	checkService := services.NewCheckService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"))
+	suite.stateService = services.NewStateService(store, suite.logger, telemetry.NewTelemetryHelper("test"))
 
 	// Create security check manager
 	suite.manager = NewSecurityCheckManager(suite.logger, checkService, suite.stateService)
@@ -364,7 +365,7 @@ func TestNewSecurityCheckManager_Unit(t *testing.T) {
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 		)
 		store := storage.NewMemoryStore()
-		stateService := services.NewStateService(store, logger)
+		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 
 		manager := NewSecurityCheckManager(logger, nil, stateService)
 
@@ -379,7 +380,7 @@ func TestNewSecurityCheckManager_Unit(t *testing.T) {
 		logger := slog.New(
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 		)
-		stateService := services.NewStateService(store, logger)
+		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 
 		manager := NewSecurityCheckManager(nil, nil, stateService)
 

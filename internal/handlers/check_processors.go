@@ -101,6 +101,15 @@ func buildVulnerabilityCheckResult(
 	result PolicyProcessingResult,
 	payloadCount int,
 ) (services.CheckRunConclusion, services.CheckRunResult) {
+	// Handle system unavailable case
+	if result.SystemUnavailable {
+		return services.ConclusionNeutral, services.CheckRunResult{
+			Title:   "Vulnerability Check - System Unavailable",
+			Summary: "Policy evaluation system temporarily unavailable",
+			Text:    "Unable to evaluate vulnerability policies due to system issues. This is not a policy failure.",
+		}
+	}
+
 	if result.AllPassed {
 		return services.ConclusionSuccess, services.CheckRunResult{
 			Title:   "Vulnerability Check - Passed",
@@ -127,6 +136,15 @@ func buildLicenseCheckResult(
 	result PolicyProcessingResult,
 	payloadCount int,
 ) (services.CheckRunConclusion, services.CheckRunResult) {
+	// Handle system unavailable case
+	if result.SystemUnavailable {
+		return services.ConclusionNeutral, services.CheckRunResult{
+			Title:   "License Check - System Unavailable",
+			Summary: "Policy evaluation system temporarily unavailable",
+			Text:    "Unable to evaluate license policies due to system issues. This is not a policy failure.",
+		}
+	}
+
 	if result.AllPassed {
 		return services.ConclusionSuccess, services.CheckRunResult{
 			Title:   "License Check - Passed",

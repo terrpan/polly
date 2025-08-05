@@ -19,6 +19,7 @@ import (
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/config"
 	"github.com/terrpan/polly/internal/storage"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 const (
@@ -155,15 +156,30 @@ func (suite *PolicyCacheIntegrationTestSuite) SetupTest() {
 	require.NoError(suite.T(), err)
 
 	// Create services with real OPA client
-	suite.stateService = NewStateService(suite.store, suite.logger)
+	telemetryHelper := telemetry.NewTelemetryHelper("test")
+	suite.stateService = NewStateService(suite.store, suite.logger, telemetryHelper)
 	opaClient, err := clients.NewOPAClient(fmt.Sprintf("http://%s:%s", opaHost, opaPort.Port()))
 	require.NoError(suite.T(), err)
 
-	suite.policyService = NewPolicyService(opaClient, suite.logger)
+	// Create PolicyService first with empty evaluators
+	suite.policyService = NewPolicyService(
+		opaClient,
+		suite.logger,
+		telemetryHelper,
+		[]PolicyEvaluator{},
+	)
+
+	// Now create evaluators with the service reference and set them manually
+	evaluators := NewStandardEvaluators(suite.policyService)
+	for _, evaluator := range evaluators {
+		suite.policyService.evaluators[evaluator.PolicyType()] = evaluator
+	}
+
 	suite.policyCacheService = NewPolicyCacheService(
 		suite.policyService,
 		suite.stateService,
 		suite.logger,
+		telemetryHelper,
 	)
 }
 
@@ -786,6 +802,93 @@ func (suite *PolicyCacheIntegrationTestSuite) TestCacheConfigToggle() {
 	)
 
 	suite.T().Log("Cache config toggle test completed successfully")
+}
+
+// TestSystemUnavailableNotCached verifies that ErrSystemUnavailable errors are not cached
+func (suite *PolicyCacheIntegrationTestSuite) TestSystemUnavailableNotCached() {
+	// Enable caching for this test
+	config.AppConfig.Storage.PolicyCache.Enabled = true
+	config.AppConfig.Storage.PolicyCache.TTL = "30m"
+	config.AppConfig.Storage.PolicyCache.MaxSize = 10 * 1024 * 1024
+
+	ctx := context.Background()
+
+	// Test the generic cache function directly to verify ErrSystemUnavailable behavior
+	result, err := checkPolicyWithCache(
+		ctx,
+		suite.policyCacheService,
+		"vulnerability",
+		"test.check_vulnerability",
+		"owner", "repo", "sha1",
+		func(ctx context.Context) (VulnerabilityPolicyResult, error) {
+			// Simulate ErrSystemUnavailable from OPA connection failure
+			return VulnerabilityPolicyResult{}, ErrSystemUnavailable
+		},
+		convertMapToVulnerabilityPolicyResult,
+	)
+
+	// Should return the error and not cache it
+	assert.Error(suite.T(), err)
+	assert.ErrorIs(suite.T(), err, ErrSystemUnavailable, "Should get ErrSystemUnavailable")
+	assert.Equal(suite.T(), VulnerabilityPolicyResult{}, result)
+
+	// Check that nothing was cached
+	cached, found, cacheErr := suite.stateService.GetCachedPolicyResults(
+		ctx,
+		"owner",
+		"repo",
+		"sha1",
+		"vulnerability",
+	)
+	assert.NoError(suite.T(), cacheErr)
+	assert.False(suite.T(), found, "System unavailable error should not be cached")
+	assert.Nil(suite.T(), cached)
+
+	// Test again - should still call the evaluator (not use cache)
+	callCount := 0
+	result2, err2 := checkPolicyWithCache(
+		ctx,
+		suite.policyCacheService,
+		"vulnerability",
+		"test.check_vulnerability_retry",
+		"owner", "repo", "sha1",
+		func(ctx context.Context) (VulnerabilityPolicyResult, error) {
+			callCount++
+			// Still simulate ErrSystemUnavailable
+			return VulnerabilityPolicyResult{}, ErrSystemUnavailable
+		},
+		convertMapToVulnerabilityPolicyResult,
+	)
+
+	assert.Error(suite.T(), err2)
+	assert.ErrorIs(
+		suite.T(),
+		err2,
+		ErrSystemUnavailable,
+		"Should still get ErrSystemUnavailable on retry",
+	)
+	assert.Equal(suite.T(), VulnerabilityPolicyResult{}, result2)
+	assert.Equal(suite.T(), 1, callCount, "Evaluator should be called again (not cached)")
+
+	// Verify normal errors would be cached (for comparison)
+	normalErr := fmt.Errorf("normal policy error")
+	result3, err3 := checkPolicyWithCache(
+		ctx,
+		suite.policyCacheService,
+		"vulnerability",
+		"test.check_vulnerability_normal_error",
+		"owner", "repo", "sha2", // Different SHA
+		func(ctx context.Context) (VulnerabilityPolicyResult, error) {
+			return VulnerabilityPolicyResult{}, normalErr
+		},
+		convertMapToVulnerabilityPolicyResult,
+	)
+
+	assert.Error(suite.T(), err3)
+	assert.Equal(suite.T(), normalErr, err3, "Normal errors should be returned as-is")
+	assert.Equal(suite.T(), VulnerabilityPolicyResult{}, result3)
+
+	suite.T().Log("System unavailable caching test completed successfully")
 }
 
 // Run the integration test suite

@@ -10,13 +10,32 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/terrpan/polly/internal/clients"
+	"github.com/terrpan/polly/internal/telemetry"
 )
+
+// testSecurityService creates a SecurityService for testing with default detectors
+func testSecurityService() *SecurityService {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	githubClient := clients.NewGitHubClient(context.Background())
+	telemetryHelper := telemetry.NewTelemetryHelper("test")
+
+	return NewSecurityService(githubClient, logger, telemetryHelper,
+		&SPDXDetector{},
+		&TrivyJSONDetector{},
+		&SARIFDetector{},
+	)
+}
 
 func TestNewSecurityService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	githubClient := clients.NewGitHubClient(context.Background())
+	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
-	service := NewSecurityService(githubClient, logger)
+	service := NewSecurityService(githubClient, logger, telemetryHelper,
+		&SPDXDetector{},
+		&TrivyJSONDetector{},
+		&SARIFDetector{},
+	)
 
 	assert.NotNil(t, service)
 	assert.Equal(t, githubClient, service.githubClient)
@@ -54,9 +73,7 @@ func TestSecurityService_VulnerabilityPayload_Structure(t *testing.T) {
 }
 
 func TestSecurityService_ProcessWorkflowSecurityArtifacts_Parameters(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewSecurityService(githubClient, logger)
+	service := testSecurityService()
 
 	ctx := context.Background()
 
@@ -78,7 +95,16 @@ func TestSecurityService_VulnerabilityPayload_NewStructure(t *testing.T) {
 			Repository:   "test/repo",
 			CommitSHA:    "abc123",
 		},
-		Vulnerabilities: []Vulnerability{},
+		Vulnerabilities: []Vulnerability{
+			{
+				ID:       "CVE-2021-1234",
+				Severity: "HIGH",
+				Package: Package{
+					Name:    "test-package",
+					Version: "1.0.0",
+				},
+			},
+		},
 		Summary: VulnerabilitySummary{
 			Critical: 0,
 			High:     1,
@@ -92,12 +118,16 @@ func TestSecurityService_VulnerabilityPayload_NewStructure(t *testing.T) {
 	assert.Equal(t, "test/repo", payload.Metadata.Repository)
 	assert.Equal(t, "abc123", payload.Metadata.CommitSHA)
 	assert.Equal(t, 1, payload.Summary.High)
+	assert.Equal(t, 2, payload.Summary.Medium)
+	assert.Equal(t, 3, payload.Summary.Low)
+	assert.Len(t, payload.Vulnerabilities, 1)
+	assert.Equal(t, "CVE-2021-1234", payload.Vulnerabilities[0].ID)
+	assert.Equal(t, "test-package", payload.Vulnerabilities[0].Package.Name)
+	assert.Equal(t, "1.0.0", payload.Vulnerabilities[0].Package.Version)
 }
 
 func TestSecurityService_ContextHandling(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewSecurityService(githubClient, logger)
+	service := testSecurityService()
 
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -108,9 +138,7 @@ func TestSecurityService_ContextHandling(t *testing.T) {
 }
 
 func TestSecurityService_DiscoverSecurityArtifacts(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewSecurityService(githubClient, logger)
+	service := testSecurityService()
 
 	ctx := context.Background()
 
@@ -121,9 +149,7 @@ func TestSecurityService_DiscoverSecurityArtifacts(t *testing.T) {
 
 // TestSecurityService_DetectSecurityContent tests content detection
 func TestSecurityService_DetectSecurityContent(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewSecurityService(githubClient, logger)
+	service := testSecurityService()
 
 	tests := []struct {
 		name         string
@@ -153,7 +179,7 @@ func TestSecurityService_DetectSecurityContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			detectedType := service.detectSecurityContent(tt.content, tt.filename)
+			detectedType := detectSecurityContentType(tt.content, tt.filename, service.detectors)
 			assert.Equal(t, tt.expectedType, detectedType)
 		})
 	}
@@ -278,9 +304,7 @@ func TestSecurityService_DetectEcosystem(t *testing.T) {
 
 // TestSecurityService_BuildPayloadsFromArtifacts tests payload building
 func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewSecurityService(githubClient, logger)
+	service := testSecurityService()
 
 	ctx := context.Background()
 
@@ -350,9 +374,7 @@ func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
 
 // TestSecurityService_ContextCancellation tests context cancellation handling
 func TestSecurityService_ContextCancellation(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
-	service := NewSecurityService(githubClient, logger)
+	service := testSecurityService()
 
 	// Create cancelled context
 	ctx, cancel := context.WithCancel(context.Background())

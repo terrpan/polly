@@ -1,8 +1,11 @@
 package services
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"strings"
 
 	dbtypes "github.com/aquasecurity/trivy-db/pkg/types"
@@ -235,19 +238,19 @@ func isTrivyJSONContent(content []byte) bool {
 
 // buildPayloadMetadata builds the metadata for a security payload
 func buildPayloadMetadata(
-	SourceFormat, ToolName, Repository, CommitSHA, ScanTarget, SchemaVersion string,
-	PRNumber int,
-	ScanTime string,
+	sourceFormat, toolName, repository, commitSHA, scanTarget, schemaVersion string,
+	prNumber int,
+	scanTime string,
 ) PayloadMetadata {
 	return PayloadMetadata{
-		SourceFormat:  SourceFormat,
-		ToolName:      ToolName,
-		ScanTime:      ScanTime,
-		Repository:    Repository,
-		CommitSHA:     CommitSHA,
-		PRNumber:      PRNumber,
-		ScanTarget:    ScanTarget,
-		SchemaVersion: SchemaVersion,
+		SourceFormat:  sourceFormat,
+		ToolName:      toolName,
+		ScanTime:      scanTime,
+		Repository:    repository,
+		CommitSHA:     commitSHA,
+		PRNumber:      prNumber,
+		ScanTarget:    scanTarget,
+		SchemaVersion: schemaVersion,
 	}
 }
 
@@ -283,4 +286,262 @@ func convertMapToSBOMPolicyResult(data map[string]interface{}) (SBOMPolicyResult
 	}
 
 	return result, nil
+}
+
+// buildSBOMPayloadFromSPDX builds a normalized SBOM payload from SPDX content
+func buildSBOMPayloadFromSPDX(
+	artifact *SecurityArtifact,
+	owner, repo, sha string,
+	prNumber int,
+) (*SBOMPayload, error) {
+	// Parse the SPDX JSON content
+	doc, err := spdxjson.Read(bytes.NewReader(artifact.Content))
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the metadata for the payload
+	metadata := buildSBOMMetadataFromSPDX(doc, artifact, owner, repo, sha, prNumber)
+
+	// Process packages and extract license information
+	packages, summary := processSPDXPackages(doc)
+
+	// Build the complete payload
+	payload := &SBOMPayload{
+		Metadata: metadata,
+		Summary:  summary,
+		Packages: packages,
+	}
+
+	return payload, nil
+}
+
+// buildSBOMMetadataFromSPDX extracts metadata from SPDX document
+func buildSBOMMetadataFromSPDX(
+	doc *v2_3.Document,
+	artifact *SecurityArtifact,
+	owner, repo, sha string,
+	prNumber int,
+) PayloadMetadata {
+	var scanTime string
+	if doc.CreationInfo != nil && doc.CreationInfo.Created != "" {
+		scanTime = doc.CreationInfo.Created
+	} else {
+		scanTime = "unknown"
+	}
+
+	return buildPayloadMetadata(
+		"spdx_json",
+		"spdx",
+		fmt.Sprintf("%s/%s", owner, repo),
+		sha,
+		artifact.FileName, // Use the file name as the scan target
+		doc.SPDXVersion,   // Use SPDX version as schema version
+		prNumber,
+		scanTime,
+	)
+}
+
+// processSPDXPackages extracts packages and builds license summary from SPDX document
+func processSPDXPackages(doc *v2_3.Document) ([]SBOMPackage, SBOMSummary) {
+	packages := []SBOMPackage{}
+	licenseDistribution := make(map[string]int)
+
+	var allLicenses []string
+
+	packagesWithoutLicense := 0
+	seenLicenses := make(map[string]bool)
+
+	for _, pkg := range doc.Packages {
+		// Skip the root document package (it's not a real package)
+		if pkg.PackageName == "" || pkg.PackageSPDXIdentifier == doc.SPDXIdentifier {
+			continue
+		}
+
+		sbomPackage := buildSBOMPackageFromSPDX(pkg)
+		packages = append(packages, sbomPackage)
+
+		// Process license information for summary
+		license := extractLicenseFromPackage(pkg)
+		if license == "" || license == "NOASSERTION" || license == "NONE" {
+			packagesWithoutLicense++
+		} else {
+			licenseDistribution[license]++
+			if !seenLicenses[license] {
+				allLicenses = append(allLicenses, license)
+				seenLicenses[license] = true
+			}
+		}
+	}
+
+	summary := SBOMSummary{
+		TotalPackages:          len(packages),
+		AllLicenses:            allLicenses,
+		LicenseDistribution:    licenseDistribution,
+		PackagesWithoutLicense: packagesWithoutLicense,
+	}
+
+	return packages, summary
+}
+
+// buildSBOMPackageFromSPDX converts an SPDX package to SBOMPackage
+func buildSBOMPackageFromSPDX(pkg *v2_3.Package) SBOMPackage {
+	// Convert supplier to string
+	supplierStr := ""
+
+	if pkg.PackageSupplier != nil {
+		if pkg.PackageSupplier.Supplier != "" {
+			supplierStr = pkg.PackageSupplier.Supplier
+		} else if pkg.PackageSupplier.SupplierType != "" {
+			supplierStr = pkg.PackageSupplier.SupplierType
+		}
+	}
+
+	return SBOMPackage{
+		Name:             pkg.PackageName,
+		SPDXID:           string(pkg.PackageSPDXIdentifier),
+		VersionInfo:      pkg.PackageVersion,
+		Supplier:         supplierStr,
+		DownloadLocation: pkg.PackageDownloadLocation,
+		FilesAnalyzed:    pkg.FilesAnalyzed,
+		SourceInfo:       pkg.PackageSourceInfo,
+		LicenseConcluded: pkg.PackageLicenseConcluded,
+		LicenseDeclared:  pkg.PackageLicenseDeclared,
+		CopyrightText:    pkg.PackageCopyrightText,
+	}
+}
+
+// buildVulnerabilityPayloadFromTrivy creates a normalized vulnerability payload from Trivy JSON report
+func buildVulnerabilityPayloadFromTrivy(
+	artifact *SecurityArtifact,
+	owner, repo, sha string,
+	prNumber int,
+) (*VulnerabilityPayload, error) {
+	// parse the trivy report
+	var trivyReport types.Report
+	if err := json.Unmarshal(artifact.Content, &trivyReport); err != nil {
+		return nil, err
+	}
+
+	metadata := buildPayloadMetadata(
+		"trivy_json",
+		"trivy",
+		fmt.Sprintf("%s/%s", owner, repo),
+		sha,
+		trivyReport.ArtifactName,
+		fmt.Sprintf("%d", trivyReport.SchemaVersion),
+		prNumber,
+		trivyReport.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	)
+
+	// Extract vulnerabilities and build summary
+	vulnerabilities := []Vulnerability{}
+	severityCount := map[string]int{
+		"CRITICAL": 0,
+		"HIGH":     0,
+		"MEDIUM":   0,
+		"LOW":      0,
+		"INFO":     0,
+	}
+
+	for _, result := range trivyReport.Results {
+		if result.Vulnerabilities == nil {
+			continue
+		}
+
+		// Extract vulnerabilities from this target
+		for _, vuln := range result.Vulnerabilities {
+			// Normalize the vulnerability
+			normalizedVuln := normalizeTrivyVulnerability(vuln, result.Target)
+			vulnerabilities = append(vulnerabilities, normalizedVuln)
+
+			// Count severity
+			if count, exists := severityCount[normalizedVuln.Severity]; exists {
+				severityCount[normalizedVuln.Severity] = count + 1
+			}
+		}
+	}
+
+	// build the complete payload
+	payload := &VulnerabilityPayload{
+		Type:            "vulnerability_scan",
+		Metadata:        metadata,
+		Vulnerabilities: vulnerabilities,
+		Summary: VulnerabilitySummary{
+			TotalVulnerabilities: len(vulnerabilities),
+			Critical:             severityCount["CRITICAL"],
+			High:                 severityCount["HIGH"],
+			Medium:               severityCount["MEDIUM"],
+			Low:                  severityCount["LOW"],
+			Info:                 severityCount["INFO"],
+		},
+	}
+
+	return payload, nil
+}
+
+// inspectZipContentForSecurity inspects the content of a ZIP file for security-related files
+func inspectZipContentForSecurity(
+	zipData []byte,
+	artifactName string,
+	detectors []ContentDetector,
+) ([]*SecurityArtifact, error) {
+	// Create ZIP reader
+	zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create zip reader: %w", err)
+	}
+
+	var securityArtifacts []*SecurityArtifact
+
+	// Examine each file in the ZIP
+	for _, file := range zipReader.File {
+		if file.FileInfo().IsDir() {
+			continue
+		}
+
+		// Read file content
+		rc, err := file.Open()
+		if err != nil {
+			continue
+		}
+
+		content, err := io.ReadAll(rc)
+		if err := rc.Close(); err != nil {
+			continue
+		}
+
+		if err != nil {
+			continue
+		}
+
+		// Check if this file contains security content
+		artifactType := detectSecurityContentType(content, file.Name, detectors)
+		if artifactType != ArtifactTypeUnknown {
+			securityArtifacts = append(securityArtifacts, &SecurityArtifact{
+				ArtifactName: artifactName,
+				FileName:     file.Name,
+				Content:      content,
+				Type:         artifactType,
+			})
+		}
+	}
+
+	return securityArtifacts, nil
+}
+
+// detectSecurityContentType determines the artifact type using registered detectors
+func detectSecurityContentType(
+	content []byte,
+	filename string,
+	detectors []ContentDetector,
+) ArtifactType {
+	// Iterate through detectors in priority order
+	for _, detector := range detectors {
+		if detector.CanHandle(content, filename) {
+			return detector.GetArtifactType()
+		}
+	}
+
+	return ArtifactTypeUnknown
 }

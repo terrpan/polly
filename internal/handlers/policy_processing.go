@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -15,6 +16,7 @@ type PolicyProcessingResult struct {
 	NonCompliantComponents []services.SBOMPolicyComponent
 	ConditionalComponents  []services.SBOMPolicyComponent
 	AllPassed              bool
+	SystemUnavailable      bool // Indicates if the policy evaluation system is unavailable
 }
 
 // PolicyServiceInterface defines the interface for policy evaluation services
@@ -88,6 +90,19 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to evaluate vulnerability policy", "error", err)
 
+			// Check if this is a system error (OPA down, network issues)
+			if errors.Is(err, services.ErrSystemUnavailable) {
+				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check",
+					"owner", owner, "repo", repo, "sha", sha)
+				// Return early - don't process check run when system is down
+				return PolicyProcessingResult{
+					AllPassed:         false,
+					SystemUnavailable: true,
+					FailureDetails:    []string{"Policy evaluation system temporarily unavailable"},
+				}
+			}
+
+			// For other errors, use fallback logic
 			if payload.Summary.Critical > 0 || payload.Summary.High > 0 {
 				result.AllPassed = false
 				result.FailureDetails = append(
@@ -153,6 +168,19 @@ func (p *LicensePolicyProcessor) ProcessPayloads(
 		if err != nil {
 			logger.ErrorContext(ctx, "Failed to evaluate SBOM policy", "error", err)
 
+			// Check if this is a system error (OPA down, network issues)
+			if errors.Is(err, services.ErrSystemUnavailable) {
+				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check",
+					"owner", owner, "repo", repo, "sha", sha)
+				// Return early - don't process check run when system is down
+				return PolicyProcessingResult{
+					AllPassed:         false,
+					SystemUnavailable: true,
+					FailureDetails:    []string{"Policy evaluation system temporarily unavailable"},
+				}
+			}
+
+			// For other errors, use fallback logic
 			if payload.Summary.PackagesWithoutLicense > 0 {
 				result.AllPassed = false
 				result.FailureDetails = append(result.FailureDetails,
