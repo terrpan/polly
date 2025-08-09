@@ -40,10 +40,12 @@ type StateMap struct {
 	VulnerabilityCheckID  int64
 	LicenseCheckID        int64
 	WorkflowRunID         int64
+	CheckSuiteID          int64
 	HasPRNumber           bool
 	HasVulnerabilityCheck bool
 	HasLicenseCheck       bool
 	HasWorkflowRun        bool
+	HasCheckSuite         bool
 }
 
 const (
@@ -55,6 +57,8 @@ const (
 	StateKeyLicenseCheck StateKeyType = "license_check"
 	// StateKeyWorkflow represents the key for storing workflow run IDs.
 	StateKeyWorkflow StateKeyType = "workflow"
+	// StateKeyCheckSuite represents the key for storing check suite IDs.
+	StateKeyCheckSuite StateKeyType = "check_suite"
 )
 
 // NewStateService creates a new StateService.
@@ -164,6 +168,25 @@ func (s *StateService) deleteState(
 ) error {
 	key := fmt.Sprintf("%s:%s:%s:%s", repoCtx.Owner, repoCtx.Repo, keyType, repoCtx.SHA)
 	return s.store.Delete(ctx, key)
+}
+
+// StoreCheckSuiteID stores the check suite ID for a given repository context.
+func (s *StateService) StoreCheckSuiteID(
+	ctx context.Context,
+	owner, repo, sha string,
+	checkSuiteID int64,
+) error {
+	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
+	return s.storeInt64(ctx, StateKeyCheckSuite, repoCtx, checkSuiteID)
+}
+
+// GetCheckSuiteID retrieves the check suite ID for a given repository context.
+func (s *StateService) GetCheckSuiteID(
+	ctx context.Context,
+	owner, repo, sha string,
+) (int64, bool, error) {
+	repoCtx := RepoContext{Owner: owner, Repo: repo, SHA: sha}
+	return s.getInt64(ctx, StateKeyCheckSuite, repoCtx)
 }
 
 // StorePRNumber stores the PR number for a given repository context.
@@ -453,11 +476,20 @@ func (s *StateService) GetAllState(
 		stateMap.HasWorkflowRun = true
 	}
 
+	if checkSuiteID, exists, err := s.GetCheckSuiteID(ctx, owner, repo, sha); err != nil {
+		s.telemetry.SetErrorAttribute(span, err)
+		return nil, fmt.Errorf("failed to get check suite ID: %w", err)
+	} else if exists {
+		stateMap.CheckSuiteID = checkSuiteID
+		stateMap.HasCheckSuite = true
+	}
+
 	span.SetAttributes(
 		attribute.Bool("state.has_pr_number", stateMap.HasPRNumber),
 		attribute.Bool("state.has_vulnerability_check", stateMap.HasVulnerabilityCheck),
 		attribute.Bool("state.has_license_check", stateMap.HasLicenseCheck),
 		attribute.Bool("state.has_workflow_run", stateMap.HasWorkflowRun),
+		attribute.Bool("state.has_check_suite", stateMap.HasCheckSuite),
 	)
 
 	return stateMap, nil

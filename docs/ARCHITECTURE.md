@@ -29,7 +29,7 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - **CheckRunHandler** (`webhook_checkrun.go`): Manages check run rerequests and artifact processing
   - **WorkflowHandler** (`webhook_workflow.go`): Processes workflow started/completed events
   - **SecurityCheckManager** (`webhook_security.go`): Centralizes security check lifecycle management
-  - **TracingHelper** (`webhook_utils.go`): Provides consistent OpenTelemetry tracing patterns
+  - **TelemetryHelper** (`internal/telemetry/helper.go`): Provides consistent OpenTelemetry span creation & error recording (supersedes deprecated TracingHelper)
   - **SharedHelpers** (`helpers.go`): Common processing functions and types for policy evaluation
   - **WebhookHandler** (`webhook.go`): Backward-compatible wrapper maintaining API compatibility
 - **Key Features**:
@@ -213,6 +213,13 @@ services.CheckService.CompletePolicyCheck()
 clients.GitHubClient.UpdateCheckRun()
 ```
 
+### Event deduplication policy
+
+To avoid duplicate check runs for the same commit, Polly follows these rules:
+- Check runs are created primarily in `pull_request` handling (opened/reopened/synchronize).
+- On `workflow_run` start (requested/in_progress), if check IDs exist in `StateService`, Polly sets them to `in_progress` and does not create new checks. Artifact processing occurs on `completed`.
+- `check_suite` events never create check runs; they coordinate reruns using stored check IDs and delegate to existing rerun logic.
+
 ### 2. Check Run Re-request Processing
 ```
 GitHub check run re-requested
@@ -252,11 +259,11 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 - **Benefits**: Clear separation of concerns, easier testing, reduced code duplication
 - **Usage**: `PullRequestHandler`, `CheckRunHandler`, `WorkflowHandler` all extend base functionality
 
-### 3. Centralized Tracing Pattern
+### 3. Centralized Telemetry Pattern
 - **Pattern**: Consistent OpenTelemetry tracing across all operations
-- **Implementation**: `TracingHelper` provides standardized span creation
-- **Benefits**: Eliminates boilerplate, consistent observability, easy to extend
-- **Usage**: `ctx, span := tracingHelper.StartSpan(ctx, "operation.name")`
+- **Implementation**: `TelemetryHelper` provides standardized span creation & error attribution
+- **Benefits**: Eliminates boilerplate, consistent observability, easy to extend, standardized error attributes
+- **Usage**: `ctx, span := telemetry.StartSpan(ctx, "operation.name")`; on errors call `telemetry.SetErrorAttribute(span, err)`
 
 ### 4. Shared Processing Functions
 - **Pattern**: Common business logic extracted into reusable functions with standardized types

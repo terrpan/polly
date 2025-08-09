@@ -31,7 +31,7 @@ func NewEventHandler(base *BaseWebhookHandler) *EventHandler {
 }
 
 func (h *EventHandler) HandleEvent(ctx context.Context, event EventPayload) error {
-    ctx, span := h.tracingHelper.StartSpan(ctx, "event.handle_event")
+    ctx, span := h.telemetry.StartSpan(ctx, "event.handle_event")
     defer span.End()
 
     // Add tracing attributes
@@ -45,11 +45,13 @@ func (h *EventHandler) HandleEvent(ctx context.Context, event EventPayload) erro
 }
 ```
 
-#### 2. Using Shared Tracing
+#### 2. Using Shared Telemetry
 
 ```go
 // In any handler method
-ctx, span := h.tracingHelper.StartSpan(ctx, "operation.name")
+ctx, span := h.telemetry.StartSpan(ctx, "operation.name")
+// On error
+if err != nil { h.telemetry.SetErrorAttribute(span, err) }
 defer span.End()
 
 // Add attributes
@@ -104,7 +106,7 @@ result, err := processLicensePolicies(ctx, h.policyService, sbomPayloads, owner,
 type PolicyProcessingResult struct {
     AllPassed           bool
     Violations          []VulnerabilityPolicyVuln  // For vulnerability checks
-    ConditionalComponents []SBOMPolicyComponent     // For license checks  
+    ConditionalComponents []SBOMPolicyComponent     // For license checks
     Summary             string
     Details             string
 }
@@ -122,7 +124,7 @@ type WebhookProcessingConfig struct {
 
 #### WebhookRouter
 - Parses incoming GitHub webhook events
-- Routes to appropriate event-specific handlers  
+- Routes to appropriate event-specific handlers
 - Maintains backward compatibility
 
 #### Event-Specific Handlers
@@ -136,7 +138,7 @@ type WebhookProcessingConfig struct {
 - Complete checks as neutral when no artifacts are available
 
 #### Shared Utilities (`helpers.go`)
-- **Infrastructure**: `BaseWebhookHandler`, `TracingHelper`, `SecurityCheckManager` for common dependencies
+- **Infrastructure**: `BaseWebhookHandler`, `TelemetryHelper`, `SecurityCheckManager` for common dependencies
 - **Processing Functions**: `processVulnerabilityPolicies()`, `processLicensePolicies()` with standardized `PolicyProcessingResult`
 - **Comment Management**: `postVulnerabilityComments()`, `postLicenseComments()` for consistent PR feedback
 - **Check Result Building**: `buildVulnerabilityCheckResult()`, `buildLicenseCheckResult()` for standardized GitHub check runs
@@ -144,7 +146,7 @@ type WebhookProcessingConfig struct {
 - **Artifact Processing**: `processWorkflowSecurityArtifacts()`, `processVulnerabilityArtifacts()`, `processLicenseArtifacts()`
 - **State Management**: `findVulnerabilityCheckRun()`, `findLicenseCheckRun()`, `storeCheckRunID()` helpers
 - **Benefits**: Function length compliance (all functions <80 lines), eliminates ~300+ lines of duplicate code, single source of truth
-- **TracingHelper**: Consistent OpenTelemetry tracing patterns
+- **TelemetryHelper**: Consistent OpenTelemetry tracing & error attributes (supersedes deprecated TracingHelper)
 - **BaseWebhookHandler**: Common dependencies and utility methods
 - **Processing Functions**: Shared vulnerability and license processing logic (all consolidated in `helpers.go`)
 
@@ -206,7 +208,7 @@ func TestSecurityCheckManager(t *testing.T) {
 
 ### Best Practices
 
-1. **Use Consistent Tracing**: Always use `TracingHelper` for span creation
+1. **Use Consistent Tracing**: Always use `TelemetryHelper` for span creation & error attributes
 2. **Follow Error Patterns**: Log errors with context, return meaningful error messages
 3. **Leverage Shared Functions**: Reuse processing logic from `helpers.go` to maintain consistency and avoid duplication
 4. **Use Standardized Types**: Prefer `PolicyProcessingResult` and `WebhookProcessingConfig` for consistent data structures

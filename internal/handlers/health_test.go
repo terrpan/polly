@@ -26,7 +26,9 @@ type HealthHandlerTestSuite struct {
 }
 
 func (suite *HealthHandlerTestSuite) SetupTest() {
-	suite.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	suite.logger = slog.New(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
+	)
 
 	// Create test OPA client
 	opaClient, err := clients.NewOPAClient("http://test-opa:8181")
@@ -35,7 +37,12 @@ func (suite *HealthHandlerTestSuite) SetupTest() {
 
 	suite.store = storage.NewMemoryStore()
 	suite.telemetryHelper = telemetry.NewTelemetryHelper("test")
-	suite.healthService = services.NewHealthService(suite.logger, suite.opaClient, suite.store, suite.telemetryHelper)
+	suite.healthService = services.NewHealthService(
+		suite.logger,
+		suite.opaClient,
+		suite.store,
+		suite.telemetryHelper,
+	)
 	suite.handler = NewHealthHandler(suite.logger, suite.healthService)
 }
 

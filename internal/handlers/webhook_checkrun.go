@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-playground/webhooks/v6/github"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/terrpan/polly/internal/services"
 )
@@ -32,7 +31,7 @@ func (h *CheckRunHandler) HandleCheckRunEvent(
 	ctx context.Context,
 	event github.CheckRunPayload,
 ) error {
-	ctx, span := h.tracingHelper.StartSpan(ctx, "webhook.handle_check_run")
+	ctx, span := h.telemetry.StartSpan(ctx, "webhook.handle_check_run")
 	defer span.End()
 
 	span.SetAttributes(
@@ -56,15 +55,17 @@ func (h *CheckRunHandler) HandleCheckRunEvent(
 		return nil
 	}
 
-	return h.handleCheckRunRerun(ctx, event, span)
+	return h.handleCheckRunRerun(ctx, event)
 }
 
 // handleCheckRunRerun handles the rerun logic for check run events
 func (h *CheckRunHandler) handleCheckRunRerun(
 	ctx context.Context,
 	event github.CheckRunPayload,
-	span trace.Span,
 ) error {
+	ctx, span := h.telemetry.StartSpan(ctx, "check_run.handle_rerun")
+	defer span.End()
+
 	owner, repo, sha, checkRunID := getEventInfo(event)
 	span.SetAttributes(
 		attribute.String("github.owner", owner),
@@ -210,7 +211,7 @@ func (h *CheckRunHandler) restartSecurityCheck(
 	checkRunID int64,
 	restartFunc SecurityCheckRestartFunc,
 ) error {
-	ctx, span := h.tracingHelper.StartSpan(
+	ctx, span := h.telemetry.StartSpan(
 		ctx,
 		fmt.Sprintf("check_run.restart_%s_check", checkType),
 	)

@@ -1,3 +1,4 @@
+// Package handlers contains HTTP webhook handlers and supporting policy processing logic.
 package handlers
 
 import (
@@ -74,7 +75,11 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 	vulnPayloads, ok := payloads.([]*services.VulnerabilityPayload)
 	if !ok {
 		logger.ErrorContext(ctx, "Invalid payload type for vulnerability processing")
-		return PolicyProcessingResult{AllPassed: false, FailureDetails: []string{"Invalid payload type for vulnerability processing"}}
+
+		return PolicyProcessingResult{
+			AllPassed:      false,
+			FailureDetails: []string{"Invalid payload type for vulnerability processing"},
+		}
 	}
 
 	result := PolicyProcessingResult{AllPassed: true}
@@ -86,10 +91,14 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 		)
 
 		// Use cache-aware policy evaluation
-		policyResult, err := policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, payload, owner, repo, sha)
+		policyResult, err := policyCacheService.CheckVulnerabilityPolicyWithCache(
+			ctx,
+			payload,
+			owner,
+			repo,
+			sha,
+		)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to evaluate vulnerability policy", "error", err)
-
 			// Check if this is a system error (OPA down, network issues)
 			if errors.Is(err, services.ErrSystemUnavailable) {
 				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check",
@@ -101,6 +110,9 @@ func (p *VulnerabilityPolicyProcessor) ProcessPayloads(
 					FailureDetails:    []string{"Policy evaluation system temporarily unavailable"},
 				}
 			}
+
+			// Non-system errors are logged as errors
+			logger.ErrorContext(ctx, "Failed to evaluate vulnerability policy", "error", err)
 
 			// For other errors, use fallback logic
 			if payload.Summary.Critical > 0 || payload.Summary.High > 0 {
@@ -153,8 +165,13 @@ func (p *LicensePolicyProcessor) ProcessPayloads(
 	sbomPayloads, ok := payloads.([]*services.SBOMPayload)
 	if !ok {
 		logger.ErrorContext(ctx, "Invalid payload type for SBOM processing")
-		return PolicyProcessingResult{AllPassed: false, FailureDetails: []string{"Invalid payload type for SBOM processing"}}
+
+		return PolicyProcessingResult{
+			AllPassed:      false,
+			FailureDetails: []string{"Invalid payload type for SBOM processing"},
+		}
 	}
+
 	result := PolicyProcessingResult{AllPassed: true}
 
 	for _, payload := range sbomPayloads {
@@ -164,10 +181,14 @@ func (p *LicensePolicyProcessor) ProcessPayloads(
 		)
 
 		// Use cache-aware policy evaluation
-		policyResult, err := policyCacheService.CheckSBOMPolicyWithCache(ctx, payload, owner, repo, sha)
+		policyResult, err := policyCacheService.CheckSBOMPolicyWithCache(
+			ctx,
+			payload,
+			owner,
+			repo,
+			sha,
+		)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to evaluate SBOM policy", "error", err)
-
 			// Check if this is a system error (OPA down, network issues)
 			if errors.Is(err, services.ErrSystemUnavailable) {
 				logger.WarnContext(ctx, "Policy evaluation system unavailable, skipping check",
@@ -179,6 +200,9 @@ func (p *LicensePolicyProcessor) ProcessPayloads(
 					FailureDetails:    []string{"Policy evaluation system temporarily unavailable"},
 				}
 			}
+
+			// Non-system errors are logged as errors
+			logger.ErrorContext(ctx, "Failed to evaluate SBOM policy", "error", err)
 
 			// For other errors, use fallback logic
 			if payload.Summary.PackagesWithoutLicense > 0 {

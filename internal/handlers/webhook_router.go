@@ -12,16 +12,18 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 // WebhookRouter handles incoming GitHub webhooks and routes them to appropriate handlers.
 type WebhookRouter struct {
 	logger             *slog.Logger
 	hook               *github.Webhook
-	tracingHelper      *TracingHelper
+	telemetry          *telemetry.TelemetryHelper
 	pullRequestHandler *PullRequestHandler
 	checkRunHandler    *CheckRunHandler
 	workflowHandler    *WorkflowHandler
+	checkSuiteHandler  *CheckSuiteWebhookHandler
 }
 
 // NewWebhookRouter creates a new webhook router with the provided logger and initializes the GitHub webhook.
@@ -55,32 +57,35 @@ func NewWebhookRouter(logger *slog.Logger,
 	pullRequestHandler := NewPullRequestHandler(baseHandler)
 	checkRunHandler := NewCheckRunHandler(baseHandler)
 	workflowHandler := NewWorkflowHandler(baseHandler)
+	checkSuiteHandler := NewCheckSuiteWebhookHandler(baseHandler)
 
 	return &WebhookRouter{
 		logger:             logger,
 		hook:               hook,
-		tracingHelper:      NewTracingHelper(),
+		telemetry:          telemetry.NewTelemetryHelper("polly/handlers"),
 		pullRequestHandler: pullRequestHandler,
 		checkRunHandler:    checkRunHandler,
 		workflowHandler:    workflowHandler,
+		checkSuiteHandler:  checkSuiteHandler,
 	}, nil
 }
 
 // HandleWebhook processes incoming GitHub webhook events and routes them to the appropriate handler.
 func (r *WebhookRouter) HandleWebhook(w http.ResponseWriter, req *http.Request) {
-	ctx, span := r.tracingHelper.StartSpan(req.Context(), "webhook.handle")
+	ctx, span := r.telemetry.StartSpan(req.Context(), "webhook.handle")
 	defer span.End()
 
 	// Parse webhook
 	payload, err := r.parseWebhook(req)
 	if err != nil {
-		r.handleWebhookError(w, span, "Failed to parse webhook", err, http.StatusBadRequest)
+		r.handleWebhookError(ctx, w, span, "Failed to parse webhook", err, http.StatusBadRequest)
 		return
 	}
 
 	// Route to appropriate handler
 	if err := r.routeWebhookEvent(ctx, req, payload); err != nil {
 		r.handleWebhookError(
+			ctx,
 			w,
 			span,
 			"Failed to process webhook event",
@@ -91,7 +96,7 @@ func (r *WebhookRouter) HandleWebhook(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	r.handleWebhookSuccess(w, span)
+	r.handleWebhookSuccess(ctx, w, span)
 }
 
 // parseWebhook parses the incoming webhook request
@@ -122,7 +127,9 @@ func (r *WebhookRouter) routeWebhookEvent(
 		return r.checkRunHandler.HandleCheckRunEvent(ctx, event)
 	case github.WorkflowRunPayload:
 		return r.workflowHandler.HandleWorkflowRunEvent(ctx, event)
-	case github.CheckSuitePayload, github.WorkflowJobPayload, github.PushPayload:
+	case github.CheckSuitePayload:
+		return r.checkSuiteHandler.HandleCheckSuite(ctx, event)
+	case github.WorkflowJobPayload, github.PushPayload:
 		r.logger.DebugContext(ctx, "Ignoring non-essential event type", "event_type", eventType)
 		return nil
 	default:
@@ -133,6 +140,7 @@ func (r *WebhookRouter) routeWebhookEvent(
 
 // handleWebhookError handles webhook processing errors
 func (r *WebhookRouter) handleWebhookError(
+	ctx context.Context,
 	w http.ResponseWriter,
 	span trace.Span,
 	message string,
@@ -143,12 +151,17 @@ func (r *WebhookRouter) handleWebhookError(
 		attribute.String("result", "error"),
 		attribute.String("error", err.Error()),
 	)
+	r.telemetry.SetErrorAttribute(span, err)
 	r.logger.Error(message, "error", err)
 	http.Error(w, message, statusCode)
 }
 
 // handleWebhookSuccess handles successful webhook processing
-func (r *WebhookRouter) handleWebhookSuccess(w http.ResponseWriter, span trace.Span) {
+func (r *WebhookRouter) handleWebhookSuccess(
+	ctx context.Context,
+	w http.ResponseWriter,
+	span trace.Span,
+) {
 	span.SetAttributes(attribute.String("result", "success"))
 	w.WriteHeader(http.StatusOK)
 

@@ -26,7 +26,7 @@ func (h *WorkflowHandler) HandleWorkflowRunEvent(
 	ctx context.Context,
 	event github.WorkflowRunPayload,
 ) error {
-	ctx, span := h.tracingHelper.StartSpan(ctx, "webhook.handle_workflow_run")
+	ctx, span := h.telemetry.StartSpan(ctx, "webhook.handle_workflow_run")
 	defer span.End()
 
 	span.SetAttributes(
@@ -77,7 +77,7 @@ func (h *WorkflowHandler) handleWorkflowStarted(
 	owner, repo, sha string,
 	workflowRunID int64,
 ) error {
-	ctx, span := h.tracingHelper.StartSpan(ctx, "workflow.handle_workflow_started")
+	ctx, span := h.telemetry.StartSpan(ctx, "workflow.handle_workflow_started")
 	defer span.End()
 
 	h.logger.InfoContext(ctx, "Workflow started - creating pending security checks",
@@ -86,6 +86,29 @@ func (h *WorkflowHandler) handleWorkflowStarted(
 		"workflow_name", event.Workflow.Name,
 		"workflow_run_id", workflowRunID,
 	)
+
+	// Guard against duplicate creation: if checks already exist, just set them in progress
+	_, hasVuln, err := h.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
+	if err == nil && hasVuln {
+		h.logger.InfoContext(ctx, "Existing vulnerability check found; setting to in_progress",
+			"owner", owner, "repo", repo, "sha", sha,
+		)
+		if err := h.securityCheckMgr.StartExistingSecurityChecksInProgress(ctx, owner, repo, sha); err != nil {
+			h.logger.ErrorContext(ctx, "Failed to set existing checks in progress", "error", err)
+		}
+		return nil
+	}
+
+	_, hasLicense, err := h.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha)
+	if err == nil && hasLicense {
+		h.logger.InfoContext(ctx, "Existing license check found; setting to in_progress",
+			"owner", owner, "repo", repo, "sha", sha,
+		)
+		if err := h.securityCheckMgr.StartExistingSecurityChecksInProgress(ctx, owner, repo, sha); err != nil {
+			h.logger.ErrorContext(ctx, "Failed to set existing checks in progress", "error", err)
+		}
+		return nil
+	}
 
 	// Get PR number from stored context
 	prNumber, exists, err := h.stateService.GetPRNumber(ctx, owner, repo, sha)
@@ -122,7 +145,7 @@ func (h *WorkflowHandler) handleWorkflowCompleted(
 	owner, repo, sha string,
 	workflowRunID int64,
 ) error {
-	ctx, span := h.tracingHelper.StartSpan(ctx, "workflow.handle_workflow_completed")
+	ctx, span := h.telemetry.StartSpan(ctx, "workflow.handle_workflow_completed")
 	defer span.End()
 
 	h.logger.InfoContext(ctx, "Processing completed workflow",

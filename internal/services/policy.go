@@ -314,15 +314,18 @@ func evaluatePolicy[T any, R any](
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
 		span.RecordError(err)
-		service.logger.ErrorContext(ctx, "Failed to evaluate policy",
-			"error", err,
-			"path", policyPath)
-
-		// Wrap network/connection errors as system unavailable
+		// Wrap network/connection errors as system unavailable and log at WARN (planned OPA outage friendly)
 		if isNetworkError(err) {
+			service.logger.WarnContext(ctx, "Policy evaluation system unavailable",
+				"error", err,
+				"path", policyPath)
 			return zero, fmt.Errorf("%w: %v", ErrSystemUnavailable, err)
 		}
 
+		// Non-network errors remain ERROR
+		service.logger.ErrorContext(ctx, "Failed to evaluate policy",
+			"error", err,
+			"path", policyPath)
 		return zero, err
 	}
 

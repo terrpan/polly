@@ -21,7 +21,15 @@ func processVulnerabilityChecks(
 	prNumber int64,
 	checkRunID int64,
 ) error {
-	result := processVulnerabilityPolicies(ctx, logger, policyCacheService, payloads, owner, repo, sha)
+	result := processVulnerabilityPolicies(
+		ctx,
+		logger,
+		policyCacheService,
+		payloads,
+		owner,
+		repo,
+		sha,
+	)
 
 	if err := postVulnerabilityComments(ctx, logger, commentService, result.NonCompliantVulns, owner, repo, prNumber); err != nil {
 		logger.ErrorContext(ctx, "Failed to post vulnerability comment", "error", err)
@@ -101,34 +109,14 @@ func buildVulnerabilityCheckResult(
 	result PolicyProcessingResult,
 	payloadCount int,
 ) (services.CheckRunConclusion, services.CheckRunResult) {
-	// Handle system unavailable case
-	if result.SystemUnavailable {
-		return services.ConclusionNeutral, services.CheckRunResult{
-			Title:   "Vulnerability Check - System Unavailable",
-			Summary: "Policy evaluation system temporarily unavailable",
-			Text:    "Unable to evaluate vulnerability policies due to system issues. This is not a policy failure.",
-		}
-	}
-
-	if result.AllPassed {
-		return services.ConclusionSuccess, services.CheckRunResult{
-			Title:   "Vulnerability Check - Passed",
-			Summary: fmt.Sprintf("Processed %d vulnerability findings", payloadCount),
-			Text:    "All vulnerability policies passed.",
-		}
-	}
-
-	return services.ConclusionFailure, services.CheckRunResult{
-		Title: "Vulnerability Check - Failed",
-		Summary: fmt.Sprintf(
-			"Found vulnerability violations in %d scan results",
-			len(result.FailureDetails),
-		),
-		Text: fmt.Sprintf(
-			"Vulnerability violations found:\n\n%s",
-			strings.Join(result.FailureDetails, "\n"),
-		),
-	}
+	return buildStandardCheckResult(
+		"Vulnerability",
+		"vulnerability findings",
+		"vulnerability",
+		"Vulnerability",
+		result,
+		payloadCount,
+	)
 }
 
 // buildLicenseCheckResult builds the check run result for license checks
@@ -136,31 +124,54 @@ func buildLicenseCheckResult(
 	result PolicyProcessingResult,
 	payloadCount int,
 ) (services.CheckRunConclusion, services.CheckRunResult) {
-	// Handle system unavailable case
+	return buildStandardCheckResult(
+		"License",
+		"SBOM findings",
+		"license",
+		"License",
+		result,
+		payloadCount,
+	)
+}
+
+// buildStandardCheckResult centralizes common result-building logic to avoid duplication
+func buildStandardCheckResult(
+	checkTitlePrefix string,
+	processedFindingsLabel string,
+	violationLabelLower string,
+	violationHeadingCap string,
+	result PolicyProcessingResult,
+	payloadCount int,
+) (services.CheckRunConclusion, services.CheckRunResult) {
 	if result.SystemUnavailable {
 		return services.ConclusionNeutral, services.CheckRunResult{
-			Title:   "License Check - System Unavailable",
+			Title:   fmt.Sprintf("%s Check - System Unavailable", checkTitlePrefix),
 			Summary: "Policy evaluation system temporarily unavailable",
-			Text:    "Unable to evaluate license policies due to system issues. This is not a policy failure.",
+			Text: fmt.Sprintf(
+				"Unable to evaluate %s policies due to system issues. This is not a policy failure.",
+				strings.ToLower(checkTitlePrefix),
+			),
 		}
 	}
 
 	if result.AllPassed {
 		return services.ConclusionSuccess, services.CheckRunResult{
-			Title:   "License Check - Passed",
-			Summary: fmt.Sprintf("Processed %d SBOM findings", payloadCount),
-			Text:    "All license policies passed.",
+			Title:   fmt.Sprintf("%s Check - Passed", checkTitlePrefix),
+			Summary: fmt.Sprintf("Processed %d %s", payloadCount, processedFindingsLabel),
+			Text:    fmt.Sprintf("All %s policies passed.", strings.ToLower(checkTitlePrefix)),
 		}
 	}
 
 	return services.ConclusionFailure, services.CheckRunResult{
-		Title: "License Check - Failed",
+		Title: fmt.Sprintf("%s Check - Failed", checkTitlePrefix),
 		Summary: fmt.Sprintf(
-			"Found license violations in %d scan results",
+			"Found %s violations in %d scan results",
+			violationLabelLower,
 			len(result.FailureDetails),
 		),
 		Text: fmt.Sprintf(
-			"License violations found:\n\n%s",
+			"%s violations found:\n\n%s",
+			violationHeadingCap,
 			strings.Join(result.FailureDetails, "\n"),
 		),
 	}

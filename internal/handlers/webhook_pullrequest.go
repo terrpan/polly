@@ -26,7 +26,7 @@ func (h *PullRequestHandler) HandlePullRequestEvent(
 	ctx context.Context,
 	event github.PullRequestPayload,
 ) error {
-	ctx, span := h.tracingHelper.StartSpan(ctx, "webhook.handle_pull_request")
+	ctx, span := h.telemetry.StartSpan(ctx, "webhook.handle_pull_request")
 	defer span.End()
 
 	span.SetAttributes(

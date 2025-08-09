@@ -13,7 +13,7 @@ func (h *BaseWebhookHandler) processWorkflowSecurityArtifacts(
 	ctx context.Context,
 	config WebhookProcessingConfig,
 ) error {
-	ctx, span := h.tracingHelper.StartSpan(ctx, "webhook.process_security_artifacts")
+	ctx, span := h.telemetry.StartSpan(ctx, "webhook.process_security_artifacts")
 	defer span.End()
 
 	vulnPayloads, sbomPayloads, err := h.securityService.ProcessWorkflowSecurityArtifacts(

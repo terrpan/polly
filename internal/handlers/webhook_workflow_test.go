@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
-	"github.com/terrpan/polly/internal/telemetry"
 	"log/slog"
 	"os"
 	"testing"
+
+	"github.com/terrpan/polly/internal/telemetry"
 
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/stretchr/testify/assert"
@@ -40,12 +41,38 @@ func (suite *WorkflowHandlerTestSuite) SetupTest() {
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	store := storage.NewMemoryStore()
 
-	commentService := services.NewCommentService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"))
-	checkService := services.NewCheckService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"))
-	policyService := services.NewPolicyService(opaClient, suite.logger, telemetry.NewTelemetryHelper("test"), services.NewStandardEvaluators(nil))
-	securityService := services.NewSecurityService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"), services.DefaultSecurityDetectors()...)
-	suite.stateService = services.NewStateService(store, suite.logger, telemetry.NewTelemetryHelper("test"))
-	policyCacheService := services.NewPolicyCacheService(policyService, suite.stateService, suite.logger, telemetry.NewTelemetryHelper("test"))
+	commentService := services.NewCommentService(
+		githubClient,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+	)
+	checkService := services.NewCheckService(
+		githubClient,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+	)
+	policyService := services.NewPolicyService(
+		opaClient,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+		services.NewStandardEvaluators(nil),
+	)
+	securityService := services.NewSecurityService(
+		githubClient,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+		services.DefaultSecurityDetectors()...)
+	suite.stateService = services.NewStateService(
+		store,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+	)
+	policyCacheService := services.NewPolicyCacheService(
+		policyService,
+		suite.stateService,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+	)
 
 	// Create base handler and workflow handler
 	suite.baseHandler = NewBaseWebhookHandler(
@@ -91,6 +118,57 @@ func (suite *WorkflowHandlerTestSuite) TestHandleWorkflowRunEvent_UnsupportedAct
 			// Should return no error for unsupported actions (just ignored)
 			assert.NoError(t, err)
 		})
+	}
+}
+
+func (suite *WorkflowHandlerTestSuite) TestHandleWorkflowRunEvent_StartWithExistingChecks_SetsInProgress_NoCreate() {
+	owner := "test-owner"
+	repo := "test-repo"
+	sha := "test-sha-existing"
+
+	// Pre-store PR number and existing check run IDs to force the in_progress branch
+	require.NoError(suite.T(), suite.stateService.StorePRNumber(suite.ctx, owner, repo, sha, 42))
+	require.NoError(
+		suite.T(),
+		suite.stateService.StoreVulnerabilityCheckRunID(suite.ctx, owner, repo, sha, 1111),
+	)
+	require.NoError(
+		suite.T(),
+		suite.stateService.StoreLicenseCheckRunID(suite.ctx, owner, repo, sha, 2222),
+	)
+
+	// Build a workflow_run payload for start actions
+	buildPayload := func(action string) github.WorkflowRunPayload {
+		p := github.WorkflowRunPayload{Action: action}
+		p.Repository.Name = repo
+		p.Repository.Owner.Login = owner
+		p.WorkflowRun.HeadSha = sha
+		p.WorkflowRun.ID = 7777
+		p.Workflow.Name = "Security Scan and SBOM Generation"
+		return p
+	}
+
+	// requested
+	err := suite.handler.HandleWorkflowRunEvent(suite.ctx, buildPayload("requested"))
+	// Guard should prevent creation path (which would error due to real GitHub API), so expect no error
+	assert.NoError(suite.T(), err)
+
+	// in_progress
+	err = suite.handler.HandleWorkflowRunEvent(suite.ctx, buildPayload("in_progress"))
+	assert.NoError(suite.T(), err)
+
+	// Ensure stored IDs remain unchanged (no duplicate creation overwrote them)
+	if id, ok, _ := suite.stateService.GetVulnerabilityCheckRunID(suite.ctx, owner, repo, sha); assert.True(
+		suite.T(),
+		ok,
+	) {
+		assert.Equal(suite.T(), int64(1111), id)
+	}
+	if id, ok, _ := suite.stateService.GetLicenseCheckRunID(suite.ctx, owner, repo, sha); assert.True(
+		suite.T(),
+		ok,
+	) {
+		assert.Equal(suite.T(), int64(2222), id)
 	}
 }
 
@@ -170,9 +248,23 @@ func TestNewWorkflowHandler_Unit(t *testing.T) {
 		store := storage.NewMemoryStore()
 		githubClient := clients.NewGitHubClient(context.Background())
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
-		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
-		policyService := services.NewPolicyService(opaClient, logger, telemetry.NewTelemetryHelper("test"), services.NewStandardEvaluators(nil))
-		policyCacheService := services.NewPolicyCacheService(policyService, stateService, logger, telemetry.NewTelemetryHelper("test"))
+		stateService := services.NewStateService(
+			store,
+			logger,
+			telemetry.NewTelemetryHelper("test"),
+		)
+		policyService := services.NewPolicyService(
+			opaClient,
+			logger,
+			telemetry.NewTelemetryHelper("test"),
+			services.NewStandardEvaluators(nil),
+		)
+		policyCacheService := services.NewPolicyCacheService(
+			policyService,
+			stateService,
+			logger,
+			telemetry.NewTelemetryHelper("test"),
+		)
 
 		baseHandler := NewBaseWebhookHandler(
 			logger,
@@ -180,7 +272,12 @@ func TestNewWorkflowHandler_Unit(t *testing.T) {
 			services.NewCheckService(githubClient, logger, telemetry.NewTelemetryHelper("test")),
 			policyService,
 			policyCacheService,
-			services.NewSecurityService(githubClient, logger, telemetry.NewTelemetryHelper("test"), services.DefaultSecurityDetectors()...),
+			services.NewSecurityService(
+				githubClient,
+				logger,
+				telemetry.NewTelemetryHelper("test"),
+				services.DefaultSecurityDetectors()...,
+			),
 			stateService,
 		)
 

@@ -63,11 +63,13 @@ PR Event → Store PR Context → SecurityCheckManager.CreateSecurityCheckRuns()
 **Handler**: `WebhookRouter → WorkflowHandler.handleWorkflowStarted()`
 
 ```go
-// Sequence
-Workflow Start → Find PR Context → SecurityCheckManager.CreateSecurityCheckRuns() (Redundant)
+// Updated Sequence (deduplicated)
+Workflow Start → Check StateService for existing check IDs
+    ├─ If exists → SecurityCheckManager.StartExistingSecurityChecksInProgress() (no new creation) → return
+    └─ If not exists → Find PR Context → (optional fallback) CreateSecurityCheckRuns()
 ```
 
-**Note**: This creates **duplicate check runs** - both PR events and workflow events create checks. This is a known issue.
+Deduplication: workflow_run no longer creates new checks if IDs already exist. It updates status to in_progress. This avoids duplicates created by both PR and workflow events.
 
 #### 2b. Workflow Completed
 
@@ -90,6 +92,8 @@ Workflow Complete → Download Artifacts → Process Security Data → Complete 
 6. **Policy Evaluation**: Calls `WorkflowHandler.processSecurityPayloads()` for evaluation
 
 **Code Location**: `WorkflowHandler.handleWorkflowCompleted()` in `webhook_workflow.go`
+
+Telemetry: All phases use `TelemetryHelper` (replaced deprecated TracingHelper) for span creation & error recording.
 
 ### 3. Security Payload Processing
 
@@ -197,10 +201,12 @@ errs := utils.ExecuteConcurrently(tasks)
 
 | GitHub Event | Action | Handler | Purpose |
 |--------------|--------|---------|---------|
-| `pull_request` | `opened`/`reopened` | `handlePullRequestEvent()` | Create pending security checks |
-| `workflow_run` | `requested`/`in_progress` | `handleWorkflowStarted()` | Create pending security checks (redundant) |
+| `pull_request` | `opened`/`reopened`/`synchronize` | `handlePullRequestEvent()` | Create pending security checks (primary) |
+| `workflow_run` | `requested`/`in_progress` | `handleWorkflowStarted()` | Mark existing checks in_progress; optional fallback create for push-only |
 | `workflow_run` | `completed` | `handleWorkflowCompleted()` | Process artifacts and complete checks |
-| `check_run` | `rerequested` | `handleCheckRunEvent()` | Handle check reruns (TODO) |
+| `check_run` | `rerequested` | `handleCheckRunEvent()` | Handle check reruns |
+| `check_suite` | `requested` | `HandleCheckSuite()` | Store suite ID, orchestrate workflow (no check creation) |
+| `check_suite` | `rerequested` | `HandleCheckSuite()` | Re-run existing checks via stored IDs |
 
 ## Security Artifact Types
 
