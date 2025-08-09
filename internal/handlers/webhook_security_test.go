@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
-	"github.com/terrpan/polly/internal/telemetry"
 	"log/slog"
 	"os"
 	"testing"
+
+	"github.com/terrpan/polly/internal/telemetry"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,8 +36,16 @@ func (suite *SecurityCheckManagerTestSuite) SetupTest() {
 	githubClient := clients.NewGitHubClient(suite.ctx)
 	store := storage.NewMemoryStore()
 
-	checkService := services.NewCheckService(githubClient, suite.logger, telemetry.NewTelemetryHelper("test"))
-	suite.stateService = services.NewStateService(store, suite.logger, telemetry.NewTelemetryHelper("test"))
+	checkService := services.NewCheckService(
+		githubClient,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+	)
+	suite.stateService = services.NewStateService(
+		store,
+		suite.logger,
+		telemetry.NewTelemetryHelper("test"),
+	)
 
 	// Create security check manager
 	suite.manager = NewSecurityCheckManager(suite.logger, checkService, suite.stateService)
@@ -53,7 +62,8 @@ func (suite *SecurityCheckManagerTestSuite) TestNewSecurityCheckManager() {
 		assert.NotNil(t, manager)
 		assert.NotNil(t, manager.logger)
 		assert.NotNil(t, manager.stateService)
-		assert.NotNil(t, manager.tracingHelper)
+		// Telemetry is the supported helper; tracingHelper was deprecated
+		assert.NotNil(t, manager.telemetry)
 	})
 }
 
@@ -365,14 +375,19 @@ func TestNewSecurityCheckManager_Unit(t *testing.T) {
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 		)
 		store := storage.NewMemoryStore()
-		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
+		stateService := services.NewStateService(
+			store,
+			logger,
+			telemetry.NewTelemetryHelper("test"),
+		)
 
 		manager := NewSecurityCheckManager(logger, nil, stateService)
 
 		assert.NotNil(t, manager)
 		assert.Equal(t, logger, manager.logger)
 		assert.Equal(t, stateService, manager.stateService)
-		assert.NotNil(t, manager.tracingHelper)
+		// Telemetry is the supported helper; tracingHelper was deprecated
+		assert.NotNil(t, manager.telemetry)
 	})
 
 	t.Run("handles nil logger gracefully", func(t *testing.T) {
@@ -380,7 +395,11 @@ func TestNewSecurityCheckManager_Unit(t *testing.T) {
 		logger := slog.New(
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 		)
-		stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
+		stateService := services.NewStateService(
+			store,
+			logger,
+			telemetry.NewTelemetryHelper("test"),
+		)
 
 		manager := NewSecurityCheckManager(nil, nil, stateService)
 

@@ -1,6 +1,6 @@
 # OpenTelemetry Observability
 
-Polly includes comprehensive OpenTelemetry (OTEL) tracing for full observability across HTTP requests, business logic, and external API calls.
+Polly includes comprehensive OpenTelemetry (OTEL) tracing for full observability across HTTP requests, business logic, and external API calls. All manual spans are created via a `TelemetryHelper` which standardizes span attributes and error recording.
 
 ## Features
 
@@ -9,7 +9,7 @@ Polly includes comprehensive OpenTelemetry (OTEL) tracing for full observability
 - **Context Propagation**: Trace context flows through the entire request lifecycle
 - **Structured Logging Integration**: OTEL errors and debug info use your configured structured logger
 
-## Trace Hierarchy
+## Trace / Span Hierarchy (Representative)
 
 ```
 webhook.handle (root span)
@@ -108,7 +108,7 @@ go run cmd/server/main.go
 
 ## Trace Attributes
 
-Polly includes rich trace attributes for filtering and analysis:
+Polly includes rich trace attributes for filtering and analysis. Errors are consistently annotated using `telemetry.SetErrorAttribute(span, err)` for improved filtering.
 
 ### GitHub Operations
 ```

@@ -56,6 +56,41 @@ golangci-lint run
 
 ## Project-Specific Patterns
 
+### Code Reuse & Architecture Patterns
+- **DRY Principle**: Before implementing new functionality, always check for existing similar code that can be reused or extended
+- **Delegation Pattern**: Prefer composition and delegation over inheritance - new handlers should delegate to existing handlers rather than reimplementing logic
+- **Handler Architecture**:
+  - New webhook handlers should embed or compose existing handlers (`SecurityWebhookHandler`, `CheckRunHandler`)
+  - Use `BaseWebhookHandler` for shared dependencies, not direct service injection
+  - Follow pattern: `NewXxxHandler(base *BaseWebhookHandler) *XxxHandler`
+- **Service Reuse**: Before adding new service methods, check if existing methods can be reused with configuration parameters
+- **State Management**: Follow existing state service patterns exactly - don't create new storage patterns
+- **Integration Strategy**: New features should integrate with existing infrastructure rather than creating parallel implementations
+
+### Implementation Guidelines
+- **Start with Existing Code Analysis**: Before proposing new code, identify what existing handlers/services can be reused
+- **Minimal Implementation Principle**: Aim for <100 lines of new code when adding orchestration features
+- **Composition Over Implementation**: New handlers should coordinate existing functionality, not reimplement it
+- **Test Pattern Reuse**: Copy and modify existing test patterns rather than creating new test infrastructure
+
+### Examples of Correct Patterns
+```go
+// ✅ GOOD: Delegates to existing handlers
+type CheckSuiteWebhookHandler struct {
+    *SecurityWebhookHandler
+    checkRunHandler *CheckRunHandler
+}
+
+func (h *CheckSuiteWebhookHandler) rerunExistingChecks(...) error {
+    return h.checkRunHandler.handleVulnerabilityCheckRerun(...) // Delegates
+}
+
+// ❌ BAD: Reimplements existing logic
+func (h *CheckSuiteWebhookHandler) rerunExistingChecks(...) error {
+    // 200+ lines of duplicated policy processing logic
+}
+```
+
 ### Strategy Pattern Implementation
 - **Policy Processing**: `VulnerabilityPolicyProcessor` and `LicensePolicyProcessor` implement `PolicyProcessor`
 - **Result Standardization**: All policy results use `PolicyProcessingResult` struct

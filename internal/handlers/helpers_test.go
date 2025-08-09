@@ -287,10 +287,10 @@ func TestBuildComponentComment(t *testing.T) {
 func TestBuildVulnerabilityCheckResult(t *testing.T) {
 	tests := []struct {
 		name               string
-		result             PolicyProcessingResult
-		payloadCount       int
 		expectedConclusion services.CheckRunConclusion
 		expectedTitle      string
+		result             PolicyProcessingResult
+		payloadCount       int
 	}{
 		{
 			name:               "successful result",
@@ -326,11 +326,11 @@ func TestBuildVulnerabilityCheckResult(t *testing.T) {
 
 func TestBaseWebhookHandler_storeCheckRunIDWithError(t *testing.T) {
 	tests := []struct {
-		name        string
 		storeError  error
-		expectError bool
+		name        string
 		checkType   string
 		checkRunID  int64
+		expectError bool
 	}{
 		{
 			name:        "successful storage",
@@ -459,13 +459,14 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.VulnerabilityPolicyResult{
-				Compliant:                   true,
-				TotalVulnerabilities:        3,
-				NonCompliantCount:           0,
-				NonCompliantVulnerabilities: []services.VulnerabilityPolicyVuln{},
-			}, nil)
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.VulnerabilityPolicyResult{
+					Compliant:                   true,
+					TotalVulnerabilities:        3,
+					NonCompliantCount:           0,
+					NonCompliantVulnerabilities: []services.VulnerabilityPolicyVuln{},
+				}, nil)
 
 		result := processor.ProcessPayloads(
 			context.Background(),
@@ -501,13 +502,14 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 			{ID: "CVE-2023-0002", Severity: "HIGH"},
 		}
 
-		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.VulnerabilityPolicyResult{
-				Compliant:                   false,
-				TotalVulnerabilities:        8,
-				NonCompliantCount:           2,
-				NonCompliantVulnerabilities: violations,
-			}, nil)
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.VulnerabilityPolicyResult{
+					Compliant:                   false,
+					TotalVulnerabilities:        8,
+					NonCompliantCount:           2,
+					NonCompliantVulnerabilities: violations,
+				}, nil)
 
 		result := processor.ProcessPayloads(
 			context.Background(),
@@ -543,8 +545,9 @@ func TestVulnerabilityPolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.VulnerabilityPolicyResult{}, errors.New("policy service error"))
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.VulnerabilityPolicyResult{}, errors.New("policy service error"))
 
 		result := processor.ProcessPayloads(
 			context.Background(),
@@ -585,14 +588,15 @@ func TestLicensePolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.SBOMPolicyResult{
-				Compliant:              true,
-				TotalComponents:        10,
-				CompliantComponents:    10,
-				NonCompliantComponents: []services.SBOMPolicyComponent{},
-				ConditionalComponents:  []services.SBOMPolicyComponent{},
-			}, nil)
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.SBOMPolicyResult{
+					Compliant:              true,
+					TotalComponents:        10,
+					CompliantComponents:    10,
+					NonCompliantComponents: []services.SBOMPolicyComponent{},
+					ConditionalComponents:  []services.SBOMPolicyComponent{},
+				}, nil)
 
 		result := processor.ProcessPayloads(
 			context.Background(),
@@ -628,14 +632,15 @@ func TestLicensePolicyProcessor(t *testing.T) {
 			{Name: "conditional-package", VersionInfo: "2.0.0", LicenseConcluded: "Apache-2.0"},
 		}
 
-		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.SBOMPolicyResult{
-				Compliant:              false,
-				TotalComponents:        10,
-				CompliantComponents:    8,
-				NonCompliantComponents: nonCompliantComponents,
-				ConditionalComponents:  conditionalComponents,
-			}, nil)
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.SBOMPolicyResult{
+					Compliant:              false,
+					TotalComponents:        10,
+					CompliantComponents:    8,
+					NonCompliantComponents: nonCompliantComponents,
+					ConditionalComponents:  conditionalComponents,
+				}, nil)
 
 		result := processor.ProcessPayloads(
 			context.Background(),
@@ -670,8 +675,9 @@ func TestLicensePolicyProcessor(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.SBOMPolicyResult{}, errors.New("policy service error"))
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.SBOMPolicyResult{}, errors.New("policy service error"))
 
 		result := processor.ProcessPayloads(
 			context.Background(),
@@ -709,13 +715,14 @@ func TestProcessPoliciesWithStrategy(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.VulnerabilityPolicyResult{
-				Compliant:                   true,
-				TotalVulnerabilities:        3,
-				NonCompliantCount:           0,
-				NonCompliantVulnerabilities: []services.VulnerabilityPolicyVuln{},
-			}, nil)
+		mockService.On("CheckVulnerabilityPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.VulnerabilityPolicyResult{
+					Compliant:                   true,
+					TotalVulnerabilities:        3,
+					NonCompliantCount:           0,
+					NonCompliantVulnerabilities: []services.VulnerabilityPolicyVuln{},
+				}, nil)
 
 		result := processPoliciesWithStrategy(
 			context.Background(),
@@ -744,14 +751,15 @@ func TestProcessPoliciesWithStrategy(t *testing.T) {
 			},
 		}
 
-		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").Return(
-			services.SBOMPolicyResult{
-				Compliant:              true,
-				TotalComponents:        10,
-				CompliantComponents:    10,
-				NonCompliantComponents: []services.SBOMPolicyComponent{},
-				ConditionalComponents:  []services.SBOMPolicyComponent{},
-			}, nil)
+		mockService.On("CheckSBOMPolicyWithCache", context.Background(), payloads[0], "owner", "repo", "sha").
+			Return(
+				services.SBOMPolicyResult{
+					Compliant:              true,
+					TotalComponents:        10,
+					CompliantComponents:    10,
+					NonCompliantComponents: []services.SBOMPolicyComponent{},
+					ConditionalComponents:  []services.SBOMPolicyComponent{},
+				}, nil)
 
 		result := processPoliciesWithStrategy(
 			context.Background(),

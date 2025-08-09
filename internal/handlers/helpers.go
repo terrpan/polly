@@ -6,19 +6,16 @@ import (
 
 	"github.com/go-playground/webhooks/v6/github"
 
-	"github.com/terrpan/polly/internal/otel"
 	"github.com/terrpan/polly/internal/services"
+	"github.com/terrpan/polly/internal/telemetry"
 )
-
-// TracingHelper provides a consistent way to create tracing spans across webhook handlers
-type TracingHelper = otel.TracingHelper
 
 // SecurityCheckManager handles the creation and management of security check runs
 type SecurityCheckManager struct {
-	logger        *slog.Logger
-	checkService  *services.CheckService
-	stateService  *services.StateService
-	tracingHelper *TracingHelper
+	logger       *slog.Logger
+	checkService *services.CheckService
+	stateService *services.StateService
+	telemetry    *telemetry.TelemetryHelper
 }
 
 // BaseWebhookHandler contains the common dependencies for all webhook handlers
@@ -30,7 +27,7 @@ type BaseWebhookHandler struct {
 	policyCacheService *services.PolicyCacheService
 	securityService    *services.SecurityService
 	stateService       *services.StateService
-	tracingHelper      *TracingHelper
+	telemetry          *telemetry.TelemetryHelper
 }
 
 // SecurityWebhookHandler extends BaseWebhookHandler with security check management capabilities
@@ -50,11 +47,6 @@ type WebhookProcessingConfig struct {
 	CheckLicense  bool
 }
 
-// NewTracingHelper creates a new tracing helper for webhook handlers
-func NewTracingHelper() *otel.TracingHelper {
-	return otel.NewTracingHelper("polly/handlers")
-}
-
 // NewSecurityCheckManager creates a new security check manager
 func NewSecurityCheckManager(
 	logger *slog.Logger,
@@ -62,10 +54,10 @@ func NewSecurityCheckManager(
 	stateService *services.StateService,
 ) *SecurityCheckManager {
 	return &SecurityCheckManager{
-		logger:        logger,
-		checkService:  checkService,
-		stateService:  stateService,
-		tracingHelper: NewTracingHelper(),
+		logger:       logger,
+		checkService: checkService,
+		stateService: stateService,
+		telemetry:    telemetry.NewTelemetryHelper("polly/handlers"),
 	}
 }
 
@@ -87,7 +79,7 @@ func NewBaseWebhookHandler(
 		policyCacheService: policyCacheService,
 		securityService:    securityService,
 		stateService:       stateService,
-		tracingHelper:      NewTracingHelper(),
+		telemetry:          telemetry.NewTelemetryHelper("polly/handlers"),
 	}
 }
 
@@ -134,7 +126,7 @@ func (h *BaseWebhookHandler) storeCheckRunIDWithError(
 }
 
 // getEventInfo extracts common event information for logging using generics
-func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload](
+func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.WorkflowRunPayload | github.CheckSuitePayload](
 	event T,
 ) (owner, repo, sha string, eventID int64) {
 	// We use type assertion to 'any' here because Go's type switch does not work directly on generic type parameters.
@@ -145,6 +137,8 @@ func getEventInfo[T github.PullRequestPayload | github.CheckRunPayload | github.
 		return e.Repository.Owner.Login, e.Repository.Name, e.CheckRun.HeadSHA, e.CheckRun.ID
 	case github.WorkflowRunPayload:
 		return e.Repository.Owner.Login, e.Repository.Name, e.WorkflowRun.HeadSha, e.WorkflowRun.ID
+	case github.CheckSuitePayload:
+		return e.Repository.Owner.Login, e.Repository.Name, e.CheckSuite.HeadSHA, e.CheckSuite.ID
 	default:
 		// This should never happen due to type constraints, but just in case
 		return "", "", "", 0

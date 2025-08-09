@@ -16,12 +16,16 @@ import (
 )
 
 // TracingHelper provides a consistent way to create tracing spans across the application
+//
+// Deprecated: Use telemetry helper instead in internal/telemetry package
 type TracingHelper struct {
 	tracer oteltrace.Tracer
 }
 
 // NewTracingHelper creates a new tracing helper for the specified component
 // componentName should be in the format "polly/handlers", "polly/services", etc.
+//
+// Deprecated: Use telemetry helper instead in internal/telemetry package
 func NewTracingHelper(componentName string) *TracingHelper {
 	return &TracingHelper{
 		tracer: otel.Tracer(componentName),
@@ -29,6 +33,8 @@ func NewTracingHelper(componentName string) *TracingHelper {
 }
 
 // StartSpan creates a new tracing span with the given name
+//
+// Deprecated: Use telemetry helper instead in internal/telemetry package
 func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Context, oteltrace.Span) {
 	return t.tracer.Start(ctx, name)
 }

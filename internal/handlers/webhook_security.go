@@ -77,7 +77,7 @@ func (s *SecurityCheckManager) CreateSecurityCheckRuns(
 	owner, repo, sha string,
 	prNumber int64,
 ) error {
-	ctx, span := s.tracingHelper.StartSpan(ctx, "security_check_manager.create_security_check_runs")
+	ctx, span := s.telemetry.StartSpan(ctx, "security_check_manager.create_security_check_runs")
 	defer span.End()
 
 	span.SetAttributes(
@@ -126,6 +126,49 @@ func (s *SecurityCheckManager) CreateSecurityCheckRuns(
 	return nil
 }
 
+// StartExistingSecurityChecksInProgress sets any existing security check runs to in_progress.
+// It looks up stored check run IDs in StateService and, if found, calls the CheckService
+// to update their status. API errors are logged but not returned to avoid failing webhook handling.
+func (s *SecurityCheckManager) StartExistingSecurityChecksInProgress(
+	ctx context.Context,
+	owner, repo, sha string,
+) error {
+	ctx, span := s.telemetry.StartSpan(ctx, "security_check_manager.start_existing_checks")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("github.owner", owner),
+		attribute.String("github.repo", repo),
+		attribute.String("github.sha", sha),
+	)
+
+	// Vulnerability check
+	if vulnID, hasVuln, err := s.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha); hasVuln &&
+		vulnID > 0 {
+		if err != nil {
+			s.logger.ErrorContext(ctx, "Failed to get vulnerability check run ID", "error", err)
+		} else if err := s.checkService.StartVulnerabilityCheck(ctx, owner, repo, vulnID); err != nil {
+			s.logger.ErrorContext(ctx, "Failed to set vulnerability check to in_progress",
+				"error", err, "check_run_id", vulnID,
+			)
+		}
+	}
+
+	// License check
+	if licenseID, hasLicense, err := s.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha); hasLicense &&
+		licenseID > 0 {
+		if err != nil {
+			s.logger.ErrorContext(ctx, "Failed to get license check run ID", "error", err)
+		} else if err := s.checkService.StartLicenseCheck(ctx, owner, repo, licenseID); err != nil {
+			s.logger.ErrorContext(ctx, "Failed to set license check to in_progress",
+				"error", err, "check_run_id", licenseID,
+			)
+		}
+	}
+
+	return nil
+}
+
 // storeCheckRunID is a helper method that handles storing check run IDs with consistent error logging
 func (s *SecurityCheckManager) storeCheckRunID(
 	ctx context.Context,
@@ -151,7 +194,7 @@ func (s *SecurityCheckManager) CompleteSecurityChecksAsNeutral(
 	ctx context.Context,
 	owner, repo, sha string,
 ) error {
-	ctx, span := s.tracingHelper.StartSpan(
+	ctx, span := s.telemetry.StartSpan(
 		ctx,
 		"security_check_manager.complete_security_checks_as_neutral",
 	)
