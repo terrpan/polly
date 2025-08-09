@@ -106,7 +106,7 @@ result, err := processLicensePolicies(ctx, h.policyService, sbomPayloads, owner,
 type PolicyProcessingResult struct {
     AllPassed           bool
     Violations          []VulnerabilityPolicyVuln  // For vulnerability checks
-    ConditionalComponents []SBOMPolicyComponent     // For license checks  
+    ConditionalComponents []SBOMPolicyComponent     // For license checks
     Summary             string
     Details             string
 }
@@ -124,7 +124,7 @@ type WebhookProcessingConfig struct {
 
 #### WebhookRouter
 - Parses incoming GitHub webhook events
-- Routes to appropriate event-specific handlers  
+- Routes to appropriate event-specific handlers
 - Maintains backward compatibility
 
 #### Event-Specific Handlers
