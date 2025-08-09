@@ -88,29 +88,25 @@ func (h *WorkflowHandler) handleWorkflowStarted(
 	)
 
 	// Guard against duplicate creation: if checks already exist, just set them in progress
-	if _, hasVuln, err := h.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha); err == nil &&
-		hasVuln {
+	_, hasVuln, err := h.stateService.GetVulnerabilityCheckRunID(ctx, owner, repo, sha)
+	if err == nil && hasVuln {
 		h.logger.InfoContext(ctx, "Existing vulnerability check found; setting to in_progress",
 			"owner", owner, "repo", repo, "sha", sha,
 		)
-
 		if err := h.securityCheckMgr.StartExistingSecurityChecksInProgress(ctx, owner, repo, sha); err != nil {
 			h.logger.ErrorContext(ctx, "Failed to set existing checks in progress", "error", err)
 		}
-
 		return nil
 	}
 
-	if _, hasLicense, err := h.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha); err == nil &&
-		hasLicense {
+	_, hasLicense, err := h.stateService.GetLicenseCheckRunID(ctx, owner, repo, sha)
+	if err == nil && hasLicense {
 		h.logger.InfoContext(ctx, "Existing license check found; setting to in_progress",
 			"owner", owner, "repo", repo, "sha", sha,
 		)
-
 		if err := h.securityCheckMgr.StartExistingSecurityChecksInProgress(ctx, owner, repo, sha); err != nil {
 			h.logger.ErrorContext(ctx, "Failed to set existing checks in progress", "error", err)
 		}
-
 		return nil
 	}
 

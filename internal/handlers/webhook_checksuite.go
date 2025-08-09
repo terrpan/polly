@@ -86,7 +86,7 @@ func (h *CheckSuiteWebhookHandler) handleCheckSuiteRequested(
 	return h.processSecurityWorkflow(ctx, owner, repo, sha)
 }
 
-// handleCheckSuiteRequested processes a check suite rerequested event.
+// handleCheckSuiteRerequested processes a check suite rerequested event.
 func (h *CheckSuiteWebhookHandler) handleCheckSuiteRerequested(
 	ctx context.Context,
 	event github.CheckSuitePayload,
@@ -346,3 +346,7 @@ func (h *CheckSuiteWebhookHandler) handleCheckSuiteCompleted(
 
 	return nil
 }
+
+// getEventInfo extracts owner, repo, sha and check suite ID from a check suite event.
+// Mirrors helper pattern used for other webhook handlers.
+// NOTE: getEventInfo generic helper (in helpers.go) already supports CheckSuitePayload.

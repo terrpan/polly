@@ -1,3 +1,4 @@
+// Package handlers contains HTTP webhook handlers and supporting policy processing logic.
 package handlers
 
 import (
