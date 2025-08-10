@@ -31,7 +31,7 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - **SecurityCheckManager** (`webhook_security.go`): Centralizes security check lifecycle management
   - **TelemetryHelper** (`internal/telemetry/helper.go`): Provides consistent OpenTelemetry span creation & error recording (supersedes deprecated TracingHelper)
   - **SharedHelpers** (`helpers.go`): Common processing functions and types for policy evaluation
-  - **WebhookHandler** (`webhook.go`): Backward-compatible wrapper maintaining API compatibility
+  - **(Legacy) WebhookHandler** (`webhook.go`): Historical monolithic handler retained only for backward compatibility; all new logic resides in event-specific handlers above
 - **Key Features**:
   - Event-specific separation of concerns with dedicated handlers
   - Centralized tracing utilities eliminating boilerplate code
@@ -63,7 +63,7 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
   - **Telemetry Integration**: Consistent tracing and metrics across all policy types
   - **Extensible Architecture**: New policies require only implementing `PolicyEvaluator` interface
 
-> **📖 For implementing new policies**, see the [Policy Implementation Guide](./POLICY_IMPLEMENTATION_GUIDE.md)
+> **📖 For implementing new policies**, see the [Policy Development Guide](./POLICY_DEVELOPMENT_GUIDE.md)
 
 #### 4. Check Service (`internal/services/checks.go`)
 - **Purpose**: GitHub check run lifecycle management
@@ -141,7 +141,7 @@ GitHub PR/CheckRun Event → Webhook Handler → Policy Service → OPA Evaluati
 
 ## Security Check Run System
 
-Polly implements a **dual-track security validation system** where vulnerability and license checks operate independently but in parallel. For detailed information about the check run flow, see [CHECK-RUN-FLOW.md](./CHECK-RUN-FLOW.md).
+Polly implements a **dual-track security validation system** where vulnerability and license checks operate independently but in parallel. For end-to-end flow diagrams, rerun processing, and artifact reuse see the consolidated [CHECK-RUN-SYSTEM.md](./CHECK-RUN-SYSTEM.md).
 
 ### Quick Overview
 - **Two Check Types**: Vulnerability checks (Trivy reports) and License checks (SPDX SBOM)

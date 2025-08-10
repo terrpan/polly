@@ -4,6 +4,12 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/terrpan/polly)](https://goreportcard.com/report/github.com/terrpan/polly)
 [![codecov](https://codecov.io/gh/terrpan/polly/branch/main/graph/badge.svg)](https://codecov.io/gh/terrpan/polly)
 
+<p align="center">
+  <img src="docs/assets/polly_mascot.png" alt="Polly Mascot - Secure Parrot" width="240" />
+  <br/>
+  <em>Polly: Policy-driven pull request security & compliance checks</em>
+</p>
+
 A GitHub App that validates pull requests against Open Policy Agent (OPA) policies. Polly creates GitHub check runs based on policy evaluation results, helping enforce compliance requirements before merging.
 
 ## Quick Start
@@ -144,7 +150,9 @@ polly/
 ## Documentation
 
 - **[Architecture Overview](docs/ARCHITECTURE.md)** - System architecture and component overview
-- **[Check Run Flow](docs/CHECK-RUN-FLOW.md)** - Detailed explanation of the security check run system
+- **[Check Run System](docs/CHECK-RUN-SYSTEM.md)** - Comprehensive guide to the security check run system including reruns
+- **[Architecture Patterns](docs/ARCHITECTURE_PATTERNS.md)** - Strategy patterns and service layer enhancement opportunities
+- **[Policy Development Guide](docs/POLICY_DEVELOPMENT_GUIDE.md)** - Complete guide for implementing new policy types with caching
 - **[Webhook Development Guide](docs/WEBHOOK_DEVELOPMENT_GUIDE.md)** - Developer guide for working with the refactored webhook system
 - **[Code Quality Improvements](docs/CODE-QUALITY-IMPROVEMENTS.md)** - Details of function length fixes and duplication elimination
 - **[Observability](docs/OBSERVABILITY.md)** - OpenTelemetry setup and monitoring

@@ -258,6 +258,28 @@ return result, nil
 - Improves response times for GitHub webhooks during re-runs
 - Handles enterprise-scale repositories with massive dependency graphs
 
+### PolicyCacheService Integration
+
+While the raw storage interface exposes low-level caching primitives (`StoreCachedPolicyResults`, `GetCachedPolicyResults`), application code never calls them directly. Instead it uses the dedicated `PolicyCacheService` (`internal/services/policy_cache.go`) which:
+
+1. Wraps the pure `PolicyService` to preserve single-responsibility (policy evaluation vs caching concern)
+2. Applies configuration guards (`config.AppConfig.Storage.PolicyCache.Enabled`) so callers do not duplicate enablement checks
+3. Generates consistent cache keys (`<policyType>:<owner>:<repo>:<sha>`) ensuring repository isolation matches other state keys
+4. Adds OpenTelemetry spans/attributes for hit vs miss and size metrics
+5. Handles TTL + max size parsing, falling back safely when misconfigured
+
+Recommended usage pattern (handlers / processors):
+
+```go
+// In a policy processor or handler
+result, err := h.policyCacheService.CheckVulnerabilityPolicyWithCache(ctx, payload, owner, repo, sha)
+// Fallback to non-cached path is automatic when disabled
+```
+
+Do NOT bypass the service to call storage directly—this centralizes future enhancements (eviction strategies, metrics, versioned cache keys) without changing call sites.
+
+Additional rationale and extension points are documented in [Policy Development Guide](./POLICY_DEVELOPMENT_GUIDE.md) and architectural motivations in [Architecture Patterns](./ARCHITECTURE_PATTERNS.md).
+
 ### Comprehensive State Access
 
 #### StateMap Structure

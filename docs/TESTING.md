@@ -204,3 +204,55 @@ The storage package includes comprehensive tests for:
 4. **Clean up resources** - Use `t.Cleanup()` for proper resource management
 5. **Test error cases** - Don't just test the happy path
 6. **Use appropriate assertions** - `require` for failures that should stop the test, `assert` for failures that can continue
+
+## Policy Cache Testing
+
+The `PolicyCacheService` adds a caching layer around pure policy evaluation. Tests should verify:
+
+1. Cache miss path: first call evaluates via OPA client mock
+2. Cache hit path: second call for same (policyType, owner, repo, sha) avoids OPA evaluation
+3. Disabled configuration: with `PolicyCache.Enabled=false` every call evaluates (no cache interaction)
+4. Size limit enforcement: oversized result returns `ErrEntrySizeExceeded` (ensure no panic and evaluation still returns)
+5. TTL expiry (optional, can be integration): simulate expiration by using short TTL and sleeping or injecting a clock if refactored
+
+Example pattern (unit):
+```go
+opaMock := &mocks.OPAClient{}
+opaMock.On("Evaluate", mock.Anything, mock.Anything, mock.Anything).Return(mockResult, nil)
+
+svc := services.NewPolicyService(opaMock, logger, telemetry, nil)
+cache := services.NewPolicyCacheService(svc, stateSvc, logger, telemetry)
+
+// 1st call → miss
+res1, _ := cache.CheckVulnerabilityPolicyWithCache(ctx, payload, owner, repo, sha)
+// 2nd call → hit (OPA Evaluate should still have been called only once)
+res2, _ := cache.CheckVulnerabilityPolicyWithCache(ctx, payload, owner, repo, sha)
+opaMock.AssertNumberOfCalls(t, "Evaluate", 1)
+assert.Equal(t, res1, res2)
+```
+
+Integration tests (optional) can assert persistence across handler invocations using the Valkey backend.
+
+## Service Registry (Container) Tests
+
+The DI container (`internal/app/container.go`) uses a registry to construct services. Testing focuses on:
+1. Construction success with minimal configuration (memory store)
+2. Policy evaluators registered (expected keys present)
+3. Cache service wraps policy service without altering evaluator map
+4. Shared singletons (same pointer reused for services that should be unique)
+5. Failure path: invalid storage type returns an error
+
+Example assertions:
+```go
+c, err := app.NewContainer(cfg, logger)
+require.NoError(t, err)
+require.NotNil(t, c.Services.PolicyService)
+require.NotNil(t, c.Services.PolicyCacheService)
+assert.Same(t, c.Services.PolicyService, c.Services.PolicyCacheService.Underlying())
+```
+
+Keep container tests fast—avoid external dependencies except where specifically testing Valkey integration via testcontainers (then mark as integration and skip in short mode).
+
+## Cross-File Consistency Tests (Optional)
+
+Lightweight tests can enforce that documentation/code stay aligned, for example ensuring each evaluator registered in `policy.go` has a corresponding description in `POLICY_DEVELOPMENT_GUIDE.md`. These help detect drift after refactors.
