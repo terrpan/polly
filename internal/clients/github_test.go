@@ -22,16 +22,18 @@ func TestNewGitHubClient(t *testing.T) {
 func TestNewGitHubAppClient(t *testing.T) {
 	tests := []struct {
 		name          string
+		errorContains string
 		config        GitHubAppConfig
 		expectedError bool
-		errorContains string
 	}{
 		{
 			name: "valid config",
 			config: GitHubAppConfig{
 				AppID:          123,
 				InstallationID: 456,
-				PrivateKey:     []byte("-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKB\n-----END PRIVATE KEY-----"),
+				PrivateKey: []byte(
+					"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKB\n-----END PRIVATE KEY-----",
+				),
 			},
 			expectedError: true, // Will fail with invalid key but we test the creation logic
 			errorContains: "failed to create GitHub app transport",
@@ -70,8 +72,8 @@ func TestAuthenticate(t *testing.T) {
 	tests := []struct {
 		name          string
 		token         string
-		expectedError bool
 		errorMessage  string
+		expectedError bool
 	}{
 		{
 			name:          "valid token",
@@ -219,8 +221,8 @@ func TestWriteComment(t *testing.T) {
 		name          string
 		owner         string
 		repo          string
-		number        int
 		comment       string
+		number        int
 		expectedError bool
 	}{
 		{
@@ -317,7 +319,13 @@ func TestCreateCheckRun(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			checkRun, err := githubClient.CreateCheckRun(ctx, tt.owner, tt.repo, tt.sha, tt.checkName)
+			checkRun, err := githubClient.CreateCheckRun(
+				ctx,
+				tt.owner,
+				tt.repo,
+				tt.sha,
+				tt.checkName,
+			)
 
 			if tt.expectedError {
 				assert.Error(t, err)
@@ -369,13 +377,13 @@ func TestUpdateCheckRun(t *testing.T) {
 	githubClient := &GitHubClient{client: client}
 
 	tests := []struct {
+		conclusion    *string
 		name          string
 		owner         string
 		repo          string
-		checkRunID    int64
 		checkName     string
 		status        string
-		conclusion    *string
+		checkRunID    int64
 		expectedError bool
 	}{
 		{
@@ -402,7 +410,16 @@ func TestUpdateCheckRun(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := githubClient.UpdateCheckRun(ctx, tt.owner, tt.repo, tt.checkRunID, tt.checkName, tt.status, tt.conclusion, nil)
+			err := githubClient.UpdateCheckRun(
+				ctx,
+				tt.owner,
+				tt.repo,
+				tt.checkRunID,
+				tt.checkName,
+				tt.status,
+				tt.conclusion,
+				nil,
+			)
 
 			if tt.expectedError {
 				assert.Error(t, err)
