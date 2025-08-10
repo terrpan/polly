@@ -19,7 +19,7 @@ import (
 type WebhookRouter struct {
 	logger             *slog.Logger
 	hook               *github.Webhook
-	telemetry          *telemetry.TelemetryHelper
+	telemetry          *telemetry.Helper
 	pullRequestHandler *PullRequestHandler
 	checkRunHandler    *CheckRunHandler
 	workflowHandler    *WorkflowHandler

@@ -250,7 +250,12 @@ func TestRun_Synchronization(t *testing.T) {
 			}
 
 			// Each error should be unique (proves no overwrites occurred)
-			assert.Len(t, errorMap, numTasks, "All errors should be unique (no race condition overwrites)")
+			assert.Len(
+				t,
+				errorMap,
+				numTasks,
+				"All errors should be unique (no race condition overwrites)",
+			)
 		}
 	})
 

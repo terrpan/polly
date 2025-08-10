@@ -16,7 +16,7 @@ import (
 type SecurityService struct {
 	githubClient *clients.GitHubClient
 	logger       *slog.Logger
-	telemetry    *telemetry.TelemetryHelper
+	telemetry    *telemetry.Helper
 	detectors    []ContentDetector // Strategy registry
 }
 
@@ -24,7 +24,7 @@ type SecurityService struct {
 func NewSecurityService(
 	githubClient *clients.GitHubClient,
 	logger *slog.Logger,
-	telemetry *telemetry.TelemetryHelper,
+	telemetry *telemetry.Helper,
 	detectors ...ContentDetector,
 ) *SecurityService {
 	// Sort detectors by priority (lower number = higher priority)

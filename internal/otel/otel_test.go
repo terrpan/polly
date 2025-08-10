@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/terrpan/polly/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
 func TestTracingHelper(t *testing.T) {

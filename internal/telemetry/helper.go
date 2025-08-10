@@ -9,25 +9,28 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-// TelemetryHelper centralizes tracing and logging concerns
-type TelemetryHelper struct {
+// Helper centralizes tracing and logging concerns
+type Helper struct {
 	tracer oteltrace.Tracer
 }
 
-// NewTelemetryHelper creates a new TelemetryHelper with the provided tracer for a component.
-func NewTelemetryHelper(component string) *TelemetryHelper {
-	return &TelemetryHelper{
+// NewHelper creates a new Helper with the provided tracer for a component.
+func NewHelper(component string) *Helper {
+	return &Helper{
 		tracer: otel.Tracer(component),
 	}
 }
 
 // StartSpan starts a new span with the given name
-func (t *TelemetryHelper) StartSpan(ctx context.Context, name string) (context.Context, oteltrace.Span) {
+func (t *Helper) StartSpan(
+	ctx context.Context,
+	name string,
+) (context.Context, oteltrace.Span) {
 	return t.tracer.Start(ctx, name)
 }
 
 // SetRepositoryAttributes sets repository attributes on a span
-func (t *TelemetryHelper) SetRepositoryAttributes(span oteltrace.Span, owner, repo, sha string) {
+func (t *Helper) SetRepositoryAttributes(span oteltrace.Span, owner, repo, sha string) {
 	span.SetAttributes(
 		attribute.String("repo.owner", owner),
 		attribute.String("repo.name", repo),
@@ -36,7 +39,12 @@ func (t *TelemetryHelper) SetRepositoryAttributes(span oteltrace.Span, owner, re
 }
 
 // SetCheckRunAttributes sets check run attributes on a span
-func (t *TelemetryHelper) SetCheckRunAttributes(span oteltrace.Span, owner, repo string, checkRunID int64, checkType string) {
+func (t *Helper) SetCheckRunAttributes(
+	span oteltrace.Span,
+	owner, repo string,
+	checkRunID int64,
+	checkType string,
+) {
 	span.SetAttributes(
 		attribute.String("github.owner", owner),
 		attribute.String("github.repo", repo),
@@ -46,12 +54,12 @@ func (t *TelemetryHelper) SetCheckRunAttributes(span oteltrace.Span, owner, repo
 }
 
 // SetPolicyAttributes - for PolicyService
-func (t *TelemetryHelper) SetPolicyAttributes(span oteltrace.Span, policyType string) {
+func (t *Helper) SetPolicyAttributes(span oteltrace.Span, policyType string) {
 	span.SetAttributes(attribute.String("policy.type", policyType))
 }
 
 // SetStorageAttributes - for StateService storage operations
-func (t *TelemetryHelper) SetStorageAttributes(span oteltrace.Span, operation, key string) {
+func (t *Helper) SetStorageAttributes(span oteltrace.Span, operation, key string) {
 	span.SetAttributes(
 		attribute.String("storage.operation", operation),
 		attribute.String("storage.key", key),
@@ -59,7 +67,7 @@ func (t *TelemetryHelper) SetStorageAttributes(span oteltrace.Span, operation, k
 }
 
 // SetSecurityAttributes - for SecurityService artifact processing
-func (t *TelemetryHelper) SetSecurityAttributes(span oteltrace.Span, artifactType, scanner string) {
+func (t *Helper) SetSecurityAttributes(span oteltrace.Span, artifactType, scanner string) {
 	span.SetAttributes(
 		attribute.String("security.artifact_type", artifactType),
 		attribute.String("security.scanner", scanner),
@@ -67,7 +75,12 @@ func (t *TelemetryHelper) SetSecurityAttributes(span oteltrace.Span, artifactTyp
 }
 
 // SetCommentAttributes - for CommentService comment operations
-func (t *TelemetryHelper) SetCommentAttributes(span oteltrace.Span, owner, repo string, prNumber int, commentLength int) {
+func (t *Helper) SetCommentAttributes(
+	span oteltrace.Span,
+	owner, repo string,
+	prNumber int,
+	commentLength int,
+) {
 	span.SetAttributes(
 		attribute.String("github.owner", owner),
 		attribute.String("github.repo", repo),
@@ -77,7 +90,7 @@ func (t *TelemetryHelper) SetCommentAttributes(span oteltrace.Span, owner, repo 
 }
 
 // SetHealthAttributes - for HealthService dependency checks
-func (t *TelemetryHelper) SetHealthAttributes(span oteltrace.Span, dependency, status string) {
+func (t *Helper) SetHealthAttributes(span oteltrace.Span, dependency, status string) {
 	span.SetAttributes(
 		attribute.String("health.dependency", dependency),
 		attribute.String("health.status", status),
@@ -86,12 +99,12 @@ func (t *TelemetryHelper) SetHealthAttributes(span oteltrace.Span, dependency, s
 
 // SetErrorAttribute - universal error handling. Sets error attribute on a span
 // and records the error in the span.
-func (t *TelemetryHelper) SetErrorAttribute(span oteltrace.Span, err error) {
+func (t *Helper) SetErrorAttribute(span oteltrace.Span, err error) {
 	span.SetAttributes(attribute.String("error", err.Error()))
 	span.RecordError(err)
 }
 
 // SetCacheAttributes sets cache hit/miss attributes on a span
-func (t *TelemetryHelper) SetCacheAttributes(span oteltrace.Span, hit bool) {
+func (t *Helper) SetCacheAttributes(span oteltrace.Span, hit bool) {
 	span.SetAttributes(attribute.Bool("cache.hit", hit))
 }

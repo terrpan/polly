@@ -15,7 +15,7 @@ import (
 type CheckService struct {
 	githubClient *clients.GitHubClient
 	logger       *slog.Logger
-	telemetry    *telemetry.TelemetryHelper
+	telemetry    *telemetry.Helper
 }
 
 // CheckRunStatus represents the status of a check run
@@ -57,7 +57,7 @@ type CheckRunResult struct {
 func NewCheckService(
 	githubClient *clients.GitHubClient,
 	logger *slog.Logger,
-	telemetry *telemetry.TelemetryHelper,
+	telemetry *telemetry.Helper,
 ) *CheckService {
 	return &CheckService{
 		githubClient: githubClient,

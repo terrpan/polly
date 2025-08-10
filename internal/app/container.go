@@ -46,7 +46,7 @@ type Container struct {
 	HealthHandler *handlers.HealthHandler
 
 	// Telemetry helpers cache
-	telemetryHelpers map[string]*telemetry.TelemetryHelper
+	telemetryHelpers map[string]*telemetry.Helper
 }
 
 // Logger returns the container's logger
@@ -58,7 +58,7 @@ func (c *Container) Logger() *slog.Logger {
 func NewContainer(ctx context.Context) (*Container, error) {
 	c := &Container{
 		logger:           config.NewLogger(),
-		telemetryHelpers: make(map[string]*telemetry.TelemetryHelper),
+		telemetryHelpers: make(map[string]*telemetry.Helper),
 	}
 	c.logger.Info("Initializing application container")
 
@@ -84,7 +84,7 @@ func NewContainer(ctx context.Context) (*Container, error) {
 }
 
 // getTelemetryHelper returns cached telemetry helper or creates new one
-func (c *Container) getTelemetryHelper(name string) *telemetry.TelemetryHelper {
+func (c *Container) getTelemetryHelper(name string) *telemetry.Helper {
 	if helper, exists := c.telemetryHelpers[name]; exists {
 		return helper
 	}

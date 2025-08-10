@@ -12,14 +12,14 @@ import (
 type CommentService struct {
 	githubClient *clients.GitHubClient
 	logger       *slog.Logger
-	telemetry    *telemetry.TelemetryHelper
+	telemetry    *telemetry.Helper
 }
 
 // NewCommentService initializes a new CommentService with the provided GitHub client and logger.
 func NewCommentService(
 	githubClient *clients.GitHubClient,
 	logger *slog.Logger,
-	telemetry *telemetry.TelemetryHelper,
+	telemetry *telemetry.Helper,
 ) *CommentService {
 	return &CommentService{
 		githubClient: githubClient,

@@ -93,9 +93,11 @@ func (h *WorkflowHandler) handleWorkflowStarted(
 		h.logger.InfoContext(ctx, "Existing vulnerability check found; setting to in_progress",
 			"owner", owner, "repo", repo, "sha", sha,
 		)
+
 		if err := h.securityCheckMgr.StartExistingSecurityChecksInProgress(ctx, owner, repo, sha); err != nil {
 			h.logger.ErrorContext(ctx, "Failed to set existing checks in progress", "error", err)
 		}
+
 		return nil
 	}
 
@@ -104,9 +106,11 @@ func (h *WorkflowHandler) handleWorkflowStarted(
 		h.logger.InfoContext(ctx, "Existing license check found; setting to in_progress",
 			"owner", owner, "repo", repo, "sha", sha,
 		)
+
 		if err := h.securityCheckMgr.StartExistingSecurityChecksInProgress(ctx, owner, repo, sha); err != nil {
 			h.logger.ErrorContext(ctx, "Failed to set existing checks in progress", "error", err)
 		}
+
 		return nil
 	}
 

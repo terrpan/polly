@@ -14,7 +14,7 @@ type PolicyCacheService struct {
 	policyService *PolicyService
 	stateService  *StateService
 	logger        *slog.Logger
-	telemetry     *telemetry.TelemetryHelper
+	telemetry     *telemetry.Helper
 }
 
 // NewPolicyCacheService creates a new PolicyCacheService
@@ -22,7 +22,7 @@ func NewPolicyCacheService(
 	policyService *PolicyService,
 	stateService *StateService,
 	logger *slog.Logger,
-	telemetry *telemetry.TelemetryHelper,
+	telemetry *telemetry.Helper,
 ) *PolicyCacheService {
 	return &PolicyCacheService{
 		policyService: policyService,
@@ -124,6 +124,7 @@ func checkPolicyWithCache[T any](
 				"error",
 				err,
 			)
+
 			return zero, err
 		}
 

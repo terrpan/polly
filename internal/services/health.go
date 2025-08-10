@@ -21,7 +21,7 @@ type HealthService struct {
 	logger    *slog.Logger
 	opaClient *clients.OPAClient
 	store     storage.Store
-	telemetry *telemetry.TelemetryHelper
+	telemetry *telemetry.Helper
 }
 
 // HealthServiceResponse represents the response structure for health checks.
@@ -51,7 +51,7 @@ func NewHealthService(
 	logger *slog.Logger,
 	opaClient *clients.OPAClient,
 	store storage.Store,
-	telemetry *telemetry.TelemetryHelper,
+	telemetry *telemetry.Helper,
 ) *HealthService {
 	return &HealthService{
 		logger:    logger,

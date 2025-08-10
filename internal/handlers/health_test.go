@@ -20,7 +20,7 @@ type HealthHandlerTestSuite struct {
 	logger          *slog.Logger
 	opaClient       *clients.OPAClient
 	store           storage.Store
-	telemetryHelper *telemetry.TelemetryHelper
+	telemetryHelper *telemetry.Helper
 	healthService   *services.HealthService
 	handler         *HealthHandler
 }
