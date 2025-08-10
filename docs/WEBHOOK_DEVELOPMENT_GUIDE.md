@@ -2,6 +2,18 @@
 
 ## Quick Reference for the Refactored Webhook System
 
+### Modular Architecture Overview
+
+Polly's webhook layer is intentionally modular. Each GitHub event type is handled by a focused handler struct that embeds `BaseWebhookHandler` for shared dependencies (policy services, cache service, comment, check, state & telemetry helpers). Common orchestration logic (policy processing, artifact transformation, comment construction, check result building, tracing) is centralized in `helpers.go` & strategy implementations in `policy_processing.go` to avoid duplication.
+
+Key goals of the modular design:
+1. Single responsibility per handler (pull request sync, workflow artifact ingestion, check run reruns, security check lifecycle)
+2. Reuse over reimplementation (all complex logic delegated to shared helpers or strategy processors)
+3. Test isolation (each handler can be unit‑tested with mocks for only what it uses)
+4. Extensibility (adding a new event = add file + router wiring, no large switch statements)
+
+For the end‑to‑end lifecycle of security and license checks (creation, reruns, caching, result construction) see the consolidated [Check Run System](./CHECK-RUN-SYSTEM.md). Architectural rationale and further extensibility patterns (additional strategies, result builders) live in [Architecture Patterns](./ARCHITECTURE_PATTERNS.md).
+
 ### File Structure
 
 ```
@@ -132,6 +144,8 @@ type WebhookProcessingConfig struct {
 - **CheckRunHandler**: Handle check run rerequests, restart checks with stored artifacts
 - **WorkflowHandler**: Handle workflow started/completed events, process security artifacts
 
+Each handler focuses on event-specific extraction + delegation. Business logic (policy evaluation via strategy processors and caching) is intentionally outside these structs to keep them thin (<80 lines per method and minimal branching). When adding new behavior prefer: handler → helper/processor delegation instead of embedding new logic directly.
+
 #### SecurityCheckManager
 - Centralized management of security check lifecycle
 - Create and start vulnerability and license checks concurrently
@@ -149,6 +163,7 @@ type WebhookProcessingConfig struct {
 - **TelemetryHelper**: Consistent OpenTelemetry tracing & error attributes (supersedes deprecated TracingHelper)
 - **BaseWebhookHandler**: Common dependencies and utility methods
 - **Processing Functions**: Shared vulnerability and license processing logic (all consolidated in `helpers.go`)
+ - **Strategy Processors**: See `policy_processing.go` for the policy processing strategy pattern that removes duplication between vulnerability vs license flows. Details in [Architecture Patterns](./ARCHITECTURE_PATTERNS.md).
 
 ### Testing Patterns
 
@@ -191,6 +206,7 @@ func TestSecurityCheckManager(t *testing.T) {
 3. Add handler creation to `WebhookRouter.NewWebhookRouter()`
 4. Add event routing in `WebhookRouter.HandleWebhook()`
 5. Add tests for the new handler
+6. (If the new event triggers security / license policy processing) Reuse existing processors; only create a new processor if a genuinely new policy type emerges (see patterns in [Architecture Patterns](./ARCHITECTURE_PATTERNS.md)).
 
 #### Extending Existing Handlers
 
