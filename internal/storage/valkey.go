@@ -542,7 +542,41 @@ func (v *ValkeyStore) GetCachedPolicyResults(
 	)
 	defer span.End()
 
-	// Get from Valkey
+	// Get raw data from Valkey
+	data, err := v.getRawCacheData(ctx, key, span)
+	if err != nil {
+		return nil, err
+	}
+
+	// Process and deserialize the data
+	entry, err := v.processCacheData(ctx, data, span)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check expiration and handle cleanup
+	if err := v.validateCacheExpiration(ctx, key, entry, span); err != nil {
+		return nil, err
+	}
+
+	// Set success attributes
+	span.SetAttributes(
+		attribute.Bool("cache.hit", true),
+		attribute.Int64("cache.size_bytes", entry.Size),
+		attribute.String("cache.cached_at", entry.CachedAt.Format(time.RFC3339)),
+		attribute.String("cache.expires_at", entry.ExpiresAt.Format(time.RFC3339)),
+		attribute.String("valkey.result", "success"),
+	)
+
+	return entry, nil
+}
+
+// getRawCacheData retrieves raw data from Valkey
+func (v *ValkeyStore) getRawCacheData(
+	ctx context.Context,
+	key string,
+	span trace.Span,
+) ([]byte, error) {
 	result := v.client.Do(ctx, v.client.B().Get().Key(key).Build())
 	if result.Error() != nil {
 		if valkey.IsValkeyNil(result.Error()) {
@@ -565,6 +599,15 @@ func (v *ValkeyStore) GetCachedPolicyResults(
 		return nil, fmt.Errorf("failed to read cache entry: %w", err)
 	}
 
+	return data, nil
+}
+
+// processCacheData handles decompression and deserialization
+func (v *ValkeyStore) processCacheData(
+	ctx context.Context,
+	data []byte,
+	span trace.Span,
+) (*PolicyCacheEntry, error) {
 	originalSize := int64(len(data))
 	span.SetAttributes(
 		attribute.Int64("valkey.data_size", originalSize),
@@ -593,28 +636,30 @@ func (v *ValkeyStore) GetCachedPolicyResults(
 		return nil, fmt.Errorf("failed to unmarshal cache entry: %w", err)
 	}
 
-	// Check if entry has expired (additional safety check)
+	return &entry, nil
+}
+
+// validateCacheExpiration checks if cache entry is expired and handles cleanup
+func (v *ValkeyStore) validateCacheExpiration(
+	ctx context.Context,
+	key string,
+	entry *PolicyCacheEntry,
+	span trace.Span,
+) error {
 	if time.Now().After(entry.ExpiresAt) {
 		span.SetAttributes(
 			attribute.Bool("cache.hit", false),
 			attribute.String("cache.miss_reason", "expired"),
 		)
+
 		// Clean up expired entry
 		go func() {
 			deleteCtx := context.Background()
 			v.client.Do(deleteCtx, v.client.B().Del().Key(key).Build())
 		}()
 
-		return nil, ErrKeyNotFound
+		return ErrKeyNotFound
 	}
 
-	span.SetAttributes(
-		attribute.Bool("cache.hit", true),
-		attribute.Int64("cache.size_bytes", entry.Size),
-		attribute.String("cache.cached_at", entry.CachedAt.Format(time.RFC3339)),
-		attribute.String("cache.expires_at", entry.ExpiresAt.Format(time.RFC3339)),
-		attribute.String("valkey.result", "success"),
-	)
-
-	return &entry, nil
+	return nil
 }
