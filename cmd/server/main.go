@@ -63,12 +63,12 @@ func run() error {
 		defer cancel()
 
 		if err := container.Shutdown(shutdownCtx); err != nil {
-			container.Logger.Error("Failed to shutdown container", "error", err)
+			container.Logger().Error("Failed to shutdown container", "error", err)
 		}
 	}()
 
 	// Log application version and build info
-	container.Logger.Info("Starting polly server",
+	container.Logger().Info("Starting polly server",
 		"version", config.AppConfig.Version,
 		"commit", config.AppConfig.Commit,
 		"build_time", config.AppConfig.BuildTime,
@@ -96,15 +96,15 @@ func run() error {
 
 	select {
 	case sig := <-quit:
-		container.Logger.Info("Shutdown signal received", "signal", sig.String())
+		container.Logger().Info("Shutdown signal received", "signal", sig.String())
 	case err := <-serverErrCh:
 		if err != nil { // non-nil means server failed unexpectedly
-			container.Logger.Error("Server error", "error", err)
+			container.Logger().Error("Server error", "error", err)
 			// attempt graceful shutdown below; propagate error
 			return fmt.Errorf("server error: %w", err)
 		}
 		// channel closed with nil error => normal server stop; continue to clean shutdown
-		container.Logger.Info("Server stopped gracefully")
+		container.Logger().Info("Server stopped gracefully")
 	}
 
 	// Graceful server shutdown with timeout
@@ -112,10 +112,10 @@ func run() error {
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		container.Logger.Error("Server forced to shutdown", "error", err)
+		container.Logger().Error("Server forced to shutdown", "error", err)
 	}
 
-	container.Logger.Info("Server exited")
+	container.Logger().Info("Server exited")
 
 	return nil
 }

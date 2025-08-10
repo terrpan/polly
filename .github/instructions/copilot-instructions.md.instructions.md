@@ -10,7 +10,10 @@ A GitHub App that validates pull requests against Open Policy Agent (OPA) polici
 
 ### Service Layer Pattern (`internal/services/`)
 - **Constructor Pattern**: All services use `NewXxxService(dependencies...) *XxxService`
-- **Dependency Injection**: Services injected via `internal/app/container.go` with clear dependency graph
+- **Service Registry**: Services managed via registry pattern in `internal/app/container.go` - see [Container Development Guide](docs/CONTAINER_DEVELOPMENT_GUIDE.md)
+- **Easy Service Addition**: Adding services requires only one registration entry in `createServiceRegistrations()`
+- **Private Encapsulation**: Internal services are private fields, only handlers exported for external access
+- **Type Safety**: All dependencies are concrete types with compile-time checking
 - **Interface Segregation**: Use `PolicyServiceInterface` for testing - see `internal/handlers/helpers_test.go`
 
 ### Webhook Handler Architecture (`internal/handlers/`)

@@ -1,3 +1,5 @@
+// Package app provides the application and dependency injection container.
+// This file contains HTTP middleware for the application.
 package app
 
 import "net/http"
