@@ -53,7 +53,7 @@ Adding a new service requires only one change in one place:
 ```go
 type Container struct {
     // ... existing fields ...
-    
+
     // Add your new service as a private field
     awesomeService *services.AwesomeService
 }
@@ -66,7 +66,7 @@ In `createServiceRegistrations()`, add your service to the registry:
 func (c *Container) createServiceRegistrations() []serviceRegistration {
     return []serviceRegistration{
         // ... existing services ...
-        
+
         {
             name: "AwesomeService",
             init: func(c *Container) error {
@@ -205,7 +205,7 @@ func TestMyHandler(t *testing.T) {
     container := &app.Container{
         // Only set what you need for the test
     }
-    
+
     // Or create a real container for integration tests
     container, err := app.NewContainer(ctx)
     require.NoError(t, err)

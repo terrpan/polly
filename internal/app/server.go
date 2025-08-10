@@ -43,8 +43,6 @@ func NewServer(container *Container) *Server {
 
 // Start runs the HTTP server
 func (s *Server) Start() error {
-	s.container.Logger().Info("Starting server", "port", config.AppConfig.Port)
-
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		s.container.Logger().Error("Failed to start server", "error", err)
 		return err
