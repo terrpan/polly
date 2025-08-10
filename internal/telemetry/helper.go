@@ -14,8 +14,8 @@ type Helper struct {
 	tracer oteltrace.Tracer
 }
 
-// NewHelper creates a new Helper with the provided tracer for a component.
-func NewHelper(component string) *Helper {
+// NewTelemetryHelper creates a new Helper with the provided tracer for a component.
+func NewTelemetryHelper(component string) *Helper {
 	return &Helper{
 		tracer: otel.Tracer(component),
 	}
