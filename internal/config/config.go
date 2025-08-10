@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+
 	"github.com/terrpan/polly/internal/clients"
 )
 
@@ -17,38 +18,24 @@ const (
 
 // Config represents the configuration of the application. Each field corresponds to a configuration option
 type Config struct {
-	Port int `mapstructure:"port"`
-
-	// GitHub App configuration
-	GitHubApp GitHubAppConfig `mapstructure:"github"`
-
-	// GitHub token for authentication used for development or testing
-	GitHubToken string `mapstructure:"github_token"`
-
-	// Build information
-	// These fields can be set at build time using -ldflags
-	Version   string
-	Commit    string
-	BuildTime string
-
-	Logger LoggerConfig `mapstructure:"logger"`
-
-	// OPA configuration
-	Opa OpaConfig `mapstructure:"opa"`
-
-	// OTLP configuration for OpenTelemetry
-	OTLP OTLPConfig `mapstructure:"otlp"`
-
-	// Storage configuration
-	Storage StorageConfig `mapstructure:"storage"`
+	Opa         OpaConfig `mapstructure:"opa"`
+	GitHubToken string    `mapstructure:"github_token"`
+	Version     string
+	Commit      string
+	BuildTime   string
+	Logger      LoggerConfig    `mapstructure:"logger"`
+	GitHubApp   GitHubAppConfig `mapstructure:"github"`
+	Storage     StorageConfig   `mapstructure:"storage"`
+	Port        int             `mapstructure:"port"`
+	OTLP        OTLPConfig      `mapstructure:"otlp"`
 }
 
 // GitHubAppConfig represents the configuration for a GitHub App
 type GitHubAppConfig struct {
+	PrivateKeyPath string `mapstructure:"private_key_path"`
+	PrivateKey     string `mapstructure:"private_key"`
 	AppID          int64  `mapstructure:"app_id"`
 	InstallationID int64  `mapstructure:"installation_id"`
-	PrivateKeyPath string `mapstructure:"private_key_path"`
-	PrivateKey     string `mapstructure:"private_key"` // Direct PEM content
 }
 
 // LoggerConfig represents the configuration for the logger
@@ -58,6 +45,7 @@ type LoggerConfig struct {
 	AddSource  bool   `mapstructure:"add_source"`
 }
 
+// OpaConfig represents the configuration for OPA (Open Policy Agent)
 type OpaConfig struct {
 	// OPA server URL
 	ServerURL string `mapstructure:"server_url"`
@@ -78,45 +66,41 @@ type OTLPConfig struct {
 
 // StorageConfig represents the configuration for storage
 type StorageConfig struct {
-	// Type of storage (e.g., "memory", "valkey")
-	Type string `mapstructure:"type"`
-	// Valkey-specific configuration
-	Valkey               ValkeyConfig      `mapstructure:"valkey"`
-	DefaultKeyExpiration string            `mapstructure:"default_key_expiration"` // Expiration for keys
+	Type                 string            `mapstructure:"type"`
+	DefaultKeyExpiration string            `mapstructure:"default_key_expiration"`
 	PolicyCache          PolicyCacheConfig `mapstructure:"policy_cache"`
+	Valkey               ValkeyConfig      `mapstructure:"valkey"`
 }
 
 // PolicyCacheConfig holds configuration for caching policy evaluation results
 type PolicyCacheConfig struct {
-	// Enabled determines if policy result caching is active
-	Enabled bool `mapstructure:"enabled"`
-	// TTL defines how long policy results are cached (e.g., "30m", "1h")
-	TTL string `mapstructure:"ttl"`
-	// MaxSize defines the maximum size of individual cache entries in bytes
-	// Use this to prevent caching of extremely large SBOM files
-	MaxSize int64 `mapstructure:"max_size"`
+	TTL     string `mapstructure:"ttl"`
+	MaxSize int64  `mapstructure:"max_size"`
+	Enabled bool   `mapstructure:"enabled"`
 }
 
 // ValkeyConfig holds the configuration for connecting to Valkey
 type ValkeyConfig struct {
-	Address  string `mapstructure:"address"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
-	// Sentinel configuration
-	EnableSentinel    bool     `mapstructure:"enable_sentinel"`
-	SentinelAddrs     []string `mapstructure:"sentinel_addrs"`
+	Address           string   `mapstructure:"address"`
+	Username          string   `mapstructure:"username"`
+	Password          string   `mapstructure:"password"`
 	SentinelMaster    string   `mapstructure:"sentinel_master"`
 	SentinelUsername  string   `mapstructure:"sentinel_username"`
 	SentinelPassword  string   `mapstructure:"sentinel_password"`
+	SentinelAddrs     []string `mapstructure:"sentinel_addrs"`
+	DB                int      `mapstructure:"db"`
+	EnableSentinel    bool     `mapstructure:"enable_sentinel"`
 	EnableCompression bool     `mapstructure:"enable_compression"`
 	EnableOTel        bool     `mapstructure:"enable_otel"`
 }
 
 var (
-	Version   = "v0.0.1"  // Default version, can be overridden by build flags
-	Commit    = "unknown" // Default commit hash, can be overridden by build flags
-	BuildTime = "unknown" // Default build time, can be overridden by build flags
+	// Version is the application version, can be overridden by build flags
+	Version = "v0.0.1"
+	// Commit is the git commit hash, can be overridden by build flags
+	Commit = "unknown"
+	// BuildTime is the build time, can be overridden by build flags
+	BuildTime = "unknown"
 )
 
 var (
@@ -256,19 +240,22 @@ func LoadGitHubAppConfig() (*clients.GitHubAppConfig, error) {
 		return nil, fmt.Errorf("GITHUB_INSTALLATION_ID is required")
 	}
 
-	var privateKey []byte
-	var err error
+	var (
+		privateKey []byte
+		err        error
+	)
 
 	// Try to load private key from direct content first
-	if appConfig.PrivateKey != "" {
+	switch {
+	case appConfig.PrivateKey != "":
 		privateKey = []byte(appConfig.PrivateKey)
-	} else if appConfig.PrivateKeyPath != "" {
+	case appConfig.PrivateKeyPath != "":
 		// Load from file path
 		privateKey, err = os.ReadFile(appConfig.PrivateKeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read private key file: %w", err)
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("either GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH is required")
 	}
 
@@ -325,12 +312,15 @@ func bindStructEnvVars(structType reflect.Type, keyPrefix, envPrefix string) {
 			bindStructEnvVars(fieldType, viperKey, envPrefix)
 		} else {
 			// Bind the environment variable to the viper key
-			_ = viper.BindEnv(viperKey, envKey)
+			err := viper.BindEnv(viperKey, envKey)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error binding environment variable %s: %v\n", envKey, err)
+			}
 		}
 	}
 }
 
-// getDefaultExpiration returns the default expiration duration for keys
+// GetDefaultExpiration returns the default expiration duration for keys
 func GetDefaultExpiration() time.Duration {
 	if AppConfig == nil || AppConfig.Storage.DefaultKeyExpiration == "" {
 		return 24 * time.Hour // Default to 24 hours if not set
@@ -340,6 +330,7 @@ func GetDefaultExpiration() time.Duration {
 	if err != nil {
 		return 24 * time.Hour // Fallback to 24 hours on error
 	}
+
 	return duration
 }
 
@@ -349,5 +340,6 @@ func GetPolicyCacheConfig() PolicyCacheConfig {
 		// Return default configuration when AppConfig is not initialized (e.g., in tests)
 		return defaultConfig.Storage.PolicyCache
 	}
+
 	return AppConfig.Storage.PolicyCache
 }

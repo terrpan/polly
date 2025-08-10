@@ -1,3 +1,5 @@
+// Package config provides configuration settings for the application.
+// This file contains the logger configuration.
 package config
 
 import (
@@ -20,8 +22,8 @@ func NewLogger() *slog.Logger {
 	} else {
 		handler = slog.NewTextHandler(os.Stdout, opts)
 	}
-	return slog.New(handler)
 
+	return slog.New(handler)
 }
 
 // parseLogLevel parses the log level from a string and returns the corresponding slog.Level.
