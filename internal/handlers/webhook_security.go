@@ -9,7 +9,7 @@ import (
 	gogithub "github.com/google/go-github/v72/github"
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/terrpan/polly/internal/utils"
+	"github.com/terrpan/polly/internal/concurrent"
 )
 
 // SecurityCheckType represents a type of security check that can be created
@@ -230,7 +230,7 @@ func (s *SecurityCheckManager) CompleteSecurityChecksAsNeutral(
 		}
 	}
 
-	_ = utils.ExecuteConcurrently(tasks)
+	_ = concurrent.Run(tasks)
 
 	return nil
 }
