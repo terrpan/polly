@@ -12,21 +12,24 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+// GitHubClient provides methods to interact with the GitHub API.
 type GitHubClient struct {
 	client *github.Client
-	// httpClient *http.Client
 }
 
 // GitHubAppConfig holds the configuration for GitHub App authentication
 type GitHubAppConfig struct {
+	PrivateKey     []byte
 	AppID          int64
 	InstallationID int64
-	PrivateKey     []byte
 }
 
 // NewGitHubClient initializes a new GitHub client.
 func NewGitHubClient(ctx context.Context) *GitHubClient {
-	client := github.NewClient(nil) // Use nil for unauthenticated requests; replace with an authenticated client if needed.
+	client := github.NewClient(
+		nil,
+	) // Use nil for unauthenticated requests; replace with an authenticated client if needed.
+
 	return &GitHubClient{
 		client: client,
 	}
@@ -36,19 +39,21 @@ func NewGitHubClient(ctx context.Context) *GitHubClient {
 func NewGitHubAppClient(ctx context.Context, config GitHubAppConfig) (*GitHubClient, error) {
 	// Create a GitHub app transport
 	transport, err := ghinstallation.New(
-		otelhttp.NewTransport(http.DefaultTransport), // Wrap the default transport with OpenTelemetry instrumentation
+		otelhttp.NewTransport(
+			http.DefaultTransport,
+		), // Wrap the default transport with OpenTelemetry instrumentation
 		// http.DefaultTransport,
 		config.AppID,
 		config.InstallationID,
 		config.PrivateKey,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GitHub app transport: %w", err)
 	}
 	// Create a new GitHub client with the app transport
 	httpClient := &http.Client{Transport: transport}
 	client := github.NewClient(httpClient)
+
 	return &GitHubClient{
 		client: client,
 		// httpClient: httpClient,
@@ -62,11 +67,16 @@ func (c *GitHubClient) Authenticate(ctx context.Context, token string) error {
 	}
 
 	c.client = github.NewTokenClient(ctx, token)
+
 	return nil
 }
 
 // GetPullRequest retrieves a pull request by its number from the specified repository.
-func (c *GitHubClient) GetPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, error) {
+func (c *GitHubClient) GetPullRequest(
+	ctx context.Context,
+	owner, repo string,
+	number int,
+) (*github.PullRequest, error) {
 	pr, _, err := c.client.PullRequests.Get(ctx, owner, repo, number)
 	if err != nil {
 		return nil, err
@@ -76,8 +86,19 @@ func (c *GitHubClient) GetPullRequest(ctx context.Context, owner, repo string, n
 }
 
 // WriteComment writes a comment on a pull request.
-func (c *GitHubClient) WriteComment(ctx context.Context, owner, repo string, number int, comment string) error {
-	_, _, err := c.client.Issues.CreateComment(ctx, owner, repo, number, &github.IssueComment{Body: &comment})
+func (c *GitHubClient) WriteComment(
+	ctx context.Context,
+	owner, repo string,
+	number int,
+	comment string,
+) error {
+	_, _, err := c.client.Issues.CreateComment(
+		ctx,
+		owner,
+		repo,
+		number,
+		&github.IssueComment{Body: &comment},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to write comment: %w", err)
 	}
@@ -86,7 +107,10 @@ func (c *GitHubClient) WriteComment(ctx context.Context, owner, repo string, num
 }
 
 // CreateCheckRun creates a check run for a given commit SHA in a repository.
-func (c *GitHubClient) CreateCheckRun(ctx context.Context, owner, repo, sha, name string) (*github.CheckRun, error) {
+func (c *GitHubClient) CreateCheckRun(
+	ctx context.Context,
+	owner, repo, sha, name string,
+) (*github.CheckRun, error) {
 	opts := github.CreateCheckRunOptions{
 		Name:    name,
 		HeadSHA: sha,
@@ -105,7 +129,14 @@ func (c *GitHubClient) CreateCheckRun(ctx context.Context, owner, repo, sha, nam
 }
 
 // UpdateCheckRun updates an existing check run with the given ID.
-func (c *GitHubClient) UpdateCheckRun(ctx context.Context, owner, repo string, checkRunID int64, name, status string, conclusion *string, output *github.CheckRunOutput) error {
+func (c *GitHubClient) UpdateCheckRun(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+	name, status string,
+	conclusion *string,
+	output *github.CheckRunOutput,
+) error {
 	opts := github.UpdateCheckRunOptions{
 		Name:   name,
 		Status: github.Ptr(status),
@@ -133,7 +164,11 @@ func (c *GitHubClient) UpdateCheckRun(ctx context.Context, owner, repo string, c
 }
 
 // GetCheckRun retrieves a check run by its ID from the specified repository.
-func (c *GitHubClient) GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*github.CheckRun, error) {
+func (c *GitHubClient) GetCheckRun(
+	ctx context.Context,
+	owner, repo string,
+	checkRunID int64,
+) (*github.CheckRun, error) {
 	checkRun, _, err := c.client.Checks.GetCheckRun(ctx, owner, repo, checkRunID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get check run: %w", err)
@@ -143,7 +178,10 @@ func (c *GitHubClient) GetCheckRun(ctx context.Context, owner, repo string, chec
 }
 
 // ListCheckRuns lists all check runs for a given commit SHA in a repository.
-func (c *GitHubClient) ListCheckRuns(ctx context.Context, owner, repo, sha string) ([]*github.CheckRun, error) {
+func (c *GitHubClient) ListCheckRuns(
+	ctx context.Context,
+	owner, repo, sha string,
+) ([]*github.CheckRun, error) {
 	checkRuns, _, err := c.client.Checks.ListCheckRunsForRef(ctx, owner, repo, sha, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list check runs: %w", err)
@@ -153,7 +191,11 @@ func (c *GitHubClient) ListCheckRuns(ctx context.Context, owner, repo, sha strin
 }
 
 // ListWorkflowArtifacts lists all artifacts for a given workflow run in a repository.
-func (c *GitHubClient) ListWorkflowArtifacts(ctx context.Context, owner, repo string, workflowID int64) ([]*github.Artifact, error) {
+func (c *GitHubClient) ListWorkflowArtifacts(
+	ctx context.Context,
+	owner, repo string,
+	workflowID int64,
+) ([]*github.Artifact, error) {
 	var allArtifacts []*github.Artifact
 
 	opts := &github.ListOptions{
@@ -162,7 +204,13 @@ func (c *GitHubClient) ListWorkflowArtifacts(ctx context.Context, owner, repo st
 	}
 
 	for {
-		artifacts, resp, err := c.client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, workflowID, opts)
+		artifacts, resp, err := c.client.Actions.ListWorkflowRunArtifacts(
+			ctx,
+			owner,
+			repo,
+			workflowID,
+			opts,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list workflow artifacts: %w", err)
 		}
@@ -172,6 +220,7 @@ func (c *GitHubClient) ListWorkflowArtifacts(ctx context.Context, owner, repo st
 		if resp.NextPage == 0 {
 			break
 		}
+
 		opts.Page = resp.NextPage
 	}
 
@@ -179,7 +228,11 @@ func (c *GitHubClient) ListWorkflowArtifacts(ctx context.Context, owner, repo st
 }
 
 // DownloadArtifact downloads a specific artifact by its ID from a workflow run.
-func (c *GitHubClient) DownloadArtifact(ctx context.Context, owner, repo string, artifactID int64) ([]byte, error) {
+func (c *GitHubClient) DownloadArtifact(
+	ctx context.Context,
+	owner, repo string,
+	artifactID int64,
+) (content []byte, err error) { // use named returns to allow defer to modify err
 	const maxArtifactSize = 100 * 1024 * 1024 // 100 MB limit
 
 	// Get artifact metadata to check size
@@ -212,15 +265,24 @@ func (c *GitHubClient) DownloadArtifact(ctx context.Context, owner, repo string,
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform download request: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+
+	defer func(body io.ReadCloser) {
+		if cerr := body.Close(); cerr != nil && err == nil { // only override if no prior error
+			err = fmt.Errorf("failed to close artifact response body: %w", cerr)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to download artifact: received status code %d", resp.StatusCode)
+		return nil, fmt.Errorf(
+			"failed to download artifact: received status code %d",
+			resp.StatusCode,
+		)
 	}
 
 	// Limit reader to prevent excessive memory usage
 	limitedReader := io.LimitReader(resp.Body, maxArtifactSize)
-	content, err := io.ReadAll(limitedReader)
+
+	content, err = io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read artifact content: %w", err)
 	}
@@ -229,7 +291,11 @@ func (c *GitHubClient) DownloadArtifact(ctx context.Context, owner, repo string,
 }
 
 // GetArtifact gets metadata about a specific artifact
-func (c *GitHubClient) GetArtifact(ctx context.Context, owner, repo string, artifactID int64) (*github.Artifact, error) {
+func (c *GitHubClient) GetArtifact(
+	ctx context.Context,
+	owner, repo string,
+	artifactID int64,
+) (*github.Artifact, error) {
 	artifact, _, err := c.client.Actions.GetArtifact(ctx, owner, repo, artifactID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get artifact: %w", err)

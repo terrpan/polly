@@ -17,8 +17,8 @@ func TestNewOPAClient(t *testing.T) {
 	tests := []struct {
 		name          string
 		baseURL       string
-		expectedError bool
 		errorMessage  string
+		expectedError bool
 	}{
 		{
 			name:          "valid base URL",

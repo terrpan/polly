@@ -1,3 +1,5 @@
+// Package clients provides clients for interacting with external services.
+// this file defines the OPA client for policy evaluation.
 package clients
 
 import (
@@ -12,9 +14,10 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+// OPAClient provides methods to interact with an OPA server over HTTP.
 type OPAClient struct {
-	BaseURL    string
 	HTTPClient *http.Client
+	BaseURL    string
 }
 
 // NewOPAClient initializes a new OPA client with the provided base URL and HTTP client.
@@ -22,6 +25,7 @@ func NewOPAClient(baseURL string) (*OPAClient, error) {
 	if baseURL == "" {
 		return nil, fmt.Errorf("base URL cannot be empty")
 	}
+
 	return &OPAClient{
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
@@ -32,14 +36,20 @@ func NewOPAClient(baseURL string) (*OPAClient, error) {
 }
 
 // Do performs an HTTP request with the specified method and URL.
-func (c *OPAClient) Do(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {
+func (c *OPAClient) Do(
+	ctx context.Context,
+	method, url string,
+	body io.Reader,
+) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
+
 	return c.HTTPClient.Do(req)
 }
 
+// GetOpaHealth checks the health endpoint of the OPA server.
 func (c *OPAClient) GetOpaHealth(ctx context.Context) (*http.Response, error) {
 	// Construct the health check URL
 	url := c.BaseURL + "/health"
@@ -48,8 +58,12 @@ func (c *OPAClient) GetOpaHealth(ctx context.Context) (*http.Response, error) {
 	return c.Do(ctx, http.MethodGet, url, nil)
 }
 
-// evaluatePolicy evaluates a policy with the given input.
-func (c *OPAClient) EvaluatePolicy(ctx context.Context, policyPath string, payload interface{}) (*http.Response, error) {
+// EvaluatePolicy evaluates a policy with the given input.
+func (c *OPAClient) EvaluatePolicy(
+	ctx context.Context,
+	policyPath string,
+	payload interface{},
+) (*http.Response, error) {
 	// Construct the policy evaluation URL
 	url := c.BaseURL + policyPath
 
@@ -64,6 +78,7 @@ func (c *OPAClient) EvaluatePolicy(ctx context.Context, policyPath string, paylo
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	return c.HTTPClient.Do(req)
