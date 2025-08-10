@@ -14,15 +14,15 @@ import (
 	spdxjson "github.com/spdx/tools-golang/json"
 	"github.com/spdx/tools-golang/spdx/v2/v2_3"
 
-	"github.com/terrpan/polly/internal/otel"
+	"github.com/terrpan/polly/internal/telemetry"
 )
 
 // ServiceTracingHelper provides a shared tracing helper for all services
-var ServiceTracingHelper = otel.NewTracingHelper("polly/services")
+var ServiceTracingHelper = telemetry.NewTelemetryHelper("polly/services")
 
 // NewServiceTracingHelper creates a new tracing helper for services
 // This function exists for consistency with handlers, but services can also use the global ServiceTracingHelper
-func NewServiceTracingHelper() *otel.TracingHelper {
+func NewServiceTracingHelper() *telemetry.Helper {
 	return ServiceTracingHelper
 }
 

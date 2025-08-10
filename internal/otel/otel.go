@@ -1,3 +1,4 @@
+// Package otel provides OpenTelemetry setup and tracing utilities for the application.
 package otel
 
 import (
@@ -5,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/terrpan/polly/internal/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -13,6 +13,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
+
+	"github.com/terrpan/polly/internal/config"
 )
 
 // TracingHelper provides a consistent way to create tracing spans across the application
@@ -35,11 +37,18 @@ func NewTracingHelper(componentName string) *TracingHelper {
 // StartSpan creates a new tracing span with the given name
 //
 // Deprecated: Use telemetry helper instead in internal/telemetry package
-func (t *TracingHelper) StartSpan(ctx context.Context, name string) (context.Context, oteltrace.Span) {
+func (t *TracingHelper) StartSpan(
+	ctx context.Context,
+	name string,
+) (context.Context, oteltrace.Span) {
 	return t.tracer.Start(ctx, name)
 }
 
-func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(context.Context) error, err error) {
+// SetupOTelSDK configures the OpenTelemetry SDK with the given service name and returns a shutdown function.
+func SetupOTelSDK(
+	ctx context.Context,
+	serviceName string,
+) (shutdown func(context.Context) error, err error) {
 	var shutdownFuncs []func(context.Context) error
 
 	shutdown = func(ctx context.Context) error {
@@ -50,6 +59,7 @@ func SetupOTelSDK(ctx context.Context, serviceName string) (shutdown func(contex
 		}
 
 		shutdownFuncs = nil
+
 		return err
 	}
 
@@ -108,5 +118,6 @@ func newTraceProvider(ctx context.Context, serviceName string) (*trace.TracerPro
 	}
 
 	traceProvider := trace.NewTracerProvider(traceProviderOptions...)
+
 	return traceProvider, nil
 }

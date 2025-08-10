@@ -15,7 +15,7 @@ type SecurityCheckManager struct {
 	logger       *slog.Logger
 	checkService *services.CheckService
 	stateService *services.StateService
-	telemetry    *telemetry.TelemetryHelper
+	telemetry    *telemetry.Helper
 }
 
 // BaseWebhookHandler contains the common dependencies for all webhook handlers
@@ -27,7 +27,7 @@ type BaseWebhookHandler struct {
 	policyCacheService *services.PolicyCacheService
 	securityService    *services.SecurityService
 	stateService       *services.StateService
-	telemetry          *telemetry.TelemetryHelper
+	telemetry          *telemetry.Helper
 }
 
 // SecurityWebhookHandler extends BaseWebhookHandler with security check management capabilities

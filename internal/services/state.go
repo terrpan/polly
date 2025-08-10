@@ -30,7 +30,7 @@ type RepoContext struct {
 type StateService struct {
 	store      storage.Store
 	logger     *slog.Logger
-	telemetry  *telemetry.TelemetryHelper
+	telemetry  *telemetry.Helper
 	expiration time.Duration
 }
 
@@ -65,7 +65,7 @@ const (
 func NewStateService(
 	store storage.Store,
 	logger *slog.Logger,
-	telemetry *telemetry.TelemetryHelper,
+	telemetry *telemetry.Helper,
 ) *StateService {
 	return &StateService{
 		store:      store,

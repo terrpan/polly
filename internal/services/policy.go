@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/telemetry"
@@ -72,7 +73,7 @@ type PolicyEvaluator interface {
 type PolicyService struct {
 	opaClient  *clients.OPAClient
 	logger     *slog.Logger
-	telemetry  *telemetry.TelemetryHelper
+	telemetry  *telemetry.Helper
 	evaluators map[string]PolicyEvaluator // Factory registry
 }
 
@@ -271,7 +272,7 @@ func NewStandardEvaluators(service *PolicyService) []PolicyEvaluator {
 func NewPolicyService(
 	opaClient *clients.OPAClient,
 	logger *slog.Logger,
-	telemetry *telemetry.TelemetryHelper,
+	telemetry *telemetry.Helper,
 	evaluators []PolicyEvaluator,
 ) *PolicyService {
 	registry := make(map[string]PolicyEvaluator)
@@ -310,6 +311,28 @@ func evaluatePolicy[T any, R any](
 
 	service.logger.DebugContext(ctx, "Evaluating policy", "path", policyPath)
 
+	resp, err := callOPAPolicy(ctx, span, service, policyPath, opaPayload)
+	if err != nil {
+		return zero, err
+	}
+
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			service.logger.WarnContext(ctx, "Failed to close response body", "error", err)
+		}
+	}()
+
+	return processOPAResponse[R](ctx, span, service, resp, policyPath)
+}
+
+// callOPAPolicy makes the OPA policy evaluation request
+func callOPAPolicy(
+	ctx context.Context,
+	span oteltrace.Span,
+	service *PolicyService,
+	policyPath string,
+	opaPayload map[string]interface{},
+) (*http.Response, error) {
 	resp, err := service.opaClient.EvaluatePolicy(ctx, policyPath, opaPayload)
 	if err != nil {
 		span.SetAttributes(attribute.String("error", err.Error()))
@@ -319,21 +342,30 @@ func evaluatePolicy[T any, R any](
 			service.logger.WarnContext(ctx, "Policy evaluation system unavailable",
 				"error", err,
 				"path", policyPath)
-			return zero, fmt.Errorf("%w: %v", ErrSystemUnavailable, err)
+
+			return nil, fmt.Errorf("%w: %v", ErrSystemUnavailable, err)
 		}
 
 		// Non-network errors remain ERROR
 		service.logger.ErrorContext(ctx, "Failed to evaluate policy",
 			"error", err,
 			"path", policyPath)
-		return zero, err
+
+		return nil, err
 	}
 
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			service.logger.WarnContext(ctx, "Failed to close response body", "error", err)
-		}
-	}()
+	return resp, nil
+}
+
+// processOPAResponse processes the OPA response and returns the result
+func processOPAResponse[R any](
+	ctx context.Context,
+	span oteltrace.Span,
+	service *PolicyService,
+	resp *http.Response,
+	policyPath string,
+) (R, error) {
+	var zero R
 
 	span.SetAttributes(attribute.Int("opa.response_code", resp.StatusCode))
 
