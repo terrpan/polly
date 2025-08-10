@@ -63,6 +63,12 @@ linters:
           - revive
           - stylecheck
 
+      # allow service registry configuration function to be longer
+      - path: 'internal/app/container\.go'
+        text: 'Function.*createServiceRegistrations.*is too long'
+        linters:
+          - funlen
+
       # common false positive in gosec
       - text: 'G404: Use of weak random number generator'
         linters:

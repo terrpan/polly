@@ -1,3 +1,5 @@
+// Package app provides the application and dependency injection container.
+// This file configures the HTTP routes for the application.
 package app
 
 import "net/http"

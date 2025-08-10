@@ -165,9 +165,14 @@ The current architecture leverages several design patterns for maintainability a
 - **Benefits**: Loose coupling, extensible without code changes, clear separation of concerns
 
 #### 3. **Dependency Injection**
-- **Service Layer**: All services injected via `internal/app/container.go` with clear dependency graph
+- **Service Layer**: All services managed via service registry pattern in `internal/app/container.go` with clear dependency graph
+- **Service Registry**: New services added through simple registration in `createServiceRegistrations()`
+- **Type Safety**: All dependencies are concrete types with compile-time checking
+- **Encapsulation**: Internal services are private, only handlers exported for external access
 - **Testing**: Interface segregation enables easy mocking (e.g., `PolicyServiceInterface`)
-- **Benefits**: Testable components, configurable implementations, clear dependencies
+- **Benefits**: Easy service addition, testable components, configurable implementations, clear dependencies
+
+> **📖 For adding new services**, see [ADR-010: Container Service Registry Pattern](./ADR-010-container-service-registry-pattern.md)
 
 #### 4. **Helper Function Architecture**
 - **Large Functions Extracted**: Complex data transformation moved to `helpers.go` for reusability
@@ -293,10 +298,12 @@ func evaluatePolicy[T any, R any](ctx context.Context, service *PolicyService, p
 - **Usage**: Eliminates code duplication between workflow and check run handlers
 
 ### 6. Dependency Injection Pattern
-- Services receive dependencies through constructors
-- Clear dependency graph: Handlers → Services → Clients
-- Easy testing with interface mocking
-- Configuration injected at startup
+- **Service Registry**: Services registered via `createServiceRegistrations()` for easy addition
+- **Constructor Pattern**: Services receive dependencies through constructors (`NewXxxService`)
+- **Private Encapsulation**: Internal services are private fields with controlled access
+- **Clear dependency graph**: Handlers → Services → Clients
+- **Easy testing**: Interface mocking supported with concrete type safety
+- **Configuration injected**: All dependencies wired at startup through registry
 
 ### 6. Event-Driven Processing
 - Webhook events trigger policy evaluations
