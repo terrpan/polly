@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/terrpan/polly/internal/concurrent"
 	"github.com/terrpan/polly/internal/services"
-	"github.com/terrpan/polly/internal/utils"
 )
 
 // processWorkflowSecurityArtifacts is a shared helper for processing security artifacts from workflows
@@ -41,7 +41,7 @@ func (h *BaseWebhookHandler) processWorkflowSecurityArtifacts(
 
 	// Execute policy checks concurrently
 	if len(tasks) > 0 {
-		errs := utils.ExecuteConcurrently(tasks)
+		errs := concurrent.Run(tasks)
 		for _, err := range errs {
 			if err != nil {
 				return fmt.Errorf("concurrent policy processing failed: %w", err)

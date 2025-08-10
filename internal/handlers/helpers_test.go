@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/terrpan/polly/internal/concurrent"
 	"github.com/terrpan/polly/internal/services"
-	"github.com/terrpan/polly/internal/utils"
 )
 
 // MockPolicyService is a mock implementation of the PolicyService for testing
@@ -780,7 +780,7 @@ func TestProcessPoliciesWithStrategy(t *testing.T) {
 // TestProcessWorkflowSecurityArtifactsConcurrent verifies that vulnerability and SBOM checks run concurrently
 func TestProcessWorkflowSecurityArtifactsConcurrent(t *testing.T) {
 	t.Run("processes vulnerability and SBOM checks concurrently", func(t *testing.T) {
-		// Test the concurrent execution pattern by verifying utils.ExecuteConcurrently is used
+		// Test the concurrent execution pattern by verifying concurrent.Run is used
 		// This ensures the artifact processing follows the concurrent pattern
 
 		// Create mock tasks to simulate vulnerability and SBOM processing
@@ -806,7 +806,7 @@ func TestProcessWorkflowSecurityArtifactsConcurrent(t *testing.T) {
 
 		// Execute tasks concurrently (simulating what happens in processWorkflowSecurityArtifacts)
 		startTime := time.Now()
-		errs := utils.ExecuteConcurrently(tasks)
+		errs := concurrent.Run(tasks)
 		duration := time.Since(startTime)
 
 		// Verify both tasks completed without errors
@@ -853,7 +853,7 @@ func TestExecuteConcurrently1000Tasks(t *testing.T) {
 
 		// Execute all tasks concurrently
 		startTime := time.Now()
-		errs := utils.ExecuteConcurrently(tasks)
+		errs := concurrent.Run(tasks)
 		duration := time.Since(startTime)
 
 		// Verify all tasks completed without errors
