@@ -58,12 +58,115 @@ func TestGitHubAppConfig_Structure(t *testing.T) {
 		InstallationID: 456,
 		PrivateKeyPath: "/path/to/private/key",
 		PrivateKey:     "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+		BaseURL:        "https://github.enterprise.com/api/v3",
+		UploadURL:      "https://github.enterprise.com/api/uploads",
 	}
 
 	assert.Equal(t, int64(123), githubConfig.AppID)
 	assert.Equal(t, int64(456), githubConfig.InstallationID)
 	assert.Equal(t, "/path/to/private/key", githubConfig.PrivateKeyPath)
 	assert.Contains(t, githubConfig.PrivateKey, "PRIVATE KEY")
+	assert.Equal(t, "https://github.enterprise.com/api/v3", githubConfig.BaseURL)
+	assert.Equal(t, "https://github.enterprise.com/api/uploads", githubConfig.UploadURL)
+}
+
+func TestLoadGitHubAppConfig_WithEnterpriseURLs(t *testing.T) {
+	// Save original config
+	originalConfig := AppConfig
+
+	// Restore original config after test
+	defer func() {
+		AppConfig = originalConfig
+	}()
+
+	// Test with enterprise URLs
+	AppConfig = &Config{
+		GitHubApp: GitHubAppConfig{
+			AppID:          123,
+			InstallationID: 456,
+			PrivateKey:     "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+			BaseURL:        "https://github.enterprise.com/api/v3",
+			UploadURL:      "https://github.enterprise.com/api/uploads",
+		},
+	}
+
+	config, err := LoadGitHubAppConfig()
+	require.NoError(t, err)
+	require.NotNil(t, config)
+
+	assert.Equal(t, int64(123), config.AppID)
+	assert.Equal(t, int64(456), config.InstallationID)
+	assert.Equal(t, "https://github.enterprise.com/api/v3", config.BaseURL)
+	assert.Equal(t, "https://github.enterprise.com/api/uploads", config.UploadURL)
+}
+
+func TestLoadGitHubAppConfig_URLValidation(t *testing.T) {
+	// Save original config
+	originalConfig := AppConfig
+
+	// Restore original config after test
+	defer func() {
+		AppConfig = originalConfig
+	}()
+
+	tests := []struct {
+		name          string
+		baseURL       string
+		uploadURL     string
+		expectedError string
+	}{
+		{
+			name:          "valid URLs",
+			baseURL:       "https://github.enterprise.com/api/v3",
+			uploadURL:     "https://github.enterprise.com/api/uploads",
+			expectedError: "",
+		},
+		{
+			name:          "invalid base URL",
+			baseURL:       ":/invalid-url",
+			uploadURL:     "https://github.enterprise.com/api/uploads",
+			expectedError: "invalid GITHUB_BASE_URL",
+		},
+		{
+			name:          "invalid upload URL",
+			baseURL:       "https://github.enterprise.com/api/v3",
+			uploadURL:     ":/invalid-url",
+			expectedError: "invalid GITHUB_UPLOAD_URL",
+		},
+		{
+			name:          "empty URLs are valid",
+			baseURL:       "",
+			uploadURL:     "",
+			expectedError: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			AppConfig = &Config{
+				GitHubApp: GitHubAppConfig{
+					AppID:          123,
+					InstallationID: 456,
+					PrivateKey:     "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+					BaseURL:        tt.baseURL,
+					UploadURL:      tt.uploadURL,
+				},
+			}
+
+			config, err := LoadGitHubAppConfig()
+
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, config)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, config)
+				assert.Equal(t, tt.baseURL, config.BaseURL)
+				assert.Equal(t, tt.uploadURL, config.UploadURL)
+			}
+		})
+	}
 }
 
 func TestGetDefaultConfig(t *testing.T) {

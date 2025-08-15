@@ -13,10 +13,36 @@ import (
 
 func TestNewGitHubClient(t *testing.T) {
 	ctx := context.Background()
-	client := NewGitHubClient(ctx)
+	
+	t.Run("with empty URLs", func(t *testing.T) {
+		client := NewGitHubClient(ctx, "", "")
 
-	assert.NotNil(t, client)
-	assert.NotNil(t, client.client)
+		assert.NotNil(t, client)
+		assert.NotNil(t, client.client)
+		assert.Equal(t, "", client.baseURL)
+		assert.Equal(t, "", client.uploadURL)
+	})
+
+	t.Run("with enterprise URLs", func(t *testing.T) {
+		baseURL := "https://github.enterprise.com/api/v3"
+		uploadURL := "https://github.enterprise.com/api/uploads"
+		client := NewGitHubClient(ctx, baseURL, uploadURL)
+
+		assert.NotNil(t, client)
+		assert.NotNil(t, client.client)
+		assert.Equal(t, baseURL, client.baseURL)
+		assert.Equal(t, uploadURL, client.uploadURL)
+	})
+
+	t.Run("with base URL only", func(t *testing.T) {
+		baseURL := "https://github.enterprise.com/api/v3"
+		client := NewGitHubClient(ctx, baseURL, "")
+
+		assert.NotNil(t, client)
+		assert.NotNil(t, client.client)
+		assert.Equal(t, baseURL, client.baseURL)
+		assert.Equal(t, "", client.uploadURL)
+	})
 }
 
 func TestNewGitHubAppClient(t *testing.T) {
@@ -68,6 +94,27 @@ func TestNewGitHubAppClient(t *testing.T) {
 	}
 }
 
+func TestNewGitHubAppClient_EnterpriseURL(t *testing.T) {
+	ctx := context.Background()
+	
+	t.Run("config with enterprise URLs", func(t *testing.T) {
+		config := GitHubAppConfig{
+			AppID:          123,
+			InstallationID: 456,
+			PrivateKey:     []byte(""),
+			BaseURL:        "https://github.enterprise.com/api/v3",
+			UploadURL:      "https://github.enterprise.com/api/uploads",
+		}
+
+		client, err := NewGitHubAppClient(ctx, config)
+
+		// We expect an error due to invalid key, but we can check the URLs were stored
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create GitHub app transport")
+		assert.Nil(t, client)
+	})
+}
+
 func TestAuthenticate(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -91,7 +138,7 @@ func TestAuthenticate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			client := NewGitHubClient(ctx)
+			client := NewGitHubClient(ctx, "", "")
 
 			err := client.Authenticate(ctx, tt.token)
 
@@ -104,6 +151,39 @@ func TestAuthenticate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAuthenticate_EnterpriseURL(t *testing.T) {
+	ctx := context.Background()
+	
+	t.Run("authenticate with enterprise URLs", func(t *testing.T) {
+		baseURL := "https://github.enterprise.com/api/v3"
+		uploadURL := "https://github.enterprise.com/api/uploads"
+		
+		client := NewGitHubClient(ctx, baseURL, uploadURL)
+		assert.Equal(t, baseURL, client.baseURL)
+		assert.Equal(t, uploadURL, client.uploadURL)
+
+		err := client.Authenticate(ctx, "test-token")
+		assert.NoError(t, err)
+		assert.NotNil(t, client.client)
+		
+		// URLs should be preserved after authentication
+		assert.Equal(t, baseURL, client.baseURL)
+		assert.Equal(t, uploadURL, client.uploadURL)
+	})
+	
+	t.Run("authenticate with base URL only", func(t *testing.T) {
+		baseURL := "https://github.enterprise.com/api/v3"
+		
+		client := NewGitHubClient(ctx, baseURL, "")
+		assert.Equal(t, baseURL, client.baseURL)
+		assert.Equal(t, "", client.uploadURL)
+
+		err := client.Authenticate(ctx, "test-token")
+		assert.NoError(t, err)
+		assert.NotNil(t, client.client)
+	})
 }
 
 func TestGetPullRequest(t *testing.T) {

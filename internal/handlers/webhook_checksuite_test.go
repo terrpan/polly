@@ -36,7 +36,7 @@ func (suite *CheckSuiteWebhookTestSuite) SetupSuite() {
 
 func (suite *CheckSuiteWebhookTestSuite) SetupTest() {
 	// Create test services
-	githubClient := clients.NewGitHubClient(suite.ctx)
+	githubClient := clients.NewGitHubClient(suite.ctx, "", "")
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	store := storage.NewMemoryStore()
 
@@ -252,7 +252,7 @@ func TestNewCheckSuiteWebhookHandler_Unit(t *testing.T) {
 		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 	)
 	store := storage.NewMemoryStore()
-	githubClient := clients.NewGitHubClient(context.Background())
+	githubClient := clients.NewGitHubClient(context.Background(), "", "")
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	stateService := services.NewStateService(store, logger, telemetry.NewTelemetryHelper("test"))
 	policyService := services.NewPolicyService(

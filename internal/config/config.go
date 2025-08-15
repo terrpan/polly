@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -36,6 +37,8 @@ type GitHubAppConfig struct {
 	PrivateKey     string `mapstructure:"private_key"`
 	AppID          int64  `mapstructure:"app_id"`
 	InstallationID int64  `mapstructure:"installation_id"`
+	BaseURL        string `mapstructure:"base_url"`
+	UploadURL      string `mapstructure:"upload_url"`
 }
 
 // LoggerConfig represents the configuration for the logger
@@ -240,6 +243,20 @@ func LoadGitHubAppConfig() (*clients.GitHubAppConfig, error) {
 		return nil, fmt.Errorf("GITHUB_INSTALLATION_ID is required")
 	}
 
+	// Validate BaseURL if provided
+	if appConfig.BaseURL != "" {
+		if _, err := url.Parse(appConfig.BaseURL); err != nil {
+			return nil, fmt.Errorf("invalid GITHUB_BASE_URL: %w", err)
+		}
+	}
+
+	// Validate UploadURL if provided
+	if appConfig.UploadURL != "" {
+		if _, err := url.Parse(appConfig.UploadURL); err != nil {
+			return nil, fmt.Errorf("invalid GITHUB_UPLOAD_URL: %w", err)
+		}
+	}
+
 	var (
 		privateKey []byte
 		err        error
@@ -263,6 +280,8 @@ func LoadGitHubAppConfig() (*clients.GitHubAppConfig, error) {
 		AppID:          appConfig.AppID,
 		InstallationID: appConfig.InstallationID,
 		PrivateKey:     privateKey,
+		BaseURL:        appConfig.BaseURL,
+		UploadURL:      appConfig.UploadURL,
 	}, nil
 }
 
