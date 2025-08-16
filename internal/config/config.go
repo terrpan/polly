@@ -35,10 +35,10 @@ type Config struct {
 type GitHubAppConfig struct {
 	PrivateKeyPath string `mapstructure:"private_key_path"`
 	PrivateKey     string `mapstructure:"private_key"`
-	AppID          int64  `mapstructure:"app_id"`
-	InstallationID int64  `mapstructure:"installation_id"`
 	BaseURL        string `mapstructure:"base_url"`
 	UploadURL      string `mapstructure:"upload_url"`
+	AppID          int64  `mapstructure:"app_id"`
+	InstallationID int64  `mapstructure:"installation_id"`
 }
 
 // LoggerConfig represents the configuration for the logger

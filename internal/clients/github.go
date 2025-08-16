@@ -27,11 +27,11 @@ type GitHubClient struct {
 
 // GitHubAppConfig holds the configuration for GitHub App authentication
 type GitHubAppConfig struct {
+	BaseURL        string
+	UploadURL      string
 	PrivateKey     []byte
 	AppID          int64
 	InstallationID int64
-	BaseURL        string
-	UploadURL      string
 }
 
 // NewGitHubClient initializes a new GitHub client.
@@ -46,11 +46,15 @@ func NewGitHubClient(ctx context.Context, baseURL, uploadURL string) *GitHubClie
 		if upURL == "" {
 			upURL = baseURL // Default to same as base URL
 		}
+
 		var err error
+
 		client, err = client.WithEnterpriseURLs(baseURL, upURL)
 		if err != nil {
-			// If there's an error with enterprise URLs, log it but continue with the base client
-			// This maintains backward compatibility while providing enterprise support
+			// Log the error but continue with the default client
+			fmt.Printf("failed to configure GitHub Enterprise URLs: %v\n", err)
+
+			client = github.NewClient(nil) // Fallback to unauthenticated client
 		}
 	}
 
@@ -86,7 +90,9 @@ func NewGitHubAppClient(ctx context.Context, config GitHubAppConfig) (*GitHubCli
 		if uploadURL == "" {
 			uploadURL = config.BaseURL // Default to same as base URL
 		}
+
 		var err error
+
 		client, err = client.WithEnterpriseURLs(config.BaseURL, uploadURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to configure GitHub Enterprise URLs: %w", err)
@@ -115,10 +121,15 @@ func (c *GitHubClient) Authenticate(ctx context.Context, token string) error {
 		if uploadURL == "" {
 			uploadURL = c.baseURL // Default to same as base URL
 		}
+
 		var err error
+
 		c.client, err = c.client.WithEnterpriseURLs(c.baseURL, uploadURL)
 		if err != nil {
-			return fmt.Errorf("failed to configure GitHub Enterprise URLs during authentication: %w", err)
+			return fmt.Errorf(
+				"failed to configure GitHub Enterprise URLs during authentication: %w",
+				err,
+			)
 		}
 	}
 

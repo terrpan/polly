@@ -146,7 +146,11 @@ func (c *Container) initGitHubClient(ctx context.Context) error {
 	case config.AppConfig.GitHubToken != "":
 		c.logger.Info("Using Personal Access Token authentication")
 
-		c.gitHubClient = clients.NewGitHubClient(ctx, config.AppConfig.GitHubApp.BaseURL, config.AppConfig.GitHubApp.UploadURL)
+		c.gitHubClient = clients.NewGitHubClient(
+			ctx,
+			config.AppConfig.GitHubApp.BaseURL,
+			config.AppConfig.GitHubApp.UploadURL,
+		)
 		if err := c.gitHubClient.Authenticate(ctx, config.AppConfig.GitHubToken); err != nil {
 			return fmt.Errorf("failed to authenticate GitHub client: %w", err)
 		}
