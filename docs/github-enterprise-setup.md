@@ -35,13 +35,13 @@ github:
 ## Configuration Options
 
 ### `base_url` (string, optional)
-- **Default**: Empty (uses GitHub.com)
+- **Default**: `"https://api.github.com"` (GitHub.com API)
 - **Purpose**: API base URL for your GitHub Enterprise Server instance
 - **Format**: Must be a valid URL (e.g., `https://github.enterprise.com/api/v3`)
 - **Required for**: GitHub Enterprise Server instances
 
 ### `upload_url` (string, optional)
-- **Default**: Same as `base_url` if not specified
+- **Default**: `"https://uploads.github.com"` (GitHub.com uploads)
 - **Purpose**: Upload URL for artifacts and attachments
 - **Format**: Must be a valid URL (e.g., `https://github.enterprise.com/api/uploads`)
 - **Required for**: GitHub Enterprise Server instances with separate upload endpoints
@@ -60,14 +60,15 @@ github:
 ```
 
 ### GitHub.com (Default)
-For GitHub.com, no additional configuration is needed:
+For GitHub.com, no additional configuration is needed as the defaults are already set:
 
 ```yaml
 github:
   app_id: 123456
   installation_id: 789012
   private_key_path: "/path/to/private-key.pem"
-  # No base_url needed - defaults to GitHub.com
+  # base_url defaults to "https://api.github.com"
+  # upload_url defaults to "https://uploads.github.com"
 ```
 
 ### Personal Access Token with Enterprise

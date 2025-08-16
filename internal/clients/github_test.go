@@ -43,6 +43,19 @@ func TestNewGitHubClient(t *testing.T) {
 		assert.Equal(t, baseURL, client.baseURL)
 		assert.Equal(t, "", client.uploadURL)
 	})
+
+	t.Run("with GitHub.com default URLs", func(t *testing.T) {
+		// Test that GitHub.com default URLs don't trigger enterprise logic
+		baseURL := "https://api.github.com"
+		uploadURL := "https://uploads.github.com"
+		client := NewGitHubClient(ctx, baseURL, uploadURL)
+
+		assert.NotNil(t, client)
+		assert.NotNil(t, client.client)
+		assert.Equal(t, baseURL, client.baseURL)
+		assert.Equal(t, uploadURL, client.uploadURL)
+		// The client should work normally with GitHub.com (no enterprise URLs applied)
+	})
 }
 
 func TestNewGitHubAppClient(t *testing.T) {

@@ -118,6 +118,10 @@ var (
 			JSONOutput: true,
 			AddSource:  false,
 		},
+		GitHubApp: GitHubAppConfig{
+			BaseURL:   "https://api.github.com",     // Default to GitHub.com API
+			UploadURL: "https://uploads.github.com", // Default to GitHub.com uploads
+		},
 		Opa: OpaConfig{
 			ServerURL:             "http://localhost:8181",
 			PolicyPath:            "/v1/policies",

@@ -12,6 +12,12 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+const (
+	// Default GitHub.com URLs
+	defaultGitHubBaseURL   = "https://api.github.com"
+	defaultGitHubUploadURL = "https://uploads.github.com"
+)
+
 // GitHubClient provides methods to interact with the GitHub API.
 type GitHubClient struct {
 	client    *github.Client
@@ -34,8 +40,8 @@ func NewGitHubClient(ctx context.Context, baseURL, uploadURL string) *GitHubClie
 		nil,
 	) // Use nil for unauthenticated requests; replace with an authenticated client if needed.
 
-	// Add GitHub Enterprise support
-	if baseURL != "" {
+	// Add GitHub Enterprise support only for non-default URLs
+	if baseURL != "" && baseURL != defaultGitHubBaseURL {
 		upURL := uploadURL
 		if upURL == "" {
 			upURL = baseURL // Default to same as base URL
@@ -74,8 +80,8 @@ func NewGitHubAppClient(ctx context.Context, config GitHubAppConfig) (*GitHubCli
 	httpClient := &http.Client{Transport: transport}
 	client := github.NewClient(httpClient)
 
-	// Add GitHub Enterprise support
-	if config.BaseURL != "" {
+	// Add GitHub Enterprise support only for non-default URLs
+	if config.BaseURL != "" && config.BaseURL != defaultGitHubBaseURL {
 		uploadURL := config.UploadURL
 		if uploadURL == "" {
 			uploadURL = config.BaseURL // Default to same as base URL
@@ -103,8 +109,8 @@ func (c *GitHubClient) Authenticate(ctx context.Context, token string) error {
 
 	c.client = github.NewTokenClient(ctx, token)
 
-	// Reapply enterprise URLs if they were configured
-	if c.baseURL != "" {
+	// Reapply enterprise URLs if they were configured and are not GitHub.com defaults
+	if c.baseURL != "" && c.baseURL != defaultGitHubBaseURL {
 		uploadURL := c.uploadURL
 		if uploadURL == "" {
 			uploadURL = c.baseURL // Default to same as base URL
