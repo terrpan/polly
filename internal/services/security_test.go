@@ -16,7 +16,7 @@ import (
 // testSecurityService creates a SecurityService for testing with default detectors
 func testSecurityService() *SecurityService {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
+	githubClient := clients.NewGitHubClient(context.Background(), "", "")
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	return NewSecurityService(githubClient, logger, telemetryHelper,
@@ -28,7 +28,7 @@ func testSecurityService() *SecurityService {
 
 func TestNewSecurityService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
+	githubClient := clients.NewGitHubClient(context.Background(), "", "")
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	service := NewSecurityService(githubClient, logger, telemetryHelper,

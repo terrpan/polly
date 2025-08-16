@@ -41,7 +41,7 @@ func (suite *PullRequestHandlerTestSuite) SetupSuite() {
 
 func (suite *PullRequestHandlerTestSuite) SetupTest() {
 	// Create test services
-	githubClient := clients.NewGitHubClient(suite.ctx)
+	githubClient := clients.NewGitHubClient(suite.ctx, "", "")
 	opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 	store := storage.NewMemoryStore()
 
@@ -188,7 +188,7 @@ func TestNewPullRequestHandler_Unit(t *testing.T) {
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 		)
 		store := storage.NewMemoryStore()
-		githubClient := clients.NewGitHubClient(context.Background())
+		githubClient := clients.NewGitHubClient(context.Background(), "", "")
 		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
 		stateService := services.NewStateService(
 			store,

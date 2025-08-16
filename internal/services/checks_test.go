@@ -18,7 +18,7 @@ func TestNewCheckService(t *testing.T) {
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	// Create a real GitHub client for testing the constructor
-	realClient := clients.NewGitHubClient(context.Background())
+	realClient := clients.NewGitHubClient(context.Background(), "", "")
 
 	service := NewCheckService(realClient, logger, telemetryHelper)
 
@@ -167,7 +167,7 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 
 	// Example of how integration tests would look:
 	// logger := slog.Default()
-	// githubClient := clients.NewGitHubClient(context.Background())
+	// githubClient := clients.NewGitHubClient(context.Background(), "", "")
 	// err := githubClient.Authenticate(context.Background(), "test-token")
 	// require.NoError(t, err)
 	//
@@ -181,7 +181,7 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 
 func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
+	githubClient := clients.NewGitHubClient(context.Background(), "", "")
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 	service := NewCheckService(githubClient, logger, telemetryHelper)
 
@@ -196,7 +196,7 @@ func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 
 func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
+	githubClient := clients.NewGitHubClient(context.Background(), "", "")
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 	service := NewCheckService(githubClient, logger, telemetryHelper)
 
@@ -219,7 +219,7 @@ func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 
 func TestCheckService_ContextHandling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background())
+	githubClient := clients.NewGitHubClient(context.Background(), "", "")
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 	service := NewCheckService(githubClient, logger, telemetryHelper)
 
