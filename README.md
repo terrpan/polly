@@ -185,14 +185,18 @@ For detailed information, see the [Refactoring Summary](REFACTORING_SUMMARY.md).
     - [x] Centralize tracing utilities and shared processing functions
     - [x] Implement modular architecture with clear separation of concerns
     - [x] Maintain backward compatibility with existing APIs
-- [ ] Improve security and credential handling
-    - [ ] Implement configuration sanitization for safe logging
+- [x] Add GitHub Enterprise Server support
+  - [x] Add configurable GitHub API base URL in configuration
+  - [x] Implement WithEnterpriseURLs support in GitHub client
+  - [x] Update documentation for GitHub Enterprise Server setup
+- [x] Improve security and credential handling
+    - [x] Implement configuration sanitization for safe logging
     - [ ] Audit and fix credential exposure in logs and error messages
     - [ ] Add security tests to prevent credential leaks
-- [ ] Extend refactoring patterns to other components
-    - [ ] Apply similar modular patterns to services layer
-    - [ ] Create shared utilities for consistent error handling
-    - [ ] Implement consistent logging patterns across all components
+- [x] Extend refactoring patterns to other components
+    - [x] Apply similar modular patterns to services layer
+    - [x] Create shared utilities for consistent error handling
+    - [x] Implement consistent logging patterns across all components
 - [ ] Improve Observability with Prometheus metrics
 - [ ] Add integration tests for refactored webhook handlers
 - [ ] Implement event queuing for better event handling
@@ -208,3 +212,7 @@ For detailed information, see the [Refactoring Summary](REFACTORING_SUMMARY.md).
 - [ ] Mangement API for managing the app
   - [ ] Add endpoints for listing policies
   - [ ] Endpoint for manging cache/state
+- [ ] Implement a Plugin system
+  - [ ] Define plugin architecture and interfaces
+  - [ ] Create example plugins for common use cases
+  - [ ] Add documentation for plugin development
