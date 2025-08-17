@@ -189,8 +189,8 @@ For detailed information, see the [Refactoring Summary](REFACTORING_SUMMARY.md).
   - [x] Add configurable GitHub API base URL in configuration
   - [x] Implement WithEnterpriseURLs support in GitHub client
   - [x] Update documentation for GitHub Enterprise Server setup
-- [x] Improve security and credential handling
-    - [x] Implement configuration sanitization for safe logging
+- [ ] Improve security and credential handling
+    - [ ] Implement configuration sanitization for safe logging
     - [ ] Audit and fix credential exposure in logs and error messages
     - [ ] Add security tests to prevent credential leaks
 - [x] Extend refactoring patterns to other components
