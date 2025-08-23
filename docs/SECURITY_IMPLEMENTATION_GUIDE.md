@@ -91,50 +91,85 @@ import (
 // SanitizeConfigForLogging returns a map representation of the config with sensitive fields redacted
 func SanitizeConfigForLogging(cfg *Config) map[string]interface{} {
 	result := make(map[string]interface{})
+<<<<<<< Updated upstream
 	
 	v := reflect.ValueOf(cfg).Elem()
 	t := reflect.TypeOf(cfg).Elem()
 	
+=======
+
+	v := reflect.ValueOf(cfg).Elem()
+	t := reflect.TypeOf(cfg).Elem()
+
+>>>>>>> Stashed changes
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldType := t.Field(i)
 		fieldName := fieldType.Name
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 		if field.CanInterface() {
 			result[fieldName] = sanitizeValue(field.Interface())
 		}
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	return result
 }
 
 // sanitizeValue recursively sanitizes configuration values
 func sanitizeValue(value interface{}) interface{} {
 	v := reflect.ValueOf(value)
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	switch v.Kind() {
 	case reflect.Struct:
 		result := make(map[string]interface{})
 		t := reflect.TypeOf(value)
+<<<<<<< Updated upstream
 		
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
 			fieldType := t.Field(i)
 			
+=======
+
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Field(i)
+			fieldType := t.Field(i)
+
+>>>>>>> Stashed changes
 			if field.CanInterface() {
 				fieldName := fieldType.Name
 				result[fieldName] = sanitizeValue(field.Interface())
 			}
 		}
 		return result
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 	case reflect.String:
 		str := v.String()
 		if isSensitiveField(str) {
 			return "[REDACTED]"
 		}
 		return str
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 	default:
 		return value
 	}
@@ -145,7 +180,11 @@ func isSensitiveField(value string) bool {
 	if value == "" {
 		return false
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	// Patterns that indicate sensitive data
 	sensitivePatterns := []string{
 		`(?i).*password.*`,
@@ -154,13 +193,21 @@ func isSensitiveField(value string) bool {
 		`(?i).*token.*`,
 		`-----BEGIN.*PRIVATE KEY-----`,
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	for _, pattern := range sensitivePatterns {
 		if matched, _ := regexp.MatchString(pattern, value); matched {
 			return true
 		}
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	return false
 }
 
@@ -169,10 +216,17 @@ func SanitizeError(err error) error {
 	if err == nil {
 		return nil
 	}
+<<<<<<< Updated upstream
 	
 	message := err.Error()
 	message = sanitizeString(message)
 	
+=======
+
+	message := err.Error()
+	message = sanitizeString(message)
+
+>>>>>>> Stashed changes
 	return errors.New(message)
 }
 
@@ -188,12 +242,20 @@ func sanitizeString(s string) string {
 		{`secret=\S+`, `secret=[REDACTED]`},
 		{`-----BEGIN[^-]*PRIVATE KEY-----[^-]*-----END[^-]*PRIVATE KEY-----`, `[REDACTED_PRIVATE_KEY]`},
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	for _, p := range patterns {
 		re := regexp.MustCompile(p.pattern)
 		s = re.ReplaceAllString(s, p.replacement)
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	return s
 }
 ```
@@ -334,7 +396,11 @@ The request ID feature is now configurable via the `POLLY_LOGGER_ENABLE_REQUEST_
 # Enable request ID correlation (default: true)
 POLLY_LOGGER_ENABLE_REQUEST_ID=true
 
+<<<<<<< Updated upstream
 # Disable request ID correlation  
+=======
+# Disable request ID correlation
+>>>>>>> Stashed changes
 POLLY_LOGGER_ENABLE_REQUEST_ID=false
 ```
 
@@ -364,17 +430,26 @@ const requestIDKey = "request_id"
 func RequestIDMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 		// 1. Check for existing request ID from load balancer/proxy
 		requestID := r.Header.Get("X-Request-Id")
 		if requestID == "" {
 			requestID = r.Header.Get("X-Trace-Id")
 		}
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 		// 2. Generate UUID if no external ID (independent of tracing)
 		if requestID == "" {
 			requestID = uuid.New().String()
 		}
+<<<<<<< Updated upstream
 		
 		// 3. Store in context for use throughout the request
 		ctx = context.WithValue(ctx, requestIDKey, requestID)
@@ -382,6 +457,15 @@ func RequestIDMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// 4. Return in response header for debugging
 		w.Header().Set("X-Request-Id", requestID)
 		
+=======
+
+		// 3. Store in context for use throughout the request
+		ctx = context.WithValue(ctx, requestIDKey, requestID)
+
+		// 4. Return in response header for debugging
+		w.Header().Set("X-Request-Id", requestID)
+
+>>>>>>> Stashed changes
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
@@ -404,7 +488,11 @@ package app
 
 import (
 	"net/http"
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	"github.com/terrpan/polly/internal/config"
 )
 
@@ -464,14 +552,22 @@ func NewLogger() *slog.Logger {
 // NewLoggerWithRequestID creates a logger with request ID correlation
 func NewLoggerWithRequestID(ctx context.Context) *slog.Logger {
 	logger := NewLogger()
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	// Only add request ID if the feature is enabled and ID is available
 	if config.AppConfig.Logger.EnableRequestID {
 		if requestID := ctx.Value("request_id"); requestID != nil {
 			logger = logger.With("request_id", requestID)
 		}
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	return logger
 }
 
@@ -502,14 +598,22 @@ func (t *Helper) StartSpanWithRequestID(
 ) (context.Context, oteltrace.Span) {
 	// Start span (works even if tracing disabled - returns NoOp span)
 	ctx, span := t.tracer.Start(ctx, name)
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	// Add request ID to span attributes if feature is enabled and ID is available
 	if config.AppConfig.Logger.EnableRequestID {
 		if requestID := ctx.Value("request_id"); requestID != nil {
 			span.SetAttributes(attribute.String("request.id", requestID.(string)))
 		}
 	}
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	return ctx, span
 }
 ```
@@ -541,11 +645,16 @@ Update all services to use request-aware logging. Example pattern:
 // In any service method
 func (s *SomeService) someMethod(ctx context.Context, ...) error {
 	logger := config.NewLoggerWithRequestID(ctx)
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	result, err := s.client.SomeOperation(...)
 	if err != nil {
 		// Sanitize before logging
 		sanitizedErr := config.SanitizeError(err)
+<<<<<<< Updated upstream
 		logger.ErrorContext(ctx, "Operation failed", 
 			"operation", "some_operation",
 			"error", sanitizedErr)
@@ -556,6 +665,18 @@ func (s *SomeService) someMethod(ctx context.Context, ...) error {
 	logger.InfoContext(ctx, "Operation completed successfully",
 		"operation", "some_operation")
 	
+=======
+		logger.ErrorContext(ctx, "Operation failed",
+			"operation", "some_operation",
+			"error", sanitizedErr)
+
+		return fmt.Errorf("operation failed: %w", sanitizedErr)
+	}
+
+	logger.InfoContext(ctx, "Operation completed successfully",
+		"operation", "some_operation")
+
+>>>>>>> Stashed changes
 	return nil
 }
 ```
@@ -569,14 +690,22 @@ func (r *WebhookRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Use enhanced telemetry helper
 	ctx, span := r.telemetry.StartSpanWithRequestID(req.Context(), "webhook.handle")
 	defer span.End()
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	// Log with request ID correlation
 	logger := config.NewLoggerWithRequestID(ctx)
 	logger.InfoContext(ctx, "Webhook received",
 		"method", req.Method,
 		"path", req.URL.Path,
 	)
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	// ... rest of handler logic
 }
 ```
@@ -670,6 +799,7 @@ func TestSanitizeConfigForLogging(t *testing.T) {
 	}
 
 	sanitized := SanitizeConfigForLogging(config)
+<<<<<<< Updated upstream
 	
 	// Convert to JSON to check serialization
 	jsonData, err := json.Marshal(sanitized)
@@ -677,11 +807,24 @@ func TestSanitizeConfigForLogging(t *testing.T) {
 	
 	jsonStr := string(jsonData)
 	
+=======
+
+	// Convert to JSON to check serialization
+	jsonData, err := json.Marshal(sanitized)
+	require.NoError(t, err)
+
+	jsonStr := string(jsonData)
+
+>>>>>>> Stashed changes
 	// Verify no credentials appear in the sanitized output
 	assert.NotContains(t, jsonStr, "ghp_secret_token")
 	assert.NotContains(t, jsonStr, "-----BEGIN RSA PRIVATE KEY-----")
 	assert.NotContains(t, jsonStr, "secret-password")
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	// Verify redaction markers are present
 	assert.Contains(t, jsonStr, "[REDACTED]")
 }
@@ -840,7 +983,11 @@ func TestRequestIDConfiguration(t *testing.T) {
 		// Set up config with request ID enabled
 		originalConfig := config.AppConfig
 		defer func() { config.AppConfig = originalConfig }()
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 		config.AppConfig = &config.Config{
 			Logger: config.LoggerConfig{
 				EnableRequestID: true,
@@ -849,7 +996,11 @@ func TestRequestIDConfiguration(t *testing.T) {
 
 		ctx := context.WithValue(context.Background(), "request_id", "test-id-123")
 		logger := config.NewLoggerWithRequestID(ctx)
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 		// Verify logger includes request ID
 		// Note: This would require capturing log output to fully test
 		assert.NotNil(t, logger)
@@ -859,7 +1010,11 @@ func TestRequestIDConfiguration(t *testing.T) {
 		// Set up config with request ID disabled
 		originalConfig := config.AppConfig
 		defer func() { config.AppConfig = originalConfig }()
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 		config.AppConfig = &config.Config{
 			Logger: config.LoggerConfig{
 				EnableRequestID: false,
@@ -868,7 +1023,11 @@ func TestRequestIDConfiguration(t *testing.T) {
 
 		ctx := context.WithValue(context.Background(), "request_id", "test-id-123")
 		logger := config.NewLoggerWithRequestID(ctx)
+<<<<<<< Updated upstream
 		
+=======
+
+>>>>>>> Stashed changes
 		// Verify logger doesn't include request ID
 		// Note: This would require capturing log output to fully test
 		assert.NotNil(t, logger)
@@ -968,7 +1127,11 @@ func TestEndToEndNoCredentialExposure(t *testing.T) {
 func TestConfigurationSanitizationInProduction(t *testing.T) {
 	// Test that configuration logging doesn't expose credentials
 	// This would typically involve capturing log output and scanning for patterns
+<<<<<<< Updated upstream
 	
+=======
+
+>>>>>>> Stashed changes
 	// Example: Set up logger capture and verify no credentials appear
 	// in startup logs or error scenarios
 }

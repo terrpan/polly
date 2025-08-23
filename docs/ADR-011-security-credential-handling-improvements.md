@@ -64,16 +64,28 @@ func requestIDMiddleware(next http.HandlerFunc) http.HandlerFunc {
         if requestID == "" {
             requestID = r.Header.Get("X-Trace-Id")
         }
+<<<<<<< Updated upstream
         
+=======
+
+>>>>>>> Stashed changes
         // 2. Generate UUID if no external ID (independent of tracing)
         if requestID == "" {
             requestID = uuid.New().String()
         }
+<<<<<<< Updated upstream
         
         // 3. Store in context and return in response
         ctx := context.WithValue(r.Context(), "request_id", requestID)
         w.Header().Set("X-Request-Id", requestID)
         
+=======
+
+        // 3. Store in context and return in response
+        ctx := context.WithValue(r.Context(), "request_id", requestID)
+        w.Header().Set("X-Request-Id", requestID)
+
+>>>>>>> Stashed changes
         next.ServeHTTP(w, r.WithContext(ctx))
     }
 }
@@ -113,7 +125,11 @@ return nil, fmt.Errorf("failed to configure GitHub Enterprise URLs: %w", err)
 
 ### Phase 2: Request ID Middleware (Correlation)
 - Add UUID dependency
+<<<<<<< Updated upstream
 - Implement request ID middleware 
+=======
+- Implement request ID middleware
+>>>>>>> Stashed changes
 - Update route registration to apply middleware
 - Enhance telemetry helper for optional trace correlation
 
@@ -136,7 +152,11 @@ return nil, fmt.Errorf("failed to configure GitHub Enterprise URLs: %w", err)
 - **Error Message Sanitization**: Sensitive data scrubbed from error messages
 - **Test Coverage**: Automated detection of credential leaks
 
+<<<<<<< Updated upstream
 ### Operational Benefits  
+=======
+### Operational Benefits
+>>>>>>> Stashed changes
 - **Request Correlation**: Single ID traces request from load balancer through all services
 - **Tool Independence**: Works with or without tracing enabled
 - **Debug Efficiency**: Cross-system correlation for production troubleshooting
@@ -150,7 +170,11 @@ return nil, fmt.Errorf("failed to configure GitHub Enterprise URLs: %w", err)
 
 ```
 Load Balancer: X-Request-Id: 12345, Status: 500
+<<<<<<< Updated upstream
 Application Logs: request_id="12345", error="Policy evaluation timeout"  
+=======
+Application Logs: request_id="12345", error="Policy evaluation timeout"
+>>>>>>> Stashed changes
 Jaeger Traces: request.id="12345" (if tracing enabled)
 External Services: X-Request-Id: 12345 (propagated downstream)
 ```
@@ -158,7 +182,11 @@ External Services: X-Request-Id: 12345 (propagated downstream)
 ## Testing Strategy
 
 - **Unit Tests**: Each security component tested in isolation
+<<<<<<< Updated upstream
 - **Integration Tests**: End-to-end credential leak detection  
+=======
+- **Integration Tests**: End-to-end credential leak detection
+>>>>>>> Stashed changes
 - **Security Tests**: Dedicated suite for credential handling patterns
 - **Regression Tests**: Ensure no functional impact from security changes
 
