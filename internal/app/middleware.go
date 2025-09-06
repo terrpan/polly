@@ -7,14 +7,18 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+
 	"github.com/terrpan/polly/internal/config"
 )
 
 // jsonContentType is a constant for the Content-Type header value used in the middleware
 const jsonContent = "application/json"
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
 // requestIDKey is the context key for storing request IDs
-const requestIDKey = "request_id"
+const requestIDKey contextKey = "request_id"
 
 // Middleware represents a standard middleware function
 type Middleware func(http.HandlerFunc) http.HandlerFunc
@@ -65,6 +69,7 @@ func withMiddleware(middlewares ...Middleware) func(http.HandlerFunc) http.Handl
 		for i := len(middlewares) - 1; i >= 0; i-- {
 			handler = middlewares[i](handler)
 		}
+
 		return handler
 	}
 }
@@ -72,7 +77,10 @@ func withMiddleware(middlewares ...Middleware) func(http.HandlerFunc) http.Handl
 // GetRequestID extracts the request ID from context
 func GetRequestID(ctx context.Context) string {
 	if requestID := ctx.Value(requestIDKey); requestID != nil {
-		return requestID.(string)
+		if id, ok := requestID.(string); ok {
+			return id
+		}
 	}
+
 	return ""
 }

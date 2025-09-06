@@ -4,6 +4,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 )
@@ -64,11 +65,13 @@ func SanitizeConfigForLogging(cfg *Config) map[string]interface{} {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldType := t.Field(i)
+
 		fieldName := fieldType.Name
 		if field.CanInterface() {
 			result[fieldName] = sanitizeValue(field.Interface())
 		}
 	}
+
 	return result
 }
 
@@ -89,12 +92,14 @@ func sanitizeValue(value interface{}) interface{} {
 				result[fieldName] = sanitizeValue(field.Interface())
 			}
 		}
+
 		return result
 	case reflect.String:
 		str := v.String()
 		if isSensitiveField(str) {
 			return "[REDACTED]"
 		}
+
 		return str
 	default:
 		return value
@@ -117,10 +122,14 @@ func isSensitiveField(value string) bool {
 	}
 
 	for _, pattern := range sensitivePatterns {
-		if matched, _ := regexp.MatchString(pattern, value); matched {
+		if matched, err := regexp.MatchString(pattern, value); matched {
 			return true
+		} else if err != nil {
+			fmt.Printf("Error matching regex pattern %s: %v", pattern, err)
+			continue
 		}
 	}
+
 	return false
 }
 

@@ -42,7 +42,9 @@ func (t *Helper) StartSpan(
 	// Guard against nil config in tests
 	if config.AppConfig != nil && config.AppConfig.Logger.EnableRequestID {
 		if requestID := ctx.Value("request_id"); requestID != nil {
-			span.SetAttributes(attribute.String("request.id", requestID.(string)))
+			if requestIDStr, ok := requestID.(string); ok {
+				span.SetAttributes(attribute.String("request.id", requestIDStr))
+			}
 		}
 	}
 
@@ -54,6 +56,7 @@ func (t *Helper) SetRepositoryAttributes(span oteltrace.Span, owner, repo, sha s
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(
 		attribute.String("repo.owner", owner),
 		attribute.String("repo.name", repo),
@@ -71,6 +74,7 @@ func (t *Helper) SetCheckRunAttributes(
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(
 		attribute.String("github.owner", owner),
 		attribute.String("github.repo", repo),
@@ -84,6 +88,7 @@ func (t *Helper) SetPolicyAttributes(span oteltrace.Span, policyType string) {
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(attribute.String("policy.type", policyType))
 }
 
@@ -92,6 +97,7 @@ func (t *Helper) SetStorageAttributes(span oteltrace.Span, operation, key string
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(
 		attribute.String("storage.operation", operation),
 		attribute.String("storage.key", key),
@@ -103,6 +109,7 @@ func (t *Helper) SetSecurityAttributes(span oteltrace.Span, artifactType, scanne
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(
 		attribute.String("security.artifact_type", artifactType),
 		attribute.String("security.scanner", scanner),
@@ -119,6 +126,7 @@ func (t *Helper) SetCommentAttributes(
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(
 		attribute.String("github.owner", owner),
 		attribute.String("github.repo", repo),
@@ -132,6 +140,7 @@ func (t *Helper) SetHealthAttributes(span oteltrace.Span, dependency, status str
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(
 		attribute.String("health.dependency", dependency),
 		attribute.String("health.status", status),
@@ -144,6 +153,7 @@ func (t *Helper) SetErrorAttribute(span oteltrace.Span, err error) {
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(attribute.String("error", err.Error()))
 	span.RecordError(err)
 }
@@ -153,5 +163,6 @@ func (t *Helper) SetCacheAttributes(span oteltrace.Span, hit bool) {
 	if t == nil || span == nil {
 		return
 	}
+
 	span.SetAttributes(attribute.Bool("cache.hit", hit))
 }

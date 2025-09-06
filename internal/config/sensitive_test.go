@@ -212,9 +212,9 @@ func TestSecureString_RealWorldScenarios(t *testing.T) {
 	t.Run("database configuration", func(t *testing.T) {
 		type DBConfig struct {
 			Host     string       `json:"host"`
-			Port     int          `json:"port"`
 			Username string       `json:"username"`
 			Password SecureString `json:"password"`
+			Port     int          `json:"port"`
 		}
 
 		config := DBConfig{

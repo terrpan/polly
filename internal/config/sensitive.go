@@ -40,6 +40,8 @@ func (s *SecureString) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return err
 	}
+
 	s.value = value
+
 	return nil
 }

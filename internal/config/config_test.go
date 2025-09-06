@@ -57,9 +57,11 @@ func TestGitHubAppConfig_Structure(t *testing.T) {
 		AppID:          123,
 		InstallationID: 456,
 		PrivateKeyPath: "/path/to/private/key",
-		PrivateKey:     NewSecureString("-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----"),
-		BaseURL:        "https://github.enterprise.com/api/v3",
-		UploadURL:      "https://github.enterprise.com/api/uploads",
+		PrivateKey: NewSecureString(
+			"-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+		),
+		BaseURL:   "https://github.enterprise.com/api/v3",
+		UploadURL: "https://github.enterprise.com/api/uploads",
 	}
 
 	assert.Equal(t, int64(123), githubConfig.AppID)
@@ -84,9 +86,11 @@ func TestLoadGitHubAppConfig_WithEnterpriseURLs(t *testing.T) {
 		GitHubApp: GitHubAppConfig{
 			AppID:          123,
 			InstallationID: 456,
-			PrivateKey:     NewSecureString("-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----"),
-			BaseURL:        "https://github.enterprise.com/api/v3",
-			UploadURL:      "https://github.enterprise.com/api/uploads",
+			PrivateKey: NewSecureString(
+				"-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+			),
+			BaseURL:   "https://github.enterprise.com/api/v3",
+			UploadURL: "https://github.enterprise.com/api/uploads",
 		},
 	}
 
@@ -147,9 +151,11 @@ func TestLoadGitHubAppConfig_URLValidation(t *testing.T) {
 				GitHubApp: GitHubAppConfig{
 					AppID:          123,
 					InstallationID: 456,
-					PrivateKey:     NewSecureString("-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----"),
-					BaseURL:        tt.baseURL,
-					UploadURL:      tt.uploadURL,
+					PrivateKey: NewSecureString(
+						"-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+					),
+					BaseURL:   tt.baseURL,
+					UploadURL: tt.uploadURL,
 				},
 			}
 

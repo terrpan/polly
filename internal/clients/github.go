@@ -45,6 +45,7 @@ func NewGitHubClient(ctx context.Context, baseURL, uploadURL string) (*GitHubCli
 		}
 
 		var err error
+
 		githubClient, err = githubClient.WithEnterpriseURLs(baseURL, uploadURL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to configure GitHub Enterprise URLs: %w", err)

@@ -19,6 +19,7 @@ func getBaseLogger() *slog.Logger {
 	loggerOnce.Do(func() {
 		baseLogger = createLogger()
 	})
+
 	return baseLogger
 }
 
@@ -56,6 +57,7 @@ func Logger(ctx context.Context) *slog.Logger {
 			return baseLogger.With("request_id", requestID)
 		}
 	}
+
 	return baseLogger
 }
 

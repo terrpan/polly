@@ -24,7 +24,9 @@ func TestNewWebhookRouter_Unit(t *testing.T) {
 		)
 		store := storage.NewMemoryStore()
 		githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
-		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+		require.NoError(t, err)
+		opaClient, err := clients.NewOPAClient("http://test-opa:8181")
+		require.NoError(t, err)
 
 		commentService := services.NewCommentService(
 			githubClient,

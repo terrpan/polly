@@ -147,6 +147,7 @@ func (c *Container) initGitHubClient(ctx context.Context) error {
 		c.logger.Info("Using Personal Access Token authentication")
 
 		var err error
+
 		c.gitHubClient, err = clients.NewGitHubClient(
 			ctx,
 			config.AppConfig.GitHubApp.BaseURL,
@@ -155,6 +156,7 @@ func (c *Container) initGitHubClient(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to create GitHub client: %w", err)
 		}
+
 		if err := c.gitHubClient.Authenticate(ctx, config.AppConfig.GitHubToken.Value()); err != nil {
 			return fmt.Errorf("failed to authenticate GitHub client: %w", err)
 		}

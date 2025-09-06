@@ -1131,7 +1131,12 @@ func TestValkeyStore_IntegrationSentinel(t *testing.T) {
 		assert.Equal(t, "mymaster", cfg.SentinelMaster, "Master name should be set")
 		assert.Len(t, cfg.SentinelAddrs, 2, "Should have 2 sentinel addresses")
 		assert.Equal(t, "sentinel-user", cfg.SentinelUsername, "Sentinel username should be set")
-		assert.Equal(t, "sentinel-pass", cfg.SentinelPassword.Value(), "Sentinel password should be set")
+		assert.Equal(
+			t,
+			"sentinel-pass",
+			cfg.SentinelPassword.Value(),
+			"Sentinel password should be set",
+		)
 		assert.Equal(t, "valkey-user", cfg.Username, "Valkey username should be set")
 		assert.Equal(t, "valkey-pass", cfg.Password.Value(), "Valkey password should be set")
 		assert.Equal(t, 1, cfg.DB, "Database should be set to 1")
