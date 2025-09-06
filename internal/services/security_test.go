@@ -8,15 +8,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/telemetry"
 )
 
 // testSecurityService creates a SecurityService for testing with default detectors
-func testSecurityService() *SecurityService {
+func testSecurityService(t *testing.T) *SecurityService {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	return NewSecurityService(githubClient, logger, telemetryHelper,
@@ -28,7 +30,8 @@ func testSecurityService() *SecurityService {
 
 func TestNewSecurityService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	service := NewSecurityService(githubClient, logger, telemetryHelper,
@@ -73,7 +76,7 @@ func TestSecurityService_VulnerabilityPayload_Structure(t *testing.T) {
 }
 
 func TestSecurityService_ProcessWorkflowSecurityArtifacts_Parameters(t *testing.T) {
-	service := testSecurityService()
+	service := testSecurityService(t)
 
 	ctx := context.Background()
 
@@ -127,7 +130,7 @@ func TestSecurityService_VulnerabilityPayload_NewStructure(t *testing.T) {
 }
 
 func TestSecurityService_ContextHandling(t *testing.T) {
-	service := testSecurityService()
+	service := testSecurityService(t)
 
 	// Test with cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
@@ -138,7 +141,7 @@ func TestSecurityService_ContextHandling(t *testing.T) {
 }
 
 func TestSecurityService_DiscoverSecurityArtifacts(t *testing.T) {
-	service := testSecurityService()
+	service := testSecurityService(t)
 
 	ctx := context.Background()
 
@@ -149,7 +152,7 @@ func TestSecurityService_DiscoverSecurityArtifacts(t *testing.T) {
 
 // TestSecurityService_DetectSecurityContent tests content detection
 func TestSecurityService_DetectSecurityContent(t *testing.T) {
-	service := testSecurityService()
+	service := testSecurityService(t)
 
 	tests := []struct {
 		name         string
@@ -304,7 +307,7 @@ func TestSecurityService_DetectEcosystem(t *testing.T) {
 
 // TestSecurityService_BuildPayloadsFromArtifacts tests payload building
 func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
-	service := testSecurityService()
+	service := testSecurityService(t)
 
 	ctx := context.Background()
 
@@ -374,7 +377,7 @@ func TestSecurityService_BuildPayloadsFromArtifacts(t *testing.T) {
 
 // TestSecurityService_ContextCancellation tests context cancellation handling
 func TestSecurityService_ContextCancellation(t *testing.T) {
-	service := testSecurityService()
+	service := testSecurityService(t)
 
 	// Create cancelled context
 	ctx, cancel := context.WithCancel(context.Background())

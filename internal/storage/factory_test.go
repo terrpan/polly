@@ -52,7 +52,7 @@ func TestNewStore_Valkey(t *testing.T) {
 			Valkey: config.ValkeyConfig{
 				Address:  "localhost:16379", // Use a port that's definitely not running
 				Username: "",
-				Password: "",
+				Password: config.NewSecureString(""),
 				DB:       0,
 			},
 		}
@@ -176,7 +176,7 @@ func TestNewStore_IntegrationValkey(t *testing.T) {
 			Valkey: config.ValkeyConfig{
 				Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 				Username: "",
-				Password: "",
+				Password: config.NewSecureString(""),
 				DB:       0,
 			},
 		}
@@ -209,7 +209,7 @@ func TestNewStore_IntegrationValkey(t *testing.T) {
 			Valkey: config.ValkeyConfig{
 				Address:           fmt.Sprintf("%s:%s", host, port.Port()),
 				Username:          "",
-				Password:          "",
+				Password:          config.NewSecureString(""),
 				DB:                0,
 				EnableCompression: true,
 			},
@@ -245,7 +245,7 @@ func TestNewStore_IntegrationFailure(t *testing.T) {
 			Valkey: config.ValkeyConfig{
 				Address:  "localhost:99999", // Invalid port
 				Username: "",
-				Password: "",
+				Password: config.NewSecureString(""),
 				DB:       0,
 			},
 		}

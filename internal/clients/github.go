@@ -35,34 +35,28 @@ type GitHubAppConfig struct {
 }
 
 // NewGitHubClient initializes a new GitHub client.
-func NewGitHubClient(ctx context.Context, baseURL, uploadURL string) *GitHubClient {
-	client := github.NewClient(
-		nil,
-	) // Use nil for unauthenticated requests; replace with an authenticated client if needed.
+func NewGitHubClient(ctx context.Context, baseURL, uploadURL string) (*GitHubClient, error) {
+	githubClient := github.NewClient(nil)
 
 	// Add GitHub Enterprise support only for non-default URLs
 	if baseURL != "" && baseURL != defaultGitHubBaseURL {
-		upURL := uploadURL
-		if upURL == "" {
-			upURL = baseURL // Default to same as base URL
+		if uploadURL == "" {
+			uploadURL = baseURL // Default to same as base URL
 		}
 
 		var err error
 
-		client, err = client.WithEnterpriseURLs(baseURL, upURL)
+		githubClient, err = githubClient.WithEnterpriseURLs(baseURL, uploadURL)
 		if err != nil {
-			// Log the error but continue with the default client
-			fmt.Printf("failed to configure GitHub Enterprise URLs: %v\n", err)
-
-			client = github.NewClient(nil) // Fallback to unauthenticated client
+			return nil, fmt.Errorf("failed to configure GitHub Enterprise URLs: %w", err)
 		}
 	}
 
 	return &GitHubClient{
-		client:    client,
+		client:    githubClient,
 		baseURL:   baseURL,
 		uploadURL: uploadURL,
-	}
+	}, nil
 }
 
 // NewGitHubAppClient initializes a new GitHub client for GitHub App authentication.

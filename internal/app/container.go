@@ -143,15 +143,21 @@ func (c *Container) initGitHubClient(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to create GitHub App client: %w", err)
 		}
-	case config.AppConfig.GitHubToken != "":
+	case !config.AppConfig.GitHubToken.IsEmpty():
 		c.logger.Info("Using Personal Access Token authentication")
 
-		c.gitHubClient = clients.NewGitHubClient(
+		var err error
+
+		c.gitHubClient, err = clients.NewGitHubClient(
 			ctx,
 			config.AppConfig.GitHubApp.BaseURL,
 			config.AppConfig.GitHubApp.UploadURL,
 		)
-		if err := c.gitHubClient.Authenticate(ctx, config.AppConfig.GitHubToken); err != nil {
+		if err != nil {
+			return fmt.Errorf("failed to create GitHub client: %w", err)
+		}
+
+		if err := c.gitHubClient.Authenticate(ctx, config.AppConfig.GitHubToken.Value()); err != nil {
 			return fmt.Errorf("failed to authenticate GitHub client: %w", err)
 		}
 	default:

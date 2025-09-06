@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/telemetry"
@@ -14,7 +15,8 @@ import (
 
 func TestNewCommentService(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	service := NewCommentService(githubClient, logger, telemetryHelper)
@@ -26,7 +28,8 @@ func TestNewCommentService(t *testing.T) {
 
 func TestCommentService_WriteComment_Structure(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	service := NewCommentService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
 
 	// Test that service has the expected structure
@@ -39,7 +42,8 @@ func TestCommentService_WriteComment_Structure(t *testing.T) {
 
 func TestCommentService_WriteComment_Parameters(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	service := NewCommentService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
 
 	ctx := context.Background()
@@ -55,13 +59,14 @@ func TestCommentService_WriteComment_Parameters(t *testing.T) {
 
 func TestCommentService_ErrorHandling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	service := NewCommentService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
 
 	ctx := context.Background()
 
 	// Test with invalid parameters
-	err := service.WriteComment(ctx, "invalid", "repo", 0, "test comment")
+	err = service.WriteComment(ctx, "invalid", "repo", 0, "test comment")
 	assert.Error(t, err, "Should return error for invalid parameters")
 
 	// Test with empty comment
@@ -71,13 +76,14 @@ func TestCommentService_ErrorHandling(t *testing.T) {
 
 func TestCommentService_ContextHandling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	service := NewCommentService(githubClient, logger, telemetry.NewTelemetryHelper("test"))
 
 	// Test context cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	err := service.WriteComment(ctx, "owner", "repo", 1, "test")
+	err = service.WriteComment(ctx, "owner", "repo", 1, "test")
 	assert.Error(t, err, "Should handle cancelled context")
 }

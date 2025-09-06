@@ -33,7 +33,8 @@ func (suite *SecurityCheckManagerTestSuite) SetupTest() {
 	)
 
 	// Create mock services
-	githubClient := clients.NewGitHubClient(suite.ctx, "", "")
+	githubClient, err := clients.NewGitHubClient(suite.ctx, "", "")
+	require.NoError(suite.T(), err)
 	store := storage.NewMemoryStore()
 
 	checkService := services.NewCheckService(

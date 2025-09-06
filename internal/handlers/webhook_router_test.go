@@ -23,8 +23,10 @@ func TestNewWebhookRouter_Unit(t *testing.T) {
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 		)
 		store := storage.NewMemoryStore()
-		githubClient := clients.NewGitHubClient(context.Background(), "", "")
-		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+		githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+		require.NoError(t, err)
+		opaClient, err := clients.NewOPAClient("http://test-opa:8181")
+		require.NoError(t, err)
 
 		commentService := services.NewCommentService(
 			githubClient,
@@ -85,8 +87,10 @@ func TestNewWebhookRouter_Unit(t *testing.T) {
 			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}),
 		)
 		store := storage.NewMemoryStore()
-		githubClient := clients.NewGitHubClient(context.Background(), "", "")
-		opaClient, _ := clients.NewOPAClient("http://test-opa:8181")
+		githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+		require.NoError(t, err)
+		opaClient, err := clients.NewOPAClient("http://test-opa:8181")
+		require.NoError(t, err)
 
 		commentService := services.NewCommentService(
 			githubClient,

@@ -38,7 +38,7 @@ func TestConfig_Structure(t *testing.T) {
 			InstallationID: 67890,
 			PrivateKeyPath: "/path/to/key",
 		},
-		GitHubToken: "test-token",
+		GitHubToken: NewSecureString("test-token"),
 		Version:     "1.0.0",
 		Commit:      "abc123",
 		BuildTime:   "2025-01-01T00:00:00Z",
@@ -46,7 +46,7 @@ func TestConfig_Structure(t *testing.T) {
 
 	assert.Equal(t, 8080, cfg.Port)
 	assert.Equal(t, int64(12345), cfg.GitHubApp.AppID)
-	assert.Equal(t, "test-token", cfg.GitHubToken)
+	assert.Equal(t, "test-token", cfg.GitHubToken.Value())
 	assert.Equal(t, "1.0.0", cfg.Version)
 	assert.Equal(t, "abc123", cfg.Commit)
 	assert.Equal(t, "2025-01-01T00:00:00Z", cfg.BuildTime)
@@ -57,15 +57,17 @@ func TestGitHubAppConfig_Structure(t *testing.T) {
 		AppID:          123,
 		InstallationID: 456,
 		PrivateKeyPath: "/path/to/private/key",
-		PrivateKey:     "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
-		BaseURL:        "https://github.enterprise.com/api/v3",
-		UploadURL:      "https://github.enterprise.com/api/uploads",
+		PrivateKey: NewSecureString(
+			"-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+		),
+		BaseURL:   "https://github.enterprise.com/api/v3",
+		UploadURL: "https://github.enterprise.com/api/uploads",
 	}
 
 	assert.Equal(t, int64(123), githubConfig.AppID)
 	assert.Equal(t, int64(456), githubConfig.InstallationID)
 	assert.Equal(t, "/path/to/private/key", githubConfig.PrivateKeyPath)
-	assert.Contains(t, githubConfig.PrivateKey, "PRIVATE KEY")
+	assert.Contains(t, githubConfig.PrivateKey.Value(), "PRIVATE KEY")
 	assert.Equal(t, "https://github.enterprise.com/api/v3", githubConfig.BaseURL)
 	assert.Equal(t, "https://github.enterprise.com/api/uploads", githubConfig.UploadURL)
 }
@@ -84,9 +86,11 @@ func TestLoadGitHubAppConfig_WithEnterpriseURLs(t *testing.T) {
 		GitHubApp: GitHubAppConfig{
 			AppID:          123,
 			InstallationID: 456,
-			PrivateKey:     "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
-			BaseURL:        "https://github.enterprise.com/api/v3",
-			UploadURL:      "https://github.enterprise.com/api/uploads",
+			PrivateKey: NewSecureString(
+				"-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+			),
+			BaseURL:   "https://github.enterprise.com/api/v3",
+			UploadURL: "https://github.enterprise.com/api/uploads",
 		},
 	}
 
@@ -147,9 +151,11 @@ func TestLoadGitHubAppConfig_URLValidation(t *testing.T) {
 				GitHubApp: GitHubAppConfig{
 					AppID:          123,
 					InstallationID: 456,
-					PrivateKey:     "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
-					BaseURL:        tt.baseURL,
-					UploadURL:      tt.uploadURL,
+					PrivateKey: NewSecureString(
+						"-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----",
+					),
+					BaseURL:   tt.baseURL,
+					UploadURL: tt.uploadURL,
 				},
 			}
 
@@ -225,7 +231,7 @@ func TestStorageConfig_Structure(t *testing.T) {
 		Valkey: ValkeyConfig{
 			Address:  "localhost:6379",
 			Username: "user",
-			Password: "pass",
+			Password: NewSecureString("pass"),
 			DB:       0,
 		},
 		DefaultKeyExpiration: "24h",
@@ -233,7 +239,7 @@ func TestStorageConfig_Structure(t *testing.T) {
 	assert.Equal(t, "memory", storageConfig.Type)
 	assert.Equal(t, "localhost:6379", storageConfig.Valkey.Address)
 	assert.Equal(t, "user", storageConfig.Valkey.Username)
-	assert.Equal(t, "pass", storageConfig.Valkey.Password)
+	assert.Equal(t, "pass", storageConfig.Valkey.Password.Value())
 	assert.Equal(t, 0, storageConfig.Valkey.DB)
 	assert.Equal(t, "24h", storageConfig.DefaultKeyExpiration)
 }
@@ -251,7 +257,7 @@ func (suite *ConfigTestSuite) TestIsGitHubAppConfigured() {
 					GitHubApp: GitHubAppConfig{
 						AppID:          123,
 						InstallationID: 456,
-						PrivateKey:     "test-key",
+						PrivateKey:     NewSecureString("test-key"),
 					},
 				}
 			},
@@ -264,7 +270,7 @@ func (suite *ConfigTestSuite) TestIsGitHubAppConfigured() {
 					GitHubApp: GitHubAppConfig{
 						AppID:          0,
 						InstallationID: 456,
-						PrivateKey:     "test-key",
+						PrivateKey:     NewSecureString("test-key"),
 					},
 				}
 			},
@@ -300,7 +306,7 @@ func TestConfig_FieldValidation(t *testing.T) {
 	// Test config field validation
 	cfg := &Config{
 		Port:        8080,
-		GitHubToken: "test-token",
+		GitHubToken: NewSecureString("test-token"),
 		Version:     "1.0.0",
 	}
 
@@ -415,7 +421,7 @@ func (suite *ConfigTestSuite) TestLoadGitHubAppConfig_AllCases() {
 		GitHubApp: GitHubAppConfig{
 			AppID:          123,
 			InstallationID: 456,
-			PrivateKey:     "",
+			PrivateKey:     NewSecureString(""),
 			PrivateKeyPath: "",
 		},
 	}
