@@ -127,7 +127,7 @@ linters:
 
     gosec:
       severity: medium
-      confidence: medium
+      confidence: low
       excludes:
         - G104
 
