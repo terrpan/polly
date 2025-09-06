@@ -15,13 +15,13 @@ const (
 	PatternPassword = `(?i).*password.*`
 
 	// Pattern for secret-like fields (case insensitive)
-	PatternSecret = `(?i).*secret.*`
+	PatternSecret = `(?i).*secret.*` // #nosec G101 -- This is a regex pattern for detecting secrets, not a hardcoded credential
 
 	// Pattern for key-like fields (case insensitive)
 	PatternKey = `(?i).*key.*`
 
 	// Pattern for token-like fields (case insensitive)
-	PatternToken = `(?i).*token.*`
+	PatternToken = `(?i).*token.*` // #nosec G101 -- This is a regex pattern for detecting tokens, not a hardcoded credential
 
 	// Pattern for PEM private keys
 	PatternPrivateKey = `-----BEGIN.*PRIVATE KEY-----`
@@ -49,7 +49,7 @@ const (
 const (
 	RedactedValue      = "[REDACTED]"
 	RedactedPassword   = "password=[REDACTED]"
-	RedactedToken      = "token=[REDACTED]"
+	RedactedToken      = "token=[REDACTED]"      // #nosec G101 -- This is a redaction template, not a hardcoded credential
 	RedactedKey        = "key=[REDACTED]"
 	RedactedSecret     = "secret=[REDACTED]"
 	RedactedPrivateKey = "[REDACTED_PRIVATE_KEY]"
