@@ -6,11 +6,22 @@ import "net/http"
 
 // setupRoutes configures all HTTP routes for the application.
 func setupRoutes(mux *http.ServeMux, container *Container) {
-	// Register the webhook router
-	mux.HandleFunc("/webhook", jsonContentTypeMiddleware(container.WebhookRouter.HandleWebhook))
+	// Register webhook routes with request ID correlation and JSON content type
+	mux.HandleFunc("/webhook", withMiddleware(
+		requestIDMiddleware,
+		jsonContentTypeMiddleware,
+	)(container.WebhookRouter.HandleWebhook))
 
-	// Register the health check handler
-	mux.HandleFunc("/health", jsonContentTypeMiddleware(container.HealthHandler.HandleHealthCheck))
-	// Add any additional routes here as needed
-	// e.g., mux.HandleFunc("/api/v1/resource", jsonContentTypeMiddleware(container.ResourceHandler.HandleResource))
+	// Register health routes with no middleware for maximum performance
+	mux.HandleFunc("/health", withMiddleware(
+		requestIDMiddleware,
+		jsonContentTypeMiddleware,
+	)(container.HealthHandler.HandleHealthCheck))
+
+	// Example of future API routes with different middleware combinations
+	// mux.HandleFunc("/api/v1/resource", withMiddleware(
+	//     authMiddleware,
+	//     requestIDMiddleware,
+	//     jsonContentTypeMiddleware,
+	// )(container.ResourceHandler.HandleResource))
 }

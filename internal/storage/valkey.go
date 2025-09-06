@@ -30,7 +30,7 @@ type ValkeyStore struct {
 // applyCommonValkeyConfig applies common configuration settings to both Sentinel and standard client options
 func applyCommonValkeyConfig(clientOpts *valkey.ClientOption, cfg config.ValkeyConfig) {
 	clientOpts.Username = cfg.Username
-	clientOpts.Password = cfg.Password
+	clientOpts.Password = cfg.Password.Value()
 	clientOpts.SelectDB = cfg.DB
 }
 
@@ -47,7 +47,7 @@ func NewValkeyStore(cfg config.ValkeyConfig) (*ValkeyStore, error) {
 			Sentinel: valkey.SentinelOption{
 				MasterSet: cfg.SentinelMaster,
 				Username:  cfg.SentinelUsername,
-				Password:  cfg.SentinelPassword,
+				Password:  cfg.SentinelPassword.Value(),
 			},
 		}
 		logger.Info("Configuring Valkey with Sentinel",

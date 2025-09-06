@@ -34,7 +34,7 @@ func TestValkeyStore_Constructor(t *testing.T) {
 		cfg := config.ValkeyConfig{
 			Address:  "localhost:6379",
 			Username: "",
-			Password: "",
+			Password: config.NewSecureString(""),
 			DB:       0,
 		}
 
@@ -98,9 +98,9 @@ func TestValkeyStore_SentinelConfiguration(t *testing.T) {
 			SentinelAddrs:    []string{"localhost:26379", "localhost:26380", "localhost:26381"},
 			SentinelMaster:   "mymaster",
 			SentinelUsername: "sentinel-user",
-			SentinelPassword: "sentinel-pass",
+			SentinelPassword: config.NewSecureString("sentinel-pass"),
 			Username:         "user",
-			Password:         "pass",
+			Password:         config.NewSecureString("pass"),
 			DB:               1,
 		}
 
@@ -449,7 +449,7 @@ func TestApplyCommonValkeyConfig(t *testing.T) {
 	t.Run("applies common configuration to client options", func(t *testing.T) {
 		cfg := config.ValkeyConfig{
 			Username: "test-user",
-			Password: "test-pass",
+			Password: config.NewSecureString("test-pass"),
 			DB:       5,
 		}
 
@@ -464,7 +464,7 @@ func TestApplyCommonValkeyConfig(t *testing.T) {
 	t.Run("handles empty configuration values", func(t *testing.T) {
 		cfg := config.ValkeyConfig{
 			Username: "",
-			Password: "",
+			Password: config.NewSecureString(""),
 			DB:       0,
 		}
 
@@ -479,7 +479,7 @@ func TestApplyCommonValkeyConfig(t *testing.T) {
 	t.Run("does not affect other client option fields", func(t *testing.T) {
 		cfg := config.ValkeyConfig{
 			Username: "test-user",
-			Password: "test-pass",
+			Password: config.NewSecureString("test-pass"),
 			DB:       3,
 		}
 
@@ -528,7 +528,7 @@ func TestValkeyStore_IntegrationBasicOperations(t *testing.T) {
 	cfg := config.ValkeyConfig{
 		Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 		Username: "",
-		Password: "",
+		Password: config.NewSecureString(""),
 		DB:       0,
 	}
 
@@ -682,7 +682,7 @@ func TestValkeyStore_IntegrationConcurrency(t *testing.T) {
 	cfg := config.ValkeyConfig{
 		Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 		Username: "",
-		Password: "",
+		Password: config.NewSecureString(""),
 		DB:       0,
 	}
 
@@ -774,7 +774,7 @@ func TestValkeyStore_IntegrationCompression(t *testing.T) {
 	cfg := config.ValkeyConfig{
 		Address:           fmt.Sprintf("%s:%s", host, port.Port()),
 		Username:          "",
-		Password:          "",
+		Password:          config.NewSecureString(""),
 		DB:                0,
 		EnableCompression: true,
 		EnableOTel:        false, // Disable for simpler testing
@@ -842,7 +842,7 @@ func TestValkeyStore_IntegrationCompression(t *testing.T) {
 		cfgNoCompression := config.ValkeyConfig{
 			Address:           fmt.Sprintf("%s:%s", host, port.Port()),
 			Username:          "",
-			Password:          "",
+			Password:          config.NewSecureString(""),
 			DB:                0,
 			EnableCompression: false,
 			EnableOTel:        false,
@@ -1081,7 +1081,7 @@ func TestValkeyStore_IntegrationSentinel(t *testing.T) {
 			EnableSentinel: false,
 			Address:        fmt.Sprintf("%s:%s", masterHost, masterPort.Port()),
 			Username:       "",
-			Password:       "",
+			Password:       config.NewSecureString(""),
 			DB:             0,
 		}
 
@@ -1120,9 +1120,9 @@ func TestValkeyStore_IntegrationSentinel(t *testing.T) {
 			SentinelAddrs:    []string{"localhost:26379", "localhost:26380"},
 			SentinelMaster:   "mymaster",
 			SentinelUsername: "sentinel-user",
-			SentinelPassword: "sentinel-pass",
+			SentinelPassword: config.NewSecureString("sentinel-pass"),
 			Username:         "valkey-user",
-			Password:         "valkey-pass",
+			Password:         config.NewSecureString("valkey-pass"),
 			DB:               1,
 		}
 
@@ -1131,9 +1131,9 @@ func TestValkeyStore_IntegrationSentinel(t *testing.T) {
 		assert.Equal(t, "mymaster", cfg.SentinelMaster, "Master name should be set")
 		assert.Len(t, cfg.SentinelAddrs, 2, "Should have 2 sentinel addresses")
 		assert.Equal(t, "sentinel-user", cfg.SentinelUsername, "Sentinel username should be set")
-		assert.Equal(t, "sentinel-pass", cfg.SentinelPassword, "Sentinel password should be set")
+		assert.Equal(t, "sentinel-pass", cfg.SentinelPassword.Value(), "Sentinel password should be set")
 		assert.Equal(t, "valkey-user", cfg.Username, "Valkey username should be set")
-		assert.Equal(t, "valkey-pass", cfg.Password, "Valkey password should be set")
+		assert.Equal(t, "valkey-pass", cfg.Password.Value(), "Valkey password should be set")
 		assert.Equal(t, 1, cfg.DB, "Database should be set to 1")
 
 		// Attempt to create store (may fail due to non-existent sentinels, which is expected)
@@ -1158,7 +1158,7 @@ func TestValkeyStore_IntegrationSentinel(t *testing.T) {
 			EnableSentinel: false,
 			Address:        primary,
 			Username:       "",
-			Password:       "",
+			Password:       config.NewSecureString(""),
 			DB:             0,
 		}
 
@@ -1241,7 +1241,7 @@ func TestValkeyStore_IntegrationAuthentication(t *testing.T) {
 		cfg := config.ValkeyConfig{
 			Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 			Username: "", // Password-only auth (Redis/Valkey legacy mode)
-			Password: "test-password",
+			Password: config.NewSecureString("test-password"),
 			DB:       0,
 		}
 
@@ -1306,7 +1306,7 @@ func TestValkeyStore_IntegrationAuthentication(t *testing.T) {
 		wrongPasswordCfg := config.ValkeyConfig{
 			Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 			Username: "",
-			Password: "wrong-password",
+			Password: config.NewSecureString("wrong-password"),
 			DB:       0,
 		}
 
@@ -1329,7 +1329,7 @@ func TestValkeyStore_IntegrationAuthentication(t *testing.T) {
 		noPasswordCfg := config.ValkeyConfig{
 			Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 			Username: "",
-			Password: "", // No password provided
+			Password: config.NewSecureString(""), // No password provided
 			DB:       0,
 		}
 
@@ -1398,7 +1398,7 @@ user default off
 		cfg := config.ValkeyConfig{
 			Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 			Username: "testuser",
-			Password: "userpass123",
+			Password: config.NewSecureString("userpass123"),
 			DB:       0,
 		}
 
@@ -1463,7 +1463,7 @@ user default off
 		cfg := config.ValkeyConfig{
 			Address:           fmt.Sprintf("%s:%s", host, port.Port()),
 			Username:          "",
-			Password:          "compress-password",
+			Password:          config.NewSecureString("compress-password"),
 			DB:                0,
 			EnableCompression: true,
 		}
@@ -1499,13 +1499,13 @@ user default off
 		cfg := config.ValkeyConfig{
 			Address:  "localhost:6379",
 			Username: "test-user",
-			Password: "test-password",
+			Password: config.NewSecureString("test-password"),
 			DB:       2,
 		}
 
 		// Validate configuration structure
 		assert.Equal(t, "test-user", cfg.Username, "Username should be set correctly")
-		assert.Equal(t, "test-password", cfg.Password, "Password should be set correctly")
+		assert.Equal(t, "test-password", cfg.Password.Value(), "Password should be set correctly")
 		assert.Equal(t, 2, cfg.DB, "Database should be set correctly")
 
 		// Note: Connection will fail since no server is running, but config is valid
@@ -1549,7 +1549,7 @@ func TestValkeyStore_IntegrationPolicyCache(t *testing.T) {
 	cfg := config.ValkeyConfig{
 		Address:  fmt.Sprintf("%s:%s", host, port.Port()),
 		Username: "",
-		Password: "",
+		Password: config.NewSecureString(""),
 		DB:       0,
 	}
 

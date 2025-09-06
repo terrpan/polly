@@ -8,6 +8,7 @@ import (
 
 	gogithub "github.com/google/go-github/v72/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/terrpan/polly/internal/clients"
 	"github.com/terrpan/polly/internal/telemetry"
@@ -18,7 +19,8 @@ func TestNewCheckService(t *testing.T) {
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 
 	// Create a real GitHub client for testing the constructor
-	realClient := clients.NewGitHubClient(context.Background(), "", "")
+	realClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 
 	service := NewCheckService(realClient, logger, telemetryHelper)
 
@@ -167,7 +169,7 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 
 	// Example of how integration tests would look:
 	// logger := slog.Default()
-	// githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	// githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
 	// err := githubClient.Authenticate(context.Background(), "test-token")
 	// require.NoError(t, err)
 	//
@@ -181,7 +183,8 @@ func TestCheckService_IntegrationExamples(t *testing.T) {
 
 func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 	service := NewCheckService(githubClient, logger, telemetryHelper)
 
@@ -196,7 +199,8 @@ func TestCheckService_CreateCheckRun_Parameters(t *testing.T) {
 
 func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 	service := NewCheckService(githubClient, logger, telemetryHelper)
 
@@ -219,7 +223,8 @@ func TestCheckService_CompleteCheckRun_Parameters(t *testing.T) {
 
 func TestCheckService_ContextHandling(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	githubClient := clients.NewGitHubClient(context.Background(), "", "")
+	githubClient, err := clients.NewGitHubClient(context.Background(), "", "")
+	require.NoError(t, err)
 	telemetryHelper := telemetry.NewTelemetryHelper("test")
 	service := NewCheckService(githubClient, logger, telemetryHelper)
 
@@ -227,6 +232,6 @@ func TestCheckService_ContextHandling(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := service.CreateCheckRun(ctx, "owner", "repo", "sha", CheckRunTypeVulnerability)
+	_, err = service.CreateCheckRun(ctx, "owner", "repo", "sha", CheckRunTypeVulnerability)
 	assert.Error(t, err, "Should handle cancelled context")
 }

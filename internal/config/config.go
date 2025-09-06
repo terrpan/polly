@@ -19,8 +19,8 @@ const (
 
 // Config represents the configuration of the application. Each field corresponds to a configuration option
 type Config struct {
-	Opa         OpaConfig `mapstructure:"opa"`
-	GitHubToken string    `mapstructure:"github_token"`
+	Opa         OpaConfig    `mapstructure:"opa"`
+	GitHubToken SecureString `mapstructure:"github_token"`
 	Version     string
 	Commit      string
 	BuildTime   string
@@ -33,19 +33,20 @@ type Config struct {
 
 // GitHubAppConfig represents the configuration for a GitHub App
 type GitHubAppConfig struct {
-	PrivateKeyPath string `mapstructure:"private_key_path"`
-	PrivateKey     string `mapstructure:"private_key"`
-	BaseURL        string `mapstructure:"base_url"`
-	UploadURL      string `mapstructure:"upload_url"`
-	AppID          int64  `mapstructure:"app_id"`
-	InstallationID int64  `mapstructure:"installation_id"`
+	PrivateKeyPath string       `mapstructure:"private_key_path"`
+	PrivateKey     SecureString `mapstructure:"private_key"`
+	BaseURL        string       `mapstructure:"base_url"`
+	UploadURL      string       `mapstructure:"upload_url"`
+	AppID          int64        `mapstructure:"app_id"`
+	InstallationID int64        `mapstructure:"installation_id"`
 }
 
 // LoggerConfig represents the configuration for the logger
 type LoggerConfig struct {
-	Level      string `mapstructure:"level"`
-	JSONOutput bool   `mapstructure:"json_output"`
-	AddSource  bool   `mapstructure:"add_source"`
+	Level           string `mapstructure:"level"`
+	JSONOutput      bool   `mapstructure:"json_output"`
+	AddSource       bool   `mapstructure:"add_source"`
+	EnableRequestID bool   `mapstructure:"enable_request_id"`
 }
 
 // OpaConfig represents the configuration for OPA (Open Policy Agent)
@@ -84,17 +85,17 @@ type PolicyCacheConfig struct {
 
 // ValkeyConfig holds the configuration for connecting to Valkey
 type ValkeyConfig struct {
-	Address           string   `mapstructure:"address"`
-	Username          string   `mapstructure:"username"`
-	Password          string   `mapstructure:"password"`
-	SentinelMaster    string   `mapstructure:"sentinel_master"`
-	SentinelUsername  string   `mapstructure:"sentinel_username"`
-	SentinelPassword  string   `mapstructure:"sentinel_password"`
-	SentinelAddrs     []string `mapstructure:"sentinel_addrs"`
-	DB                int      `mapstructure:"db"`
-	EnableSentinel    bool     `mapstructure:"enable_sentinel"`
-	EnableCompression bool     `mapstructure:"enable_compression"`
-	EnableOTel        bool     `mapstructure:"enable_otel"`
+	Address           string       `mapstructure:"address"`
+	Username          string       `mapstructure:"username"`
+	Password          SecureString `mapstructure:"password"`
+	SentinelMaster    string       `mapstructure:"sentinel_master"`
+	SentinelUsername  string       `mapstructure:"sentinel_username"`
+	SentinelPassword  SecureString `mapstructure:"sentinel_password"`
+	SentinelAddrs     []string     `mapstructure:"sentinel_addrs"`
+	DB                int          `mapstructure:"db"`
+	EnableSentinel    bool         `mapstructure:"enable_sentinel"`
+	EnableCompression bool         `mapstructure:"enable_compression"`
+	EnableOTel        bool         `mapstructure:"enable_otel"`
 }
 
 var (
@@ -114,9 +115,10 @@ var (
 		Version: "v0.0.1",
 		Port:    8080,
 		Logger: LoggerConfig{
-			Level:      "debug",
-			JSONOutput: true,
-			AddSource:  false,
+			Level:           "debug",
+			JSONOutput:      true,
+			AddSource:       false,
+			EnableRequestID: true,
 		},
 		GitHubApp: GitHubAppConfig{
 			BaseURL:   "https://api.github.com",     // Default to GitHub.com API
@@ -137,14 +139,8 @@ var (
 			DefaultKeyExpiration: "24h",    // Expiration for keys
 			Valkey: ValkeyConfig{
 				Address:           "localhost:6379",
-				Username:          "",
-				Password:          "",
 				DB:                0,
 				EnableSentinel:    false,
-				SentinelAddrs:     []string{},
-				SentinelMaster:    "",
-				SentinelUsername:  "",
-				SentinelPassword:  "",
 				EnableCompression: true,
 				EnableOTel:        true,
 			},
@@ -268,8 +264,8 @@ func LoadGitHubAppConfig() (*clients.GitHubAppConfig, error) {
 
 	// Try to load private key from direct content first
 	switch {
-	case appConfig.PrivateKey != "":
-		privateKey = []byte(appConfig.PrivateKey)
+	case !appConfig.PrivateKey.IsEmpty():
+		privateKey = []byte(appConfig.PrivateKey.Value())
 	case appConfig.PrivateKeyPath != "":
 		// Load from file path
 		privateKey, err = os.ReadFile(appConfig.PrivateKeyPath)
@@ -293,7 +289,7 @@ func LoadGitHubAppConfig() (*clients.GitHubAppConfig, error) {
 func IsGitHubAppConfigured() bool {
 	return AppConfig.GitHubApp.AppID != 0 &&
 		AppConfig.GitHubApp.InstallationID != 0 &&
-		(AppConfig.GitHubApp.PrivateKey != "" || AppConfig.GitHubApp.PrivateKeyPath != "")
+		(!AppConfig.GitHubApp.PrivateKey.IsEmpty() || AppConfig.GitHubApp.PrivateKeyPath != "")
 }
 
 // bindNestedEnvVars dynamically binds nested environment variables to Viper keys using reflection
