@@ -30,16 +30,20 @@ const (
 // Error sanitization patterns for removing sensitive data from error messages
 const (
 	// Pattern for password parameters in URLs or error messages
-	PatternPasswordParam = `password=\S+`
+	// Matches password=value where value stops at common URL delimiters or end of string
+	PatternPasswordParam = `password=[^\s@&?#]+` // #nosec G101 -- This is a regex pattern for detecting passwords, not a hardcoded credential
 
 	// Pattern for token parameters in URLs or error messages
-	PatternTokenParam = `token=\S+`
+	// Matches token=value where value stops at common URL delimiters or end of string
+	PatternTokenParam = `token=[^\s@&?#]+` // #nosec G101 -- This is a regex pattern for detecting tokens, not a hardcoded credential
 
 	// Pattern for key parameters in URLs or error messages
-	PatternKeyParam = `key=\S+`
+	// Matches key=value where value stops at common URL delimiters or end of string
+	PatternKeyParam = `key=[^\s@&?#]+` // #nosec G101 -- This is a regex pattern for detecting keys, not a hardcoded credential
 
 	// Pattern for secret parameters in URLs or error messages
-	PatternSecretParam = `secret=\S+`
+	// Matches secret=value where value stops at common URL delimiters or end of string
+	PatternSecretParam = `secret=[^\s@&?#]+` // #nosec G101 -- This is a regex pattern for detecting secrets, not a hardcoded credential
 
 	// Pattern for complete PEM private keys in error messages
 	PatternPEMPrivateKey = `-----BEGIN[^-]*PRIVATE KEY-----[^-]*-----END[^-]*PRIVATE KEY-----`
