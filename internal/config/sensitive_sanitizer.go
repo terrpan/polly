@@ -49,7 +49,7 @@ const (
 const (
 	RedactedValue      = "[REDACTED]"
 	RedactedPassword   = "password=[REDACTED]"
-	RedactedToken      = "token=[REDACTED]"      // #nosec G101 -- This is a redaction template, not a hardcoded credential
+	RedactedToken      = "token=[REDACTED]" // #nosec G101 -- This is a redaction template, not a hardcoded credential
 	RedactedKey        = "key=[REDACTED]"
 	RedactedSecret     = "secret=[REDACTED]"
 	RedactedPrivateKey = "[REDACTED_PRIVATE_KEY]"
